@@ -1,0 +1,23 @@
+[package]
+name = "tabletop-atlas"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "tabletop_atlas"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tabletop-atlas"
+path = "src/main.rs"
+
+[dependencies]
+dropshot = "0.12"
+schemars = { version = "0.8", features = ["uuid"] }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+[features]
+default = []
