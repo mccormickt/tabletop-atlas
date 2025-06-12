@@ -1,0 +1,19 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "tabletop-atlas"
+path = "src/main.rs"
+
+[dependencies]
+dropshot.workspace = true
+schemars.workspace = true
+serde.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+rusqlite.workspace = true
+rusqlite_migration.workspace = true
+anyhow.workspace = true
