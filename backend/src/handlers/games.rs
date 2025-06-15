@@ -2,14 +2,15 @@ use crate::{
     AppState,
     db::{Database, games},
     handlers::{
-        HttpCreated, HttpDeleted, HttpOk, created_response, deleted_response, success_response,
+        HttpCreated, HttpDeleted, HttpError, HttpOk, bad_request_error, created_response,
+        deleted_response, internal_error, not_found_error, success_response,
     },
     models::{
         CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, PaginationParams,
         UpdateGameRequest,
     },
 };
-use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
+use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -35,9 +36,7 @@ pub async fn list_games(
         Ok(result) => success_response(result),
         Err(e) => {
             tracing::error!("Failed to list games: {}", e);
-            Err(HttpError::for_internal_error(
-                "Failed to list games".to_string(),
-            ))
+            Err(internal_error("Failed to list games".to_string()))
         }
     }
 }
@@ -57,15 +56,13 @@ pub async fn get_game(
 
     match games::get_game(&db, game_id).await {
         Ok(Some(game)) => success_response(game),
-        Ok(None) => Err(HttpError::for_not_found(
-            None,
-            format!("Game with id {} not found", game_id),
-        )),
+        Ok(None) => Err(not_found_error(format!(
+            "Game with id {} not found",
+            game_id
+        ))),
         Err(e) => {
             tracing::error!("Failed to get game {}: {}", game_id, e);
-            Err(HttpError::for_internal_error(
-                "Failed to get game".to_string(),
-            ))
+            Err(internal_error("Failed to get game".to_string()))
         }
     }
 }
@@ -85,16 +82,12 @@ pub async fn create_game(
 
     // Validate the request
     if create_request.name.trim().is_empty() {
-        return Err(HttpError::for_bad_request(
-            None,
-            "Game name cannot be empty".to_string(),
-        ));
+        return Err(bad_request_error("Game name cannot be empty".to_string()));
     }
 
     if let Some(complexity) = create_request.complexity_rating {
         if complexity < 1.0 || complexity > 5.0 {
-            return Err(HttpError::for_bad_request(
-                None,
+            return Err(bad_request_error(
                 "Complexity rating must be between 1.0 and 5.0".to_string(),
             ));
         }
@@ -104,9 +97,7 @@ pub async fn create_game(
         Ok(game) => created_response(game),
         Err(e) => {
             tracing::error!("Failed to create game: {}", e);
-            Err(HttpError::for_internal_error(
-                "Failed to create game".to_string(),
-            ))
+            Err(internal_error("Failed to create game".to_string()))
         }
     }
 }
@@ -129,17 +120,13 @@ pub async fn update_game(
     // Validate the request
     if let Some(ref name) = update_request.name {
         if name.trim().is_empty() {
-            return Err(HttpError::for_bad_request(
-                None,
-                "Game name cannot be empty".to_string(),
-            ));
+            return Err(bad_request_error("Game name cannot be empty".to_string()));
         }
     }
 
     if let Some(complexity) = update_request.complexity_rating {
         if complexity < 1.0 || complexity > 5.0 {
-            return Err(HttpError::for_bad_request(
-                None,
+            return Err(bad_request_error(
                 "Complexity rating must be between 1.0 and 5.0".to_string(),
             ));
         }
@@ -147,15 +134,13 @@ pub async fn update_game(
 
     match games::update_game(&db, game_id, update_request).await {
         Ok(Some(game)) => success_response(game),
-        Ok(None) => Err(HttpError::for_not_found(
-            None,
-            format!("Game with id {} not found", game_id),
-        )),
+        Ok(None) => Err(not_found_error(format!(
+            "Game with id {} not found",
+            game_id
+        ))),
         Err(e) => {
             tracing::error!("Failed to update game {}: {}", game_id, e);
-            Err(HttpError::for_internal_error(
-                "Failed to update game".to_string(),
-            ))
+            Err(internal_error("Failed to update game".to_string()))
         }
     }
 }
@@ -175,15 +160,13 @@ pub async fn delete_game(
 
     match games::delete_game(&db, game_id).await {
         Ok(true) => deleted_response(),
-        Ok(false) => Err(HttpError::for_not_found(
-            None,
-            format!("Game with id {} not found", game_id),
-        )),
+        Ok(false) => Err(not_found_error(format!(
+            "Game with id {} not found",
+            game_id
+        ))),
         Err(e) => {
             tracing::error!("Failed to delete game {}: {}", game_id, e);
-            Err(HttpError::for_internal_error(
-                "Failed to delete game".to_string(),
-            ))
+            Err(internal_error("Failed to delete game".to_string()))
         }
     }
 }

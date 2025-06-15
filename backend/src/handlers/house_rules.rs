@@ -1,4 +1,4 @@
-use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
+use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -6,7 +6,8 @@ use crate::{
     AppState,
     db::{Database, house_rules},
     handlers::{
-        HttpCreated, HttpDeleted, HttpOk, created_response, deleted_response, success_response,
+        HttpCreated, HttpDeleted, HttpError, HttpOk, bad_request_error, created_response,
+        deleted_response, internal_error, not_found_error, success_response,
     },
     models::{
         CreateHouseRuleRequest, GameId, HouseRule, HouseRuleId, PaginatedResponse,
@@ -50,9 +51,7 @@ pub async fn list_house_rules(
         Ok(result) => success_response(result),
         Err(e) => {
             tracing::error!("Failed to list house rules: {}", e);
-            Err(HttpError::for_internal_error(
-                "Failed to list house rules".to_string(),
-            ))
+            Err(internal_error("Failed to list house rules".to_string()))
         }
     }
 }
@@ -72,15 +71,13 @@ pub async fn get_house_rule(
 
     match house_rules::get_house_rule(&db, house_rule_id).await {
         Ok(Some(house_rule)) => success_response(house_rule),
-        Ok(None) => Err(HttpError::for_not_found(
-            None,
-            format!("House rule with id {} not found", house_rule_id),
-        )),
+        Ok(None) => Err(not_found_error(format!(
+            "House rule with id {} not found",
+            house_rule_id
+        ))),
         Err(e) => {
             tracing::error!("Failed to get house rule {}: {}", house_rule_id, e);
-            Err(HttpError::for_internal_error(
-                "Failed to get house rule".to_string(),
-            ))
+            Err(internal_error("Failed to get house rule".to_string()))
         }
     }
 }
@@ -100,14 +97,12 @@ pub async fn create_house_rule(
 
     // Validate the request
     if create_request.title.trim().is_empty() {
-        return Err(HttpError::for_bad_request(
-            None,
+        return Err(bad_request_error(
             "House rule title cannot be empty".to_string(),
         ));
     }
     if create_request.description.trim().is_empty() {
-        return Err(HttpError::for_bad_request(
-            None,
+        return Err(bad_request_error(
             "House rule description cannot be empty".to_string(),
         ));
     }
@@ -116,9 +111,7 @@ pub async fn create_house_rule(
         Ok(house_rule) => created_response(house_rule),
         Err(e) => {
             tracing::error!("Failed to create house rule: {}", e);
-            Err(HttpError::for_internal_error(
-                "Failed to create house rule".to_string(),
-            ))
+            Err(internal_error("Failed to create house rule".to_string()))
         }
     }
 }
@@ -141,16 +134,14 @@ pub async fn update_house_rule(
     // Validate the request
     if let Some(ref title) = update_request.title {
         if title.trim().is_empty() {
-            return Err(HttpError::for_bad_request(
-                None,
+            return Err(bad_request_error(
                 "House rule title cannot be empty".to_string(),
             ));
         }
     }
     if let Some(ref description) = update_request.description {
         if description.trim().is_empty() {
-            return Err(HttpError::for_bad_request(
-                None,
+            return Err(bad_request_error(
                 "House rule description cannot be empty".to_string(),
             ));
         }
@@ -158,15 +149,13 @@ pub async fn update_house_rule(
 
     match house_rules::update_house_rule(&db, house_rule_id, update_request).await {
         Ok(Some(house_rule)) => success_response(house_rule),
-        Ok(None) => Err(HttpError::for_not_found(
-            None,
-            format!("House rule with id {} not found", house_rule_id),
-        )),
+        Ok(None) => Err(not_found_error(format!(
+            "House rule with id {} not found",
+            house_rule_id
+        ))),
         Err(e) => {
             tracing::error!("Failed to update house rule {}: {}", house_rule_id, e);
-            Err(HttpError::for_internal_error(
-                "Failed to update house rule".to_string(),
-            ))
+            Err(internal_error("Failed to update house rule".to_string()))
         }
     }
 }
@@ -186,15 +175,13 @@ pub async fn delete_house_rule(
 
     match house_rules::delete_house_rule(&db, house_rule_id).await {
         Ok(true) => deleted_response(),
-        Ok(false) => Err(HttpError::for_not_found(
-            None,
-            format!("House rule with id {} not found", house_rule_id),
-        )),
+        Ok(false) => Err(not_found_error(format!(
+            "House rule with id {} not found",
+            house_rule_id
+        ))),
         Err(e) => {
             tracing::error!("Failed to delete house rule {}: {}", house_rule_id, e);
-            Err(HttpError::for_internal_error(
-                "Failed to delete house rule".to_string(),
-            ))
+            Err(internal_error("Failed to delete house rule".to_string()))
         }
     }
 }
