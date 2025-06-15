@@ -8,11 +8,11 @@ use dropshot::{
     ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingLevel, HttpServerStarter,
 };
 use rusqlite::Connection;
-use rusqlite_migration::{Migrations, M};
+use rusqlite_migration::{M, Migrations};
 
+mod db;
 mod handlers;
 mod models;
-mod db;
 
 use handlers::*;
 
@@ -23,18 +23,24 @@ pub struct AppState {
 impl AppState {
     pub fn new(path: impl AsRef<Path>) -> Result<Self> {
         let mut db = Connection::open(path)?;
-        
+
         // Run migrations
         let migrations = Migrations::new(vec![
-            M::up(include_str!("../../migrations/V001__create_games_table.sql")),
-            M::up(include_str!("../../migrations/V002__create_house_rules_table.sql")),
-            M::up(include_str!("../../migrations/V003__create_embeddings_table.sql")),
+            M::up(include_str!(
+                "../../migrations/V001__create_games_table.sql"
+            )),
+            M::up(include_str!(
+                "../../migrations/V002__create_house_rules_table.sql"
+            )),
+            M::up(include_str!(
+                "../../migrations/V003__create_embeddings_table.sql"
+            )),
         ]);
-        
+
         migrations.to_latest(&mut db)?;
-        
-        Ok(Self { 
-            db: Arc::new(Mutex::new(db)) 
+
+        Ok(Self {
+            db: Arc::new(Mutex::new(db)),
         })
     }
 
@@ -63,22 +69,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create API description
     let mut api = ApiDescription::new();
-    
+
     // Register API endpoints
     api.register(games::list_games)?;
     api.register(games::get_game)?;
     api.register(games::create_game)?;
     api.register(games::update_game)?;
     api.register(games::delete_game)?;
-    
+
     api.register(house_rules::list_house_rules)?;
     api.register(house_rules::get_house_rule)?;
     api.register(house_rules::create_house_rule)?;
     api.register(house_rules::update_house_rule)?;
     api.register(house_rules::delete_house_rule)?;
-    
+
     api.register(upload::upload_rules_pdf)?;
     api.register(chat::chat_with_rules)?;
+    api.register(chat::list_chat_sessions)?;
+    api.register(chat::get_chat_session)?;
+    api.register(chat::create_chat_session)?;
 
     let app_state = AppState::new("atlas.db")?;
     let server = HttpServerStarter::new(&config_dropshot, api, app_state, &log)

@@ -1,9 +1,13 @@
-use dropshot::{HttpError, Path, RequestContext, UntypedBody, endpoint};
+use dropshot::{Path, RequestContext, UntypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::success_response;
-use crate::{AppState, handlers::HttpOk, models::GameId};
+use crate::{
+    AppState,
+    handlers::{HttpError, HttpOk},
+    models::GameId,
+};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct UploadPathParam {

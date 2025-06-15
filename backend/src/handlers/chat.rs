@@ -1,4 +1,4 @@
-use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
+use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -6,7 +6,7 @@ use super::success_response;
 use crate::{
     AppState,
     db::{Database, chat},
-    handlers::{HttpCreated, HttpOk, created_response},
+    handlers::{HttpCreated, HttpError, HttpOk, created_response, internal_error, not_found_error},
     models::{
         ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionId, ChatSessionSummary,
         CreateChatSessionRequest, GameId, PaginatedResponse, PaginationParams,
@@ -49,9 +49,7 @@ pub async fn list_chat_sessions(
         Ok(result) => success_response(result),
         Err(e) => {
             tracing::error!("Failed to list chat sessions: {}", e);
-            Err(HttpError::for_internal_error(
-                "Failed to list chat sessions".to_string(),
-            ))
+            Err(internal_error("Failed to list chat sessions".to_string()))
         }
     }
 }
@@ -71,15 +69,13 @@ pub async fn get_chat_session(
 
     match chat::get_chat_history(&db, session_id).await {
         Ok(Some(history)) => success_response(history),
-        Ok(None) => Err(HttpError::for_not_found(
-            None,
-            format!("Chat session with id {} not found", session_id),
-        )),
+        Ok(None) => Err(not_found_error(format!(
+            "Chat session with id {} not found",
+            session_id
+        ))),
         Err(e) => {
             tracing::error!("Failed to get chat session {}: {}", session_id, e);
-            Err(HttpError::for_internal_error(
-                "Failed to get chat session".to_string(),
-            ))
+            Err(internal_error("Failed to get chat session".to_string()))
         }
     }
 }
@@ -101,9 +97,7 @@ pub async fn create_chat_session(
         Ok(session) => created_response(session),
         Err(e) => {
             tracing::error!("Failed to create chat session: {}", e);
-            Err(HttpError::for_internal_error(
-                "Failed to create chat session".to_string(),
-            ))
+            Err(internal_error("Failed to create chat session".to_string()))
         }
     }
 }
@@ -129,7 +123,7 @@ pub async fn chat_with_rules(
     // 6. Save assistant response to database
     // 7. Return response with context sources
 
-    Err(HttpError::for_internal_error(
+    Err(internal_error(
         "Chat functionality not yet implemented".to_string(),
     ))
 }
