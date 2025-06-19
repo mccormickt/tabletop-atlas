@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { api, type Game, type CreateGameRequest, type UpdateGameRequest } from '$lib';
-	import { Button, Card, Badge, Label, Input, Textarea } from '$lib/components/ui';
+	import { Button, Card, Label, Input, Textarea } from '$lib/components/ui';
 	import { createEventDispatcher } from 'svelte';
+	import type { Update } from 'vite';
 
 	interface Props {
 		game?: Game;
@@ -119,7 +120,7 @@
 	}
 
 	function buildRequestData(): CreateGameRequest | UpdateGameRequest {
-		const data: any = {
+		const data: CreateGameRequest | UpdateGameRequest = {
 			name: formData.name.trim()
 		};
 
@@ -160,12 +161,14 @@
 				});
 			}
 
-			if (result.success) {
+			if (result.type === 'success') {
 				success = true;
 				onSubmit?.(result.data);
 				dispatch('submit', result.data);
-			} else {
-				error = result.error?.message || 'An error occurred while saving the game';
+			} else if (result.type === 'error') {
+				error = result.data.message || 'An error occurred while saving the game';
+			} else if (result.type === 'client_error') {
+				error = result.error.message || 'An error occurred while saving the game';
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';

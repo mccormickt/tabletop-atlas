@@ -27,3 +27,7 @@ regex = "1.10"
 # Logging
 tracing = "0.1"
 tracing-subscriber = "0.3"
+# Static file serving
+mime_guess = "2.0"
+include_dir = "0.7"
+hyper = { version = "0.14", features = ["full"] }

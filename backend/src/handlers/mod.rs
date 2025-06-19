@@ -7,6 +7,7 @@ use serde::Serialize;
 pub mod chat;
 pub mod games;
 pub mod house_rules;
+pub mod static_files;
 pub mod upload;
 
 // Re-exports are available but not used globally to avoid namespace pollution

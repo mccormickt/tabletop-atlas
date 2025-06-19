@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { api, type GameSummary, type PaginatedResponse_for_GameSummary, formatDate } from '$lib';
+	import { api, type GameSummary } from '$lib';
 	import { Button, Card, Badge } from '$lib/components/ui';
 	import { createEventDispatcher } from 'svelte';
 
@@ -48,13 +48,16 @@
 				query: { page, limit }
 			});
 
-			if (result.success) {
+			if (result.type === 'success') {
 				games = result.data.items;
 				currentPage = result.data.page;
 				totalPages = result.data.totalPages;
 				total = result.data.total;
-			} else {
-				error = result.error?.message || 'Failed to load games';
+			} else if (result.type === 'error') {
+				error = result.data.message || 'Failed to load games';
+				games = [];
+			} else if (result.type === 'client_error') {
+				error = result.error.message || 'Failed to load games';
 				games = [];
 			}
 		} catch (err) {
@@ -75,13 +78,15 @@
 				path: { id: game.id }
 			});
 
-			if (result.success) {
+			if (result.type === 'success') {
 				// Reload the current page
 				await loadGames(currentPage);
 				onDelete?.(game);
 				dispatch('delete', game);
-			} else {
-				alert(result.error?.message || 'Failed to delete game');
+			} else if (result.type === 'error') {
+				alert(result.data.message || 'Failed to load games');
+			} else if (result.type === 'client_error') {
+				alert(result.error.message || 'Failed to load games');
 			}
 		} catch (err) {
 			alert(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -270,7 +275,7 @@
 						{#each Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
 							const startPage = Math.max(1, currentPage - 2);
 							return startPage + i;
-						}).filter((page) => page <= totalPages) as page}
+						}).filter((page) => page <= totalPages) as page (page)}
 							<Button
 								variant={page === currentPage ? 'default' : 'outline'}
 								size="sm"
