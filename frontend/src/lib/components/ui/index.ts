@@ -1,6 +1,7 @@
-export { default as Badge } from './Badge.svelte';
-export { default as Button } from './Button.svelte';
-export { default as Card } from './Card.svelte';
-export { default as Input } from './Input.svelte';
-export { default as Label } from './Label.svelte';
-export { default as Textarea } from './Textarea.svelte';
+// Export shadcn-svelte components
+export { Button } from './button';
+export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card';
+export { Input } from './input';
+export { Label } from './label';
+export { Textarea } from './textarea';
+export { Badge } from './badge';

@@ -1,71 +1,46 @@
 <script lang="ts">
-	import { api, type Game, type GameSummary } from '$lib';
-	import GameList from '$lib/components/GameList.svelte';
-	import GameForm from '$lib/components/GameForm.svelte';
-	import GameDetail from '$lib/components/GameDetail.svelte';
-	import { Button, Card } from '$lib/components/ui';
-
-	// State management for different views
-	type ViewState = 'list' | 'add' | 'edit' | 'detail';
-
-	let currentView = $state<ViewState>('list');
-	let selectedGame = $state<Game | GameSummary | null>(null);
-	let refreshTrigger = $state(0);
+	import { goto } from '$app/navigation';
+	import { api } from '$lib';
+	import { Button } from '$lib/components/ui';
+	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
+	import { onMount } from 'svelte';
 
 	// Navigation functions
-	function showGameList() {
-		currentView = 'list';
-		selectedGame = null;
+	function navigateToGames() {
+		goto('/games');
 	}
 
-	function showAddGame() {
-		currentView = 'add';
-		selectedGame = null;
+	function navigateToAddGame() {
+		goto('/games/add');
 	}
 
-	function showEditGame(game: Game | GameSummary) {
-		currentView = 'edit';
-		selectedGame = game;
+	function navigateToUpload() {
+		// TODO: Implement upload route
+		console.log('Navigate to upload');
 	}
 
-	function showGameDetail(game: GameSummary) {
-		currentView = 'detail';
-		selectedGame = game;
+	function navigateToChat() {
+		// TODO: Implement chat route
+		console.log('Navigate to chat');
 	}
 
-	// Event handlers
-	function handleGameCreated(game: Game) {
-		currentView = 'detail';
-		selectedGame = game;
-		refreshTrigger++;
-	}
+	async function countGames() {
+		const result = await api.methods.listGames({});
 
-	function handleGameUpdated(game: Game) {
-		currentView = 'detail';
-		selectedGame = game;
-		refreshTrigger++;
-	}
-
-	function handleGameDeleted() {
-		currentView = 'list';
-		selectedGame = null;
-		refreshTrigger++;
-	}
-
-	async function handleEditFromDetail(game: Game) {
-		// Load fresh game data for editing
-		try {
-			const result = await api.methods.getGame({
-				path: { id: game.id }
-			});
-			if (result.success) {
-				selectedGame = result.data;
-				currentView = 'edit';
-			}
-		} catch (err) {
-			console.error('Failed to load game for editing:', err);
+		if (result.type === 'success') {
+			return result.data.total;
+		} else if (result.type === 'error') {
+			return result.data.message || 'Failed to load games';
+		} else if (result.type === 'client_error') {
+			return result.error.message || 'Failed to load games';
 		}
+		return 0;
 	}
+
+	let totalGames = $state();
+	onMount(async () => {
+		totalGames = await countGames();
+	});
 </script>
 
 <svelte:head>
@@ -79,26 +54,27 @@
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 			<div class="flex items-center justify-between py-6">
 				<div class="flex items-center">
-					<button
-						onclick={showGameList}
+					<a
+						href="/"
 						class="text-foreground hover:text-primary flex items-center text-2xl font-bold transition-colors"
 					>
 						🎲 Tabletop Atlas
-					</button>
+					</a>
 				</div>
 				<nav class="flex space-x-8">
-					<button
-						onclick={showGameList}
-						class="text-muted-foreground hover:text-foreground transition-colors"
-						class:text-foreground={currentView === 'list'}
-						class:font-medium={currentView === 'list'}
-					>
+					<a href="/games" class="text-muted-foreground hover:text-foreground transition-colors">
 						Games
-					</button>
-					<button class="text-muted-foreground hover:text-foreground transition-colors">
+					</a>
+					<button
+						onclick={navigateToUpload}
+						class="text-muted-foreground hover:text-foreground transition-colors"
+					>
 						Upload Rules
 					</button>
-					<button class="text-muted-foreground hover:text-foreground transition-colors">
+					<button
+						onclick={navigateToChat}
+						class="text-muted-foreground hover:text-foreground transition-colors"
+					>
 						Chat
 					</button>
 				</nav>
@@ -108,19 +84,19 @@
 
 	<!-- Main Content -->
 	<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-		<!-- Hero Section (only show on list view) -->
-		{#if currentView === 'list'}
-			<div class="mb-12 text-center">
-				<h1 class="text-foreground mb-4 text-4xl font-bold">Manage Your Board Game Collection</h1>
-				<p class="text-muted-foreground mx-auto max-w-3xl text-xl">
-					Organize your board games, upload rule books, create house rules, and get instant answers
-					about gameplay through our AI-powered chat interface.
-				</p>
-			</div>
+		<!-- Hero Section -->
+		<div class="mb-12 text-center">
+			<h1 class="text-foreground mb-4 text-4xl font-bold">Manage Your Board Game Collection</h1>
+			<p class="text-muted-foreground mx-auto max-w-3xl text-xl">
+				Organize your board games, upload rule books, create house rules, and get instant answers
+				about gameplay through our AI-powered chat interface.
+			</p>
+		</div>
 
-			<!-- Quick Actions -->
-			<div class="mb-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-				<Card class="p-6 transition-shadow hover:shadow-lg">
+		<!-- Quick Actions -->
+		<div class="mb-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+			<Card class="transition-shadow hover:shadow-lg">
+				<CardHeader>
 					<div class="text-primary mb-4">
 						<svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -131,14 +107,18 @@
 							></path>
 						</svg>
 					</div>
-					<h3 class="text-card-foreground mb-2 text-lg font-semibold">Add New Game</h3>
-					<p class="text-muted-foreground mb-4">
+					<CardTitle>Add New Game</CardTitle>
+					<CardDescription>
 						Add a new board game to your collection with detailed information and metadata.
-					</p>
-					<Button onclick={showAddGame} class="w-full">Add Game</Button>
-				</Card>
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Button onclick={navigateToAddGame} class="w-full">Add Game</Button>
+				</CardContent>
+			</Card>
 
-				<Card class="p-6 transition-shadow hover:shadow-lg">
+			<Card class="transition-shadow hover:shadow-lg">
+				<CardHeader>
 					<div class="text-primary mb-4">
 						<svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -149,14 +129,18 @@
 							></path>
 						</svg>
 					</div>
-					<h3 class="text-card-foreground mb-2 text-lg font-semibold">Upload Rules</h3>
-					<p class="text-muted-foreground mb-4">
+					<CardTitle>Upload Rules</CardTitle>
+					<CardDescription>
 						Upload PDF rule books and we'll extract and index the content for easy searching.
-					</p>
-					<Button variant="outline" class="w-full">Upload PDF</Button>
-				</Card>
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Button variant="outline" onclick={navigateToUpload} class="w-full">Upload PDF</Button>
+				</CardContent>
+			</Card>
 
-				<Card class="p-6 transition-shadow hover:shadow-lg">
+			<Card class="transition-shadow hover:shadow-lg">
+				<CardHeader>
 					<div class="text-primary mb-4">
 						<svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path
@@ -167,65 +151,55 @@
 							></path>
 						</svg>
 					</div>
-					<h3 class="text-card-foreground mb-2 text-lg font-semibold">Ask Questions</h3>
-					<p class="text-muted-foreground mb-4">
+					<CardTitle>Ask Questions</CardTitle>
+					<CardDescription>
 						Get instant answers about game rules using our AI-powered chat interface.
-					</p>
-					<Button variant="outline" class="w-full">Start Chat</Button>
-				</Card>
-			</div>
-		{/if}
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Button variant="outline" onclick={navigateToChat} class="w-full">Start Chat</Button>
+				</CardContent>
+			</Card>
+		</div>
 
-		<!-- Content Area -->
-		<div class="w-full">
-			{#if currentView === 'list'}
-				<!-- Game List View -->
-				<div class="mb-6 flex items-center justify-between">
-					<div></div>
-					<Button onclick={showAddGame}>Add New Game</Button>
-				</div>
+		<!-- Recent Activity / Stats -->
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+			<Card>
+				<CardHeader>
+					<CardTitle>Your Collection</CardTitle>
+					<CardDescription>Quick overview of your board game library</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<div class="flex items-center justify-between">
+						<div>
+							<p class="text-foreground text-2xl font-bold">{totalGames}</p>
+							<p class="text-muted-foreground text-sm">Games in collection</p>
+						</div>
+						<Button variant="outline" onclick={navigateToGames}>View All Games</Button>
+					</div>
+				</CardContent>
+			</Card>
 
-				<GameList
-					{refreshTrigger}
-					onEdit={showEditGame}
-					onView={showGameDetail}
-					onDelete={handleGameDeleted}
-				/>
-			{:else if currentView === 'add'}
-				<!-- Add Game View -->
-				<div class="mb-6">
-					<Button
-						variant="ghost"
-						onclick={showGameList}
-						class="text-muted-foreground hover:text-foreground"
-					>
-						← Back to Games
-					</Button>
-				</div>
-
-				<GameForm onSubmit={handleGameCreated} onCancel={showGameList} />
-			{:else if currentView === 'edit' && selectedGame}
-				<!-- Edit Game View -->
-				<div class="mb-6">
-					<Button
-						variant="ghost"
-						onclick={showGameList}
-						class="text-muted-foreground hover:text-foreground"
-					>
-						← Back to Games
-					</Button>
-				</div>
-
-				<GameForm game={selectedGame} onSubmit={handleGameUpdated} onCancel={showGameList} />
-			{:else if currentView === 'detail' && selectedGame}
-				<!-- Game Detail View -->
-				<GameDetail
-					gameId={selectedGame.id}
-					onEdit={handleEditFromDetail}
-					onDelete={handleGameDeleted}
-					onBack={showGameList}
-				/>
-			{/if}
+			<Card>
+				<CardHeader>
+					<CardTitle>Quick Start</CardTitle>
+					<CardDescription>Get started with Tabletop Atlas</CardDescription>
+				</CardHeader>
+				<CardContent class="space-y-3">
+					<div class="flex items-center justify-between">
+						<span class="text-muted-foreground text-sm">1. Add your first game</span>
+						<Button size="sm" variant="outline" onclick={navigateToAddGame}>Add Game</Button>
+					</div>
+					<div class="flex items-center justify-between">
+						<span class="text-muted-foreground text-sm">2. Upload rule books</span>
+						<Button size="sm" variant="outline" onclick={navigateToUpload}>Upload</Button>
+					</div>
+					<div class="flex items-center justify-between">
+						<span class="text-muted-foreground text-sm">3. Start asking questions</span>
+						<Button size="sm" variant="outline" onclick={navigateToChat}>Chat</Button>
+					</div>
+				</CardContent>
+			</Card>
 		</div>
 	</main>
 
@@ -237,9 +211,9 @@
 					© 2024 Tabletop Atlas. Made with ♥ for board game enthusiasts.
 				</div>
 				<div class="text-muted-foreground flex space-x-6 text-sm">
-					<a href="#" class="hover:text-foreground transition-colors">About</a>
-					<a href="#" class="hover:text-foreground transition-colors">Help</a>
-					<a href="#" class="hover:text-foreground transition-colors">GitHub</a>
+					<button class="hover:text-foreground transition-colors">About</button>
+					<button class="hover:text-foreground transition-colors">Help</button>
+					<button class="hover:text-foreground transition-colors">GitHub</button>
 				</div>
 			</div>
 		</div>
