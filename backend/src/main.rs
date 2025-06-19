@@ -1,4 +1,5 @@
 use std::{
+    env,
     path::Path,
     sync::{Arc, Mutex},
 };
@@ -51,6 +52,14 @@ impl AppState {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().collect();
+
+    // Check if --openapi flag is provided
+    if args.len() > 1 && args[1] == "--openapi" {
+        generate_openapi().await?;
+        return Ok(());
+    }
+
     // Set up logging
     let config_logging = ConfigLogging::StderrTerminal {
         level: ConfigLoggingLevel::Info,
@@ -68,6 +77,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Create API description
+    let api = create_api_description()?;
+
+    let app_state = AppState::new("atlas.db")?;
+    let server = HttpServerStarter::new(&config_dropshot, api, app_state, &log)
+        .map_err(|error| format!("failed to create server: {}", error))?
+        .start();
+
+    println!("🎲 Tabletop Atlas Server running on http://127.0.0.1:8080");
+    server.await?;
+    Ok(())
+}
+
+fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::error::Error>> {
     let mut api = ApiDescription::new();
 
     // Register API endpoints
@@ -89,12 +111,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     api.register(chat::get_chat_session)?;
     api.register(chat::create_chat_session)?;
 
-    let app_state = AppState::new("atlas.db")?;
-    let server = HttpServerStarter::new(&config_dropshot, api, app_state, &log)
-        .map_err(|error| format!("failed to create server: {}", error))?
-        .start();
+    Ok(api)
+}
 
-    println!("🎲 Tabletop Atlas Server running on http://127.0.0.1:8080");
-    server.await?;
+async fn generate_openapi() -> Result<(), Box<dyn std::error::Error>> {
+    let api = create_api_description()?;
+
+    let mut openapi = api.openapi("Tabletop Atlas API", semver::Version::new(1, 0, 0));
+
+    openapi
+        .description("API for managing board games, house rules, and AI-powered chat")
+        .contact_url("https://github.com/your-repo/tabletop-atlas")
+        .license_name("MIT");
+
+    let json = openapi.json()?;
+    println!("{}", json);
+
     Ok(())
 }
