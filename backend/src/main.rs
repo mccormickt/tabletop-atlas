@@ -15,6 +15,7 @@ mod db;
 mod handlers;
 mod models;
 
+use handlers::static_files;
 use handlers::*;
 
 pub struct AppState {
@@ -92,7 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::error::Error>> {
     let mut api = ApiDescription::new();
 
-    // Register API endpoints
+    // Register API endpoints first (these have higher priority)
     api.register(games::list_games)?;
     api.register(games::get_game)?;
     api.register(games::create_game)?;
@@ -110,6 +111,14 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(chat::list_chat_sessions)?;
     api.register(chat::get_chat_session)?;
     api.register(chat::create_chat_session)?;
+
+    // Register health check
+    api.register(static_files::health_check)?;
+
+    // Register static file handlers
+    api.register(static_files::serve_index)?;
+    api.register(static_files::serve_favicon)?;
+    api.register(static_files::serve_app_assets)?;
 
     Ok(api)
 }

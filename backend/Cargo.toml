@@ -22,3 +22,9 @@ regex.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 http.workspace = true
+mime_guess.workspace = true
+include_dir.workspace = true
+hyper.workspace = true
+
+[build-dependencies]
+# No build dependencies needed for now
