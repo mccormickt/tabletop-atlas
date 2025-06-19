@@ -115,10 +115,13 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     // Register health check
     api.register(static_files::health_check)?;
 
-    // Register static file handlers
-    api.register(static_files::serve_index)?;
+    // Register specific static file handlers
     api.register(static_files::serve_favicon)?;
     api.register(static_files::serve_app_assets)?;
+
+    // Register specific SPA routes
+    api.register(static_files::serve_games_list)?; // /games
+    api.register(static_files::serve_index)?; // /
 
     Ok(api)
 }

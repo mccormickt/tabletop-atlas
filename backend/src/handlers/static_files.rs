@@ -5,7 +5,10 @@ use mime_guess;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use crate::AppState;
+use crate::{
+    AppState,
+    handlers::{HttpOk, success_response},
+};
 
 // Include the frontend build directory at compile time
 static FRONTEND_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/../frontend/build");
@@ -15,14 +18,24 @@ pub struct AssetPathParam {
     pub path: Vec<String>,
 }
 
-/// Serve the main index.html for the SPA root
+/// Health check endpoint
 #[endpoint {
     method = GET,
-    path = "/",
-    unpublished = true,
+    path = "/health",
 }]
-pub async fn serve_index(_rqctx: RequestContext<AppState>) -> Result<Response<Body>, HttpError> {
-    serve_static_file("index.html").await
+pub async fn health_check(
+    _rqctx: RequestContext<AppState>,
+) -> Result<HttpOk<serde_json::Value>, HttpError> {
+    let runtime = FRONTEND_ASSETS
+        .get_file("index.html")
+        .map(|_| "embedded-frontend")
+        .unwrap_or("api-only");
+    success_response(serde_json::json!({
+        "status": "healthy",
+        "service": "tabletop-atlas-backend",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "runtime": runtime,
+    }))
 }
 
 /// Serve favicon
@@ -50,70 +63,72 @@ pub async fn serve_app_assets(
     serve_static_file(&asset_path).await
 }
 
-/// Health check endpoint for the static file server
+/// Serve the main index.html for the SPA root
 #[endpoint {
     method = GET,
-    path = "/health",
+    path = "/",
+    unpublished = true,
 }]
-pub async fn health_check(_rqctx: RequestContext<AppState>) -> Result<Response<Body>, HttpError> {
-    let health_response = serde_json::json!({
-        "status": "healthy",
-        "service": "tabletop-atlas-backend",
-        "timestamp": chrono::Utc::now().to_rfc3339(),
-        "frontend_embedded": FRONTEND_ASSETS.get_file("index.html").is_some()
-    });
+pub async fn serve_index(_rqctx: RequestContext<AppState>) -> Result<Response<Body>, HttpError> {
+    serve_spa_fallback().await
+}
 
-    let response = Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "application/json")
-        .header("Access-Control-Allow-Origin", "*")
-        .header(
-            "Access-Control-Allow-Methods",
-            "GET, POST, PUT, DELETE, OPTIONS",
-        )
-        .header(
-            "Access-Control-Allow-Headers",
-            "Content-Type, Authorization",
-        )
-        .body(Body::from(health_response.to_string()))
-        .map_err(|e| {
-            HttpError::for_internal_error(format!("Failed to build health response: {}", e))
-        })?;
+/// Serve SPA for games list page
+#[endpoint {
+    method = GET,
+    path = "/games",
+    unpublished = true,
+}]
+pub async fn serve_games_list(
+    _rqctx: RequestContext<AppState>,
+) -> Result<Response<Body>, HttpError> {
+    serve_spa_fallback().await
+}
 
-    Ok(response)
+/// Enhanced 404 handler that serves SPA for common frontend routes
+/// This is a middleware-like approach that works within Dropshot's constraints
+pub fn is_frontend_route(path: &str) -> bool {
+    // Define patterns that should serve the SPA instead of 404
+    let frontend_patterns = [
+        "games/add",
+        "games/", // This catches games/123, games/123/edit, etc.
+    ];
+
+    frontend_patterns.iter().any(|pattern| {
+        if pattern.ends_with('/') {
+            path.starts_with(pattern)
+        } else {
+            path == *pattern
+        }
+    })
 }
 
 async fn serve_static_file(path: &str) -> Result<Response<Body>, HttpError> {
-    // Try to get the file from the embedded directory
-    let file = FRONTEND_ASSETS.get_file(path);
-
-    let (content, file_path) = match file {
-        Some(file) => (file.contents(), path),
+    match FRONTEND_ASSETS.get_file(path) {
+        Some(file) => serve_static_file_content(path, file.contents()).await,
         None => {
-            // If file not found, try common variations
-            if path.is_empty() || path == "/" {
-                // Root path, serve index.html
-                match FRONTEND_ASSETS.get_file("index.html") {
-                    Some(file) => (file.contents(), "index.html"),
-                    None => return serve_404(),
-                }
+            // Check if this looks like a frontend route that should serve SPA
+            if is_frontend_route(path) {
+                serve_spa_fallback().await
             } else {
-                // File not found
-                return serve_404();
+                serve_404().await
             }
         }
-    };
+    }
+}
 
-    // Determine content type
-    let content_type = mime_guess::from_path(file_path)
+async fn serve_static_file_content(
+    path: &str,
+    content: &[u8],
+) -> Result<Response<Body>, HttpError> {
+    let content_type = mime_guess::from_path(path)
         .first_or_octet_stream()
         .to_string();
 
-    // Build response with appropriate headers
     let response = Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", content_type)
-        .header("Cache-Control", get_cache_control(file_path))
+        .header("Cache-Control", get_cache_control(path))
         .header("Access-Control-Allow-Origin", "*")
         .header(
             "Access-Control-Allow-Methods",
@@ -129,7 +144,36 @@ async fn serve_static_file(path: &str) -> Result<Response<Body>, HttpError> {
     Ok(response)
 }
 
-fn serve_404() -> Result<Response<Body>, HttpError> {
+async fn serve_spa_fallback() -> Result<Response<Body>, HttpError> {
+    match FRONTEND_ASSETS.get_file("index.html") {
+        Some(file) => {
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-Type", "text/html; charset=utf-8")
+                .header("Cache-Control", "public, max-age=300") // 5 minutes
+                .header("Access-Control-Allow-Origin", "*")
+                .header(
+                    "Access-Control-Allow-Methods",
+                    "GET, POST, PUT, DELETE, OPTIONS",
+                )
+                .header(
+                    "Access-Control-Allow-Headers",
+                    "Content-Type, Authorization",
+                )
+                .body(Body::from(file.contents().to_vec()))
+                .map_err(|e| {
+                    HttpError::for_internal_error(format!("Failed to build SPA response: {}", e))
+                })?;
+
+            Ok(response)
+        }
+        None => Err(HttpError::for_internal_error(
+            "Frontend index.html not found in embedded assets".to_string(),
+        )),
+    }
+}
+
+async fn serve_404() -> Result<Response<Body>, HttpError> {
     let not_found_html = r#"
     <!DOCTYPE html>
     <html>
@@ -158,9 +202,10 @@ fn serve_404() -> Result<Response<Body>, HttpError> {
     </head>
     <body>
         <div class="error-container">
-            <h1>404 - Page Not Found</h1>
+            <h1>404 - Not Found</h1>
             <p>The requested resource could not be found.</p>
             <p><a href="/">← Back to Tabletop Atlas</a></p>
+            <p><small>Tip: Try navigating to this page from the <a href="/games">Games</a> section.</small></p>
         </div>
     </body>
     </html>

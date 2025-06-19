@@ -24,7 +24,7 @@ pub struct UploadResponse {
 /// Upload a PDF rules document for a game
 #[endpoint {
     method = POST,
-    path = "/api/games/{id}/upload-rules"
+    path = "/api/games/{id}/rules-upload"
 }]
 pub async fn upload_rules_pdf(
     rqctx: RequestContext<AppState>,
