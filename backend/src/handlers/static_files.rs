@@ -73,47 +73,23 @@ pub async fn serve_index(_rqctx: RequestContext<AppState>) -> Result<Response<Bo
     serve_spa_fallback().await
 }
 
-/// Serve SPA for games list page
+/// Serve SPA for any games section route
 #[endpoint {
     method = GET,
-    path = "/games",
+    path = "/games/{path:.*}",
     unpublished = true,
 }]
-pub async fn serve_games_list(
+pub async fn serve_games_views(
     _rqctx: RequestContext<AppState>,
+    _path_param: DropPath<AssetPathParam>,
 ) -> Result<Response<Body>, HttpError> {
     serve_spa_fallback().await
-}
-
-/// Enhanced 404 handler that serves SPA for common frontend routes
-/// This is a middleware-like approach that works within Dropshot's constraints
-pub fn is_frontend_route(path: &str) -> bool {
-    // Define patterns that should serve the SPA instead of 404
-    let frontend_patterns = [
-        "games/add",
-        "games/", // This catches games/123, games/123/edit, etc.
-    ];
-
-    frontend_patterns.iter().any(|pattern| {
-        if pattern.ends_with('/') {
-            path.starts_with(pattern)
-        } else {
-            path == *pattern
-        }
-    })
 }
 
 async fn serve_static_file(path: &str) -> Result<Response<Body>, HttpError> {
     match FRONTEND_ASSETS.get_file(path) {
         Some(file) => serve_static_file_content(path, file.contents()).await,
-        None => {
-            // Check if this looks like a frontend route that should serve SPA
-            if is_frontend_route(path) {
-                serve_spa_fallback().await
-            } else {
-                serve_404().await
-            }
-        }
+        None => serve_404().await,
     }
 }
 
