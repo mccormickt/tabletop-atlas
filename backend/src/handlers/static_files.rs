@@ -105,15 +105,6 @@ async fn serve_static_file_content(
         .status(StatusCode::OK)
         .header("Content-Type", content_type)
         .header("Cache-Control", get_cache_control(path))
-        .header("Access-Control-Allow-Origin", "*")
-        .header(
-            "Access-Control-Allow-Methods",
-            "GET, POST, PUT, DELETE, OPTIONS",
-        )
-        .header(
-            "Access-Control-Allow-Headers",
-            "Content-Type, Authorization",
-        )
         .body(Body::from(content.to_vec()))
         .map_err(|e| HttpError::for_internal_error(format!("Failed to build response: {}", e)))?;
 
@@ -127,15 +118,6 @@ async fn serve_spa_fallback() -> Result<Response<Body>, HttpError> {
                 .status(StatusCode::OK)
                 .header("Content-Type", "text/html; charset=utf-8")
                 .header("Cache-Control", "public, max-age=300") // 5 minutes
-                .header("Access-Control-Allow-Origin", "*")
-                .header(
-                    "Access-Control-Allow-Methods",
-                    "GET, POST, PUT, DELETE, OPTIONS",
-                )
-                .header(
-                    "Access-Control-Allow-Headers",
-                    "Content-Type, Authorization",
-                )
                 .body(Body::from(file.contents().to_vec()))
                 .map_err(|e| {
                     HttpError::for_internal_error(format!("Failed to build SPA response: {}", e))
