@@ -1,10 +1,10 @@
 use std::{
-    env,
     path::Path,
     sync::{Arc, Mutex},
 };
 
 use anyhow::Result;
+use clap::{Arg, Command};
 use dropshot::{
     ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingLevel, HttpServerStarter,
 };
@@ -53,13 +53,33 @@ impl AppState {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
+    let matches = Command::new("tabletop-atlas-backend")
+        .version("0.1.0")
+        .author("Tabletop Atlas Team")
+        .about("Backend server for Tabletop Atlas - a board game management application")
+        .arg(
+            Arg::new("openapi")
+                .long("openapi")
+                .help("Generate OpenAPI specification and exit")
+                .action(clap::ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("bind-address")
+                .short('a')
+                .long("bind-address")
+                .help("Address to bind the server to")
+                .value_name("ADDRESS")
+                .default_value("127.0.0.1:8080"),
+        )
+        .get_matches();
 
     // Check if --openapi flag is provided
-    if args.len() > 1 && args[1] == "--openapi" {
+    if matches.get_flag("openapi") {
         generate_openapi().await?;
         return Ok(());
     }
+
+    let bind_address = matches.get_one::<String>("bind-address").unwrap();
 
     // Set up logging
     let config_logging = ConfigLogging::StderrTerminal {
@@ -71,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Set up the server
     let config_dropshot = ConfigDropshot {
-        bind_address: "127.0.0.1:8080".parse()?,
+        bind_address: bind_address.parse()?,
         default_request_body_max_bytes: 10 * 1024 * 1024, // 10MB for PDF uploads
         default_handler_task_mode: dropshot::HandlerTaskMode::Detached,
         log_headers: Default::default(),
@@ -85,7 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|error| format!("failed to create server: {}", error))?
         .start();
 
-    println!("🎲 Tabletop Atlas Server running on http://127.0.0.1:8080");
+    println!("🎲 Tabletop Atlas Server running on {}", bind_address);
     server.await?;
     Ok(())
 }
@@ -133,7 +153,7 @@ async fn generate_openapi() -> Result<(), Box<dyn std::error::Error>> {
 
     openapi
         .description("API for managing board games, house rules, and AI-powered chat")
-        .contact_url("https://github.com/your-repo/tabletop-atlas")
+        .contact_url("https://github.com/mccormickt/tabletop-atlas")
         .license_name("MIT");
 
     let json = openapi.json()?;
