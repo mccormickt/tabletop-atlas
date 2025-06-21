@@ -6,6 +6,14 @@
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Input, Label, Textarea } from '$lib/components/ui';
+	import { useHeader } from '$lib/stores/header';
+
+	// Configure header for this page
+	const header = useHeader();
+	header.configure({
+		showSearch: true,
+		currentGame: null
+	});
 
 	// Get game ID from URL parameters
 	let gameId = $derived(parseInt($page.params.id));
@@ -219,254 +227,222 @@
 	<meta name="description" content="Edit board game details" />
 </svelte:head>
 
-<div class="bg-background min-h-screen">
-	<!-- Header -->
-	<header class="bg-card border-b shadow-sm">
-		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-			<div class="flex items-center justify-between py-6">
-				<div class="flex items-center">
-					<a
-						href="/"
-						class="text-foreground hover:text-primary flex items-center text-2xl font-bold transition-colors"
-					>
-						🎲 Tabletop Atlas
-					</a>
+<!-- Main Content -->
+<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+	<!-- Back Navigation -->
+	<div class="mb-6">
+		<Button
+			variant="ghost"
+			onclick={handleCancel}
+			class="text-muted-foreground hover:text-foreground"
+		>
+			← Back to Game Details
+		</Button>
+	</div>
+
+	<!-- Loading State -->
+	{#if loading}
+		<div class="flex items-center justify-center py-12">
+			<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
+			<span class="ml-2 text-gray-600">Loading game details...</span>
+		</div>
+	{/if}
+
+	<!-- Error State (Loading Error) -->
+	{#if error && loading}
+		<Card class="mx-auto w-full max-w-2xl text-center">
+			<CardContent class="p-6">
+				<div class="mb-4 text-red-600">
+					<svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+						></path>
+					</svg>
 				</div>
-				<nav class="flex space-x-8">
-					<a href="/games" class="text-foreground font-medium transition-colors"> Games </a>
-					<button class="text-muted-foreground hover:text-foreground transition-colors">
-						Upload Rules
-					</button>
-					<button class="text-muted-foreground hover:text-foreground transition-colors">
-						Chat
-					</button>
-				</nav>
-			</div>
-		</div>
-	</header>
+				<h3 class="mb-2 text-lg font-semibold text-gray-900">Unable to Load Game</h3>
+				<p class="mb-4 text-gray-600">{error}</p>
+				<div class="flex justify-center space-x-3">
+					<Button onclick={loadGame}>Try Again</Button>
+					<Button variant="outline" onclick={() => goto('/games')}>Go Back</Button>
+				</div>
+			</CardContent>
+		</Card>
+	{/if}
 
-	<!-- Main Content -->
-	<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-		<!-- Back Navigation -->
-		<div class="mb-6">
-			<Button
-				variant="ghost"
-				onclick={handleCancel}
-				class="text-muted-foreground hover:text-foreground"
-			>
-				← Back to Game Details
-			</Button>
-		</div>
-
-		<!-- Loading State -->
-		{#if loading}
-			<div class="flex items-center justify-center py-12">
-				<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
-				<span class="ml-2 text-gray-600">Loading game details...</span>
-			</div>
-		{/if}
-
-		<!-- Error State (Loading Error) -->
-		{#if error && loading}
-			<Card class="mx-auto w-full max-w-2xl text-center">
-				<CardContent class="p-6">
-					<div class="mb-4 text-red-600">
-						<svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-							></path>
-						</svg>
+	<!-- Form Card -->
+	{#if !loading && !error}
+		<Card class="mx-auto w-full max-w-2xl">
+			<CardHeader>
+				<CardTitle class="text-2xl">Edit Game</CardTitle>
+				<CardDescription>Update the game information below.</CardDescription>
+			</CardHeader>
+			<CardContent>
+				{#if error}
+					<div class="mb-4 rounded-md border border-red-200 bg-red-50 p-3">
+						<p class="text-sm text-red-700">{error}</p>
 					</div>
-					<h3 class="mb-2 text-lg font-semibold text-gray-900">Unable to Load Game</h3>
-					<p class="mb-4 text-gray-600">{error}</p>
-					<div class="flex justify-center space-x-3">
-						<Button onclick={loadGame}>Try Again</Button>
-						<Button variant="outline" onclick={() => goto('/games')}>Go Back</Button>
+				{/if}
+
+				{#if success}
+					<div class="mb-4 rounded-md border border-green-200 bg-green-50 p-3">
+						<p class="text-sm text-green-700">
+							Game updated successfully! Redirecting to game details...
+						</p>
 					</div>
-				</CardContent>
-			</Card>
-		{/if}
+				{/if}
 
-		<!-- Form Card -->
-		{#if !loading && !error}
-			<Card class="mx-auto w-full max-w-2xl">
-				<CardHeader>
-					<CardTitle class="text-2xl">Edit Game</CardTitle>
-					<CardDescription>Update the game information below.</CardDescription>
-				</CardHeader>
-				<CardContent>
-					{#if error}
-						<div class="mb-4 rounded-md border border-red-200 bg-red-50 p-3">
-							<p class="text-sm text-red-700">{error}</p>
-						</div>
-					{/if}
+				<form onsubmit={handleSubmit} class="space-y-4">
+					<!-- Game Name -->
+					<div>
+						<Label for="name">Game Name *</Label>
+						<Input
+							id="name"
+							bind:value={formData.name}
+							class={errors.name ? 'border-red-500' : ''}
+							placeholder="Enter the game name"
+							disabled={isSubmitting}
+						/>
+						{#if errors.name}
+							<p class="mt-1 text-sm text-red-600">{errors.name}</p>
+						{/if}
+					</div>
 
-					{#if success}
-						<div class="mb-4 rounded-md border border-green-200 bg-green-50 p-3">
-							<p class="text-sm text-green-700">
-								Game updated successfully! Redirecting to game details...
-							</p>
-						</div>
-					{/if}
+					<!-- Description -->
+					<div>
+						<Label for="description">Description</Label>
+						<Textarea
+							id="description"
+							bind:value={formData.description}
+							placeholder="Brief description of the game"
+							disabled={isSubmitting}
+							rows={3}
+						/>
+					</div>
 
-					<form onsubmit={handleSubmit} class="space-y-4">
-						<!-- Game Name -->
+					<!-- Publisher -->
+					<div>
+						<Label for="publisher">Publisher</Label>
+						<Input
+							id="publisher"
+							bind:value={formData.publisher}
+							placeholder="Game publisher"
+							disabled={isSubmitting}
+						/>
+					</div>
+
+					<!-- Year Published -->
+					<div>
+						<Label for="yearPublished">Year Published</Label>
+						<Input
+							id="yearPublished"
+							type="number"
+							bind:value={formData.yearPublished}
+							class={errors.yearPublished ? 'border-red-500' : ''}
+							placeholder="e.g. 2023"
+							disabled={isSubmitting}
+						/>
+						{#if errors.yearPublished}
+							<p class="mt-1 text-sm text-red-600">{errors.yearPublished}</p>
+						{/if}
+					</div>
+
+					<!-- Player Count -->
+					<div class="grid grid-cols-2 gap-4">
 						<div>
-							<Label for="name">Game Name *</Label>
+							<Label for="minPlayers">Min Players</Label>
 							<Input
-								id="name"
-								bind:value={formData.name}
-								class={errors.name ? 'border-red-500' : ''}
-								placeholder="Enter the game name"
-								disabled={isSubmitting}
-							/>
-							{#if errors.name}
-								<p class="mt-1 text-sm text-red-600">{errors.name}</p>
-							{/if}
-						</div>
-
-						<!-- Description -->
-						<div>
-							<Label for="description">Description</Label>
-							<Textarea
-								id="description"
-								bind:value={formData.description}
-								placeholder="Brief description of the game"
-								disabled={isSubmitting}
-								rows={3}
-							/>
-						</div>
-
-						<!-- Publisher -->
-						<div>
-							<Label for="publisher">Publisher</Label>
-							<Input
-								id="publisher"
-								bind:value={formData.publisher}
-								placeholder="Game publisher"
-								disabled={isSubmitting}
-							/>
-						</div>
-
-						<!-- Year Published -->
-						<div>
-							<Label for="yearPublished">Year Published</Label>
-							<Input
-								id="yearPublished"
+								id="minPlayers"
 								type="number"
-								bind:value={formData.yearPublished}
-								class={errors.yearPublished ? 'border-red-500' : ''}
-								placeholder="e.g., 2023"
+								bind:value={formData.minPlayers}
+								class={errors.minPlayers ? 'border-red-500' : ''}
+								placeholder="1"
 								disabled={isSubmitting}
 							/>
-							{#if errors.yearPublished}
-								<p class="mt-1 text-sm text-red-600">{errors.yearPublished}</p>
+							{#if errors.minPlayers}
+								<p class="mt-1 text-sm text-red-600">{errors.minPlayers}</p>
 							{/if}
 						</div>
-
-						<!-- Player Count -->
-						<div class="grid grid-cols-2 gap-4">
-							<div>
-								<Label for="minPlayers">Min Players</Label>
-								<Input
-									id="minPlayers"
-									type="number"
-									bind:value={formData.minPlayers}
-									class={errors.minPlayers ? 'border-red-500' : ''}
-									placeholder="1"
-									disabled={isSubmitting}
-								/>
-								{#if errors.minPlayers}
-									<p class="mt-1 text-sm text-red-600">{errors.minPlayers}</p>
-								{/if}
-							</div>
-							<div>
-								<Label for="maxPlayers">Max Players</Label>
-								<Input
-									id="maxPlayers"
-									type="number"
-									bind:value={formData.maxPlayers}
-									class={errors.maxPlayers ? 'border-red-500' : ''}
-									placeholder="4"
-									disabled={isSubmitting}
-								/>
-								{#if errors.maxPlayers}
-									<p class="mt-1 text-sm text-red-600">{errors.maxPlayers}</p>
-								{/if}
-							</div>
-						</div>
-
-						<!-- Play Time -->
 						<div>
-							<Label for="playTimeMinutes">Play Time (minutes)</Label>
+							<Label for="maxPlayers">Max Players</Label>
 							<Input
-								id="playTimeMinutes"
+								id="maxPlayers"
 								type="number"
-								bind:value={formData.playTimeMinutes}
-								class={errors.playTimeMinutes ? 'border-red-500' : ''}
-								placeholder="60"
+								bind:value={formData.maxPlayers}
+								class={errors.maxPlayers ? 'border-red-500' : ''}
+								placeholder="4"
 								disabled={isSubmitting}
 							/>
-							{#if errors.playTimeMinutes}
-								<p class="mt-1 text-sm text-red-600">{errors.playTimeMinutes}</p>
+							{#if errors.maxPlayers}
+								<p class="mt-1 text-sm text-red-600">{errors.maxPlayers}</p>
 							{/if}
 						</div>
+					</div>
 
-						<!-- Complexity Rating -->
-						<div>
-							<Label for="complexityRating">Complexity Rating (1.0 - 5.0)</Label>
-							<Input
-								id="complexityRating"
-								type="number"
-								step="0.1"
-								min="1"
-								max="5"
-								bind:value={formData.complexityRating}
-								class={errors.complexityRating ? 'border-red-500' : ''}
-								placeholder="2.5"
-								disabled={isSubmitting}
-							/>
-							{#if errors.complexityRating}
-								<p class="mt-1 text-sm text-red-600">{errors.complexityRating}</p>
-							{/if}
-						</div>
+					<!-- Play Time -->
+					<div>
+						<Label for="playTimeMinutes">Play Time (minutes)</Label>
+						<Input
+							id="playTimeMinutes"
+							type="number"
+							bind:value={formData.playTimeMinutes}
+							class={errors.playTimeMinutes ? 'border-red-500' : ''}
+							placeholder="60"
+							disabled={isSubmitting}
+						/>
+						{#if errors.playTimeMinutes}
+							<p class="mt-1 text-sm text-red-600">{errors.playTimeMinutes}</p>
+						{/if}
+					</div>
 
-						<!-- BoardGameGeek ID -->
-						<div>
-							<Label for="bggId">BoardGameGeek ID</Label>
-							<Input
-								id="bggId"
-								type="number"
-								bind:value={formData.bggId}
-								class={errors.bggId ? 'border-red-500' : ''}
-								placeholder="Optional BGG ID"
-								disabled={isSubmitting}
-							/>
-							{#if errors.bggId}
-								<p class="mt-1 text-sm text-red-600">{errors.bggId}</p>
-							{/if}
-						</div>
+					<!-- Complexity Rating -->
+					<div>
+						<Label for="complexityRating">Complexity Rating (1.0 - 5.0)</Label>
+						<Input
+							id="complexityRating"
+							type="number"
+							step="0.1"
+							min="1"
+							max="5"
+							bind:value={formData.complexityRating}
+							class={errors.complexityRating ? 'border-red-500' : ''}
+							placeholder="2.5"
+							disabled={isSubmitting}
+						/>
+						{#if errors.complexityRating}
+							<p class="mt-1 text-sm text-red-600">{errors.complexityRating}</p>
+						{/if}
+					</div>
 
-						<!-- Form Actions -->
-						<div class="flex justify-end space-x-3 pt-4">
-							<Button
-								type="button"
-								variant="outline"
-								onclick={handleCancel}
-								disabled={isSubmitting}
-							>
-								Cancel
-							</Button>
-							<Button type="submit" disabled={isSubmitting}>
-								{isSubmitting ? 'Updating...' : 'Update Game'}
-							</Button>
-						</div>
-					</form>
-				</CardContent>
-			</Card>
-		{/if}
-	</main>
-</div>
+					<!-- BoardGameGeek ID -->
+					<div>
+						<Label for="bggId">BoardGameGeek ID</Label>
+						<Input
+							id="bggId"
+							type="number"
+							bind:value={formData.bggId}
+							class={errors.bggId ? 'border-red-500' : ''}
+							placeholder="Optional BGG ID"
+							disabled={isSubmitting}
+						/>
+						{#if errors.bggId}
+							<p class="mt-1 text-sm text-red-600">{errors.bggId}</p>
+						{/if}
+					</div>
+
+					<!-- Form Actions -->
+					<div class="flex justify-end space-x-3 pt-4">
+						<Button type="button" variant="outline" onclick={handleCancel} disabled={isSubmitting}>
+							Cancel
+						</Button>
+						<Button type="submit" disabled={isSubmitting}>
+							{isSubmitting ? 'Updating...' : 'Update Game'}
+						</Button>
+					</div>
+				</form>
+			</CardContent>
+		</Card>
+	{/if}
+</main>
