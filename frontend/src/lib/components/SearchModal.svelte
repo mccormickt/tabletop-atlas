@@ -35,7 +35,7 @@
 	let totalResults = $state(0);
 	let error = $state<string | null>(null);
 	let modalRef: HTMLDivElement | null = $state(null);
-	let searchInputRef: HTMLElement | null = $state(null);
+	let searchInputRef: HTMLInputElement | null = $state(null);
 
 	// Event dispatcher
 	const dispatch = createEventDispatcher<{
@@ -379,7 +379,7 @@
 							<h3 class="text-sm font-medium text-gray-700">Search Results</h3>
 							{#each searchResults as result, index (result.chunkId)}
 								<SearchResultComponent
-									chunkId={result.chunkId}
+									chunkId={String(result.chunkId)}
 									chunkText={result.chunkText}
 									similarityScore={result.similarityScore}
 									metadata={result.metadata}
