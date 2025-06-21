@@ -9,13 +9,16 @@ pub mod house_rules;
 // Re-exports are available but not used globally to avoid namespace pollution
 
 /// Database connection wrapper with utility methods
+#[derive(Clone)]
 pub struct Database {
     conn: Arc<Mutex<Connection>>,
 }
 
 impl Database {
-    pub fn new(conn: Arc<Mutex<Connection>>) -> Self {
-        Self { conn }
+    pub fn new(conn: Connection) -> Self {
+        Self {
+            conn: Arc::new(Mutex::new(conn)),
+        }
     }
 
     pub fn with_connection<F, R>(&self, f: F) -> SqliteResult<R>

@@ -52,9 +52,19 @@ CREATE INDEX idx_chat_messages_session_id ON chat_messages(session_id);
 CREATE INDEX idx_chat_messages_created_at ON chat_messages(created_at);
 
 -- Trigger to update chat sessions updated_at timestamp
-CREATE TRIGGER update_chat_sessions_updated_at 
-    AFTER INSERT ON chat_messages 
-    FOR EACH ROW 
+CREATE TRIGGER update_chat_sessions_updated_at
+    AFTER INSERT ON chat_messages
+    FOR EACH ROW
 BEGIN
     UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.session_id;
 END;
+
+-- Create a virtual table for sqlite-vec KNN search
+-- nomic-embed-text produces 768-dimensional embeddings
+CREATE VIRTUAL TABLE vec_embeddings USING vec0(
+    embedding_vector float[768]
+);
+
+-- Remove the BLOB embedding column from the main embeddings table since we'll store vectors separately
+-- We'll keep the main embeddings table for metadata and link to vec_embeddings via rowid
+ALTER TABLE embeddings DROP COLUMN embedding;
