@@ -49,6 +49,9 @@ export type CreateGameRequest =
 export type CreateHouseRuleRequest =
 {"category"?: string | null,"description": string,"gameId": number,"isActive"?: boolean,"title": string,};
 
+export type DeleteRulesResponse =
+{"embeddingsDeleted": number,"fileDeleted": boolean,"message": string,};
+
 export type Game =
 {"bggId"?: number | null,"complexityRating"?: number | null,"createdAt": Date,"description"?: string | null,"id": number,"maxPlayers"?: number | null,"minPlayers"?: number | null,"name": string,"playTimeMinutes"?: number | null,"publisher"?: string | null,"rulesPdfPath"?: string | null,"rulesText"?: string | null,"updatedAt": Date,"yearPublished"?: number | null,};
 
@@ -67,6 +70,15 @@ export type PaginatedResponse_for_GameSummary =
 export type PaginatedResponse_for_HouseRule =
 {"items": (HouseRule)[],"limit": number,"page": number,"total": number,"totalPages": number,};
 
+export type RulesInfoResponse =
+{"chunkCount": number,"gameId": number,"gameName": string,"hasRulesPdf": boolean,"lastProcessed"?: string | null,"rulesPdfPath"?: string | null,"textLength"?: number | null,};
+
+export type SearchResult =
+{"chunkId": number,"chunkIndex": number,"chunkText": string,"metadata": string,"similarityScore": number,};
+
+export type RulesSearchResponse =
+{"gameId": number,"query": string,"results": (SearchResult)[],"totalResults": number,};
+
 export type UpdateGameRequest =
 {"bggId"?: number | null,"complexityRating"?: number | null,"description"?: string | null,"maxPlayers"?: number | null,"minPlayers"?: number | null,"name"?: string | null,"playTimeMinutes"?: number | null,"publisher"?: string | null,"yearPublished"?: number | null,};
 
@@ -74,7 +86,13 @@ export type UpdateHouseRuleRequest =
 {"category"?: string | null,"description"?: string | null,"isActive"?: boolean | null,"title"?: string | null,};
 
 export type UploadResponse =
-{"chunksProcessed"?: number | null,"filePath"?: string | null,"message": string,};
+{"chunksProcessed"?: number | null,"filePath"?: string | null,"message": string,"textLength"?: number | null,};
+
+export interface SearchRulesQueryParams {
+  gameId: number,
+  limit?: number | null,
+  query: string,
+}
 
 export interface ListChatSessionsQueryParams {
   gameId: number,
@@ -100,6 +118,14 @@ export interface UpdateGamePathParams {
 }
 
 export interface DeleteGamePathParams {
+  id:number,
+}
+
+export interface DeleteRulesPathParams {
+  id:number,
+}
+
+export interface GetRulesInfoPathParams {
   id:number,
 }
 
@@ -139,6 +165,20 @@ params: FetchParams = {}) => {
            path: `/api/chat/message`,
            method: "POST",
   body,
+  ...params,
+         })
+      },
+/**
+* Search rules text for a specific game using embedding similarity
+ */
+searchRules: ({ 
+query, }: {query: SearchRulesQueryParams,
+},
+params: FetchParams = {}) => {
+         return this.request<RulesSearchResponse>({
+           path: `/api/chat/search-rules`,
+           method: "GET",
+  query,
   ...params,
          })
       },
@@ -253,6 +293,32 @@ params: FetchParams = {}) => {
          })
       },
 /**
+* Delete uploaded rules for a game
+ */
+deleteRules: ({ 
+path, }: {path: DeleteRulesPathParams,
+},
+params: FetchParams = {}) => {
+         return this.request<DeleteRulesResponse>({
+           path: `/api/games/${path.id}/rules`,
+           method: "DELETE",
+  ...params,
+         })
+      },
+/**
+* Get information about uploaded rules for a game
+ */
+getRulesInfo: ({ 
+path, }: {path: GetRulesInfoPathParams,
+},
+params: FetchParams = {}) => {
+         return this.request<RulesInfoResponse>({
+           path: `/api/games/${path.id}/rules-info`,
+           method: "GET",
+  ...params,
+         })
+      },
+/**
 * Upload a PDF rules document for a game
  */
 uploadRulesPdf: ({ 
@@ -260,7 +326,7 @@ path, }: {path: UploadRulesPdfPathParams,
 },
 params: FetchParams = {}) => {
          return this.request<UploadResponse>({
-           path: `/api/games/${path.id}/upload-rules`,
+           path: `/api/games/${path.id}/rules-upload`,
            method: "POST",
   ...params,
          })
@@ -331,6 +397,17 @@ params: FetchParams = {}) => {
          return this.request<void>({
            path: `/api/house-rules/${path.id}`,
            method: "DELETE",
+  ...params,
+         })
+      },
+/**
+* Health check endpoint
+ */
+healthCheck: (_: EmptyObj,
+params: FetchParams = {}) => {
+         return this.request<void>({
+           path: `/health`,
+           method: "GET",
   ...params,
          })
       },

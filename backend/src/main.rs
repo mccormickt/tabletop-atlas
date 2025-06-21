@@ -8,12 +8,14 @@ use clap::{Arg, Command};
 use dropshot::{
     ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingLevel, HttpServerStarter,
 };
-use rusqlite::Connection;
+use rusqlite::{Connection, ffi::sqlite3_auto_extension};
 use rusqlite_migration::{M, Migrations};
+use sqlite_vec::sqlite3_vec_init;
 
 mod db;
 mod handlers;
 mod models;
+mod pdf_processor;
 
 use handlers::static_files;
 use handlers::*;
@@ -24,6 +26,11 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(path: impl AsRef<Path>) -> Result<Self> {
+        // Initialize sqlite-vec extension
+        unsafe {
+            sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
+        }
+
         let mut db = Connection::open(path)?;
 
         // Run migrations
@@ -37,6 +44,7 @@ impl AppState {
             M::up(include_str!(
                 "../../migrations/V003__create_embeddings_table.sql"
             )),
+            M::up(include_str!("../../migrations/V004__seed_games_data.sql")),
         ]);
 
         migrations.to_latest(&mut db)?;
@@ -127,10 +135,13 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(house_rules::delete_house_rule)?;
 
     api.register(upload::upload_rules_pdf)?;
+    api.register(upload::get_rules_info)?;
+    api.register(upload::delete_rules)?;
     api.register(chat::chat_with_rules)?;
     api.register(chat::list_chat_sessions)?;
     api.register(chat::get_chat_session)?;
     api.register(chat::create_chat_session)?;
+    api.register(chat::search_rules)?;
 
     // Register health check
     api.register(static_files::health_check)?;

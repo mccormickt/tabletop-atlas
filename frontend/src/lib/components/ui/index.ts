@@ -5,3 +5,4 @@ export { Input } from './input';
 export { Label } from './label';
 export { Textarea } from './textarea';
 export { Badge } from './badge';
+export { Progress } from './progress';

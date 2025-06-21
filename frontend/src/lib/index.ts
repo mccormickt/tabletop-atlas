@@ -24,6 +24,8 @@ export type {
 	ChatSession,
 	ChatMessage,
 	ChatHistory,
+	RulesInfoResponse,
+	UploadResponse,
 	CreateChatSessionRequest,
 	PaginatedResponse_for_GameSummary,
 	PaginatedResponse_for_HouseRule,
