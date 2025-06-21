@@ -160,6 +160,8 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
 
     // Register specific SPA routes
     api.register(static_files::serve_games_views)?; // /games/{path:.*}
+    api.register(static_files::serve_search_view)?; // /search
+    api.register(static_files::serve_upload_view)?; // /upload
     api.register(static_files::serve_index)?; // /
 
     Ok(api)

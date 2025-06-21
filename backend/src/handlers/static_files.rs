@@ -86,6 +86,32 @@ pub async fn serve_games_views(
     serve_spa_fallback().await
 }
 
+/// Serve SPA for search route
+#[endpoint {
+    method = GET,
+    path = "/search/{path:.*}",
+    unpublished = true,
+}]
+pub async fn serve_search_view(
+    _rqctx: RequestContext<AppState>,
+    _path_param: DropPath<AssetPathParam>,
+) -> Result<Response<Body>, HttpError> {
+    serve_spa_fallback().await
+}
+
+/// Serve SPA for upload route
+#[endpoint {
+    method = GET,
+    path = "/upload/{path:.*}",
+    unpublished = true,
+}]
+pub async fn serve_upload_view(
+    _rqctx: RequestContext<AppState>,
+    _path_param: DropPath<AssetPathParam>,
+) -> Result<Response<Body>, HttpError> {
+    serve_spa_fallback().await
+}
+
 async fn serve_static_file(path: &str) -> Result<Response<Body>, HttpError> {
     match FRONTEND_ASSETS.get_file(path) {
         Some(file) => serve_static_file_content(path, file.contents()).await,
