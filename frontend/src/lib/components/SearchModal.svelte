@@ -208,9 +208,9 @@
 			<div class="border-b border-gray-200 px-6 py-4">
 				<div class="flex items-center justify-between">
 					<div>
-						<h2 class="text-xl font-semibold text-gray-900">Search Game Rules</h2>
+						<h2 class="text-xl font-semibold text-gray-900">Keyword Search</h2>
 						<p class="mt-1 text-sm text-gray-600">
-							Find specific information in your uploaded game rules
+							Find rule sections containing specific keywords and concepts
 						</p>
 					</div>
 					<button
@@ -236,7 +236,9 @@
 				<div class="overflow-y-auto border-r border-gray-200 p-4 lg:w-1/3">
 					<div class="mb-4">
 						<Label class="text-sm font-medium text-gray-700">Select Game</Label>
-						<p class="mt-1 text-xs text-gray-500">Choose which game's rules to search</p>
+						<p class="mt-1 text-xs text-gray-500">
+							Choose which game's rules to search for keywords
+						</p>
 					</div>
 
 					{#if loading}
@@ -305,7 +307,7 @@
 						<form onsubmit={handleSearchSubmit} class="space-y-4">
 							<div>
 								<Label for="searchQuery" class="text-sm font-medium text-gray-700">
-									Search Query
+									Keywords to Search
 									{#if selectedGame}
 										<span class="font-normal text-gray-500">- {selectedGame.name}</span>
 									{/if}
@@ -313,13 +315,14 @@
 								<SearchInput
 									bind:ref={searchInputRef}
 									bind:value={searchQuery}
-									placeholder="e.g. How do I win the game? What happens during combat?"
+									placeholder="e.g. victory conditions, combat rules, movement, setup"
 									disabled={!selectedGameId || searching}
 									loading={searching}
 									class="mt-1"
 								/>
 								<p class="mt-1 text-xs text-gray-500">
-									Ask natural language questions or search for specific game concepts
+									Enter keywords or rule concepts. For conversational Q&A like "How do I win?",
+									we're building a chat feature!
 								</p>
 							</div>
 
@@ -354,7 +357,7 @@
 												d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
 											></path>
 										</svg>
-										Search Rules
+										Find Keywords
 									{/if}
 								</Button>
 
@@ -376,7 +379,7 @@
 					<!-- Search Results -->
 					{#if searchResults.length > 0}
 						<div class="space-y-3">
-							<h3 class="text-sm font-medium text-gray-700">Search Results</h3>
+							<h3 class="text-sm font-medium text-gray-700">Matching Rule Sections</h3>
 							{#each searchResults as result, index (result.chunkId)}
 								<SearchResultComponent
 									chunkId={String(result.chunkId)}
@@ -390,12 +393,47 @@
 						</div>
 					{:else if searchQuery && selectedGameId && !searching && searchResults.length === 0}
 						<!-- No Results -->
-						<EmptyState
-							icon="search"
-							title="No results found"
-							description="No relevant passages found for '{searchQuery}' in {selectedGame?.name}."
-							size="default"
-						/>
+						<div class="py-8 text-center">
+							<div class="mb-4 text-gray-400">
+								<svg
+									class="mx-auto h-12 w-12"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+									></path>
+								</svg>
+							</div>
+							<h3 class="mb-2 text-lg font-medium text-gray-900">No matching keywords found</h3>
+							<p class="mb-4 text-gray-600">
+								No rule sections containing "{searchQuery}" found in {selectedGame?.name}.
+							</p>
+							<div class="text-sm text-gray-500">
+								<p class="mb-2">Try different keywords:</p>
+								<div class="mb-3 flex flex-wrap justify-center gap-2">
+									<span class="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800"
+										>victory</span
+									>
+									<span class="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800"
+										>combat</span
+									>
+									<span class="rounded-full bg-purple-100 px-2 py-1 text-xs text-purple-800"
+										>movement</span
+									>
+									<span class="rounded-full bg-orange-100 px-2 py-1 text-xs text-orange-800"
+										>setup</span
+									>
+								</div>
+								<p class="text-xs text-gray-400">
+									💡 For natural language questions, we're building a chat feature!
+								</p>
+							</div>
+						</div>
 					{:else if !selectedGameId && games.length > 0}
 						<!-- No Game Selected -->
 						<div class="py-8 text-center">
@@ -414,8 +452,48 @@
 									></path>
 								</svg>
 							</div>
-							<h3 class="mb-2 text-lg font-medium text-gray-900">Ready to Search</h3>
-							<p class="text-gray-600">Select a game to start searching through its rules.</p>
+							<h3 class="mb-2 text-lg font-medium text-gray-900">Ready for Keyword Search</h3>
+							<p class="mb-4 text-gray-600">
+								Select a game to start searching for keywords in its rules.
+							</p>
+							<div class="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-left">
+								<div class="flex items-start">
+									<svg
+										class="mt-0.5 mr-2 h-5 w-5 text-blue-600"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+										></path>
+									</svg>
+									<div>
+										<p class="text-sm font-medium text-blue-900">Current vs Future Features</p>
+										<p class="mt-1 text-xs text-blue-700">
+											This keyword search finds rule sections. For conversational Q&A like "How do I
+											win?", we're building a chat feature!
+										</p>
+									</div>
+								</div>
+								<div class="mt-3">
+									<p class="text-xs font-medium text-blue-900">Example keywords:</p>
+									<div class="mt-1 flex flex-wrap gap-1">
+										<span class="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800"
+											>victory conditions</span
+										>
+										<span class="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800"
+											>combat</span
+										>
+										<span class="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800"
+											>setup</span
+										>
+									</div>
+								</div>
+							</div>
 						</div>
 					{/if}
 				</div>

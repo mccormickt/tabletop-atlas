@@ -16,7 +16,7 @@ pub struct Embedding {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
 pub enum EmbeddingSourceType {
     #[serde(rename = "rules_pdf")]
     RulesPdf,
