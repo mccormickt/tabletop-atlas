@@ -34,6 +34,7 @@
 	let searchQuery = $state(initialQuery);
 	let totalResults = $state(0);
 	let error = $state<string | null>(null);
+	let hasSearched = $state(false);
 	let modalRef: HTMLDivElement | null = $state(null);
 	let searchInputRef: HTMLInputElement | null = $state(null);
 
@@ -122,6 +123,7 @@
 		selectedGame = game;
 		searchResults = [];
 		totalResults = 0;
+		hasSearched = false;
 		dispatch('gameSelect', game);
 	}
 
@@ -132,6 +134,7 @@
 
 		searching = true;
 		error = null;
+		hasSearched = true;
 
 		try {
 			const result = await api.methods.searchRules({
@@ -391,7 +394,7 @@
 								/>
 							{/each}
 						</div>
-					{:else if searchQuery && selectedGameId && !searching && searchResults.length === 0}
+					{:else if hasSearched && searchQuery && selectedGameId && !searching && searchResults.length === 0}
 						<!-- No Results -->
 						<div class="py-8 text-center">
 							<div class="mb-4 text-gray-400">
