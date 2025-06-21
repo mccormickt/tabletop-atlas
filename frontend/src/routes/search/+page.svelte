@@ -26,6 +26,7 @@
 	let searchQuery = $state('');
 	let searchLimit = $state(5);
 	let totalResults = $state(0);
+	let hasSearched = $state(false);
 
 	// URL search params (read once on mount to avoid reactive loops)
 	let initialUrlParams: { gameId: string | null; query: string | null } = {
@@ -39,6 +40,12 @@
 	header.configure({
 		showSearch: false,
 		currentGame: null
+	});
+
+	// Reset hasSearched when search query changes
+	$effect(() => {
+		searchQuery;
+		hasSearched = false;
 	});
 
 	onMount(() => {
@@ -144,41 +151,44 @@
 			if (selectedGameId && !selectedGame?.hasRulesPdf) {
 				error = 'This game does not have uploaded rules. Please upload rules first.';
 			}
-			return;
-		}
-
-		searching = true;
-		error = null;
-
-		try {
-			const result = await api.methods.searchRules({
-				query: {
-					gameId: selectedGameId,
-					query: searchQuery.trim(),
-					limit: searchLimit
+			async function performSearch() {
+				if (!selectedGameId || !searchQuery.trim()) {
+					return;
 				}
-			});
 
-			if (result.type === 'success') {
-				searchResults = result.data.results;
-				totalResults = result.data.totalResults;
-			} else if (result.type === 'error') {
-				error = result.data.message || 'Search failed';
-				searchResults = [];
-				totalResults = 0;
-			} else if (result.type === 'client_error') {
-				error = result.error.message || 'Search failed';
-				searchResults = [];
-				totalResults = 0;
+				searching = true;
+				error = null;
+				hasSearched = true;
+
+				try {
+					const result = await api.methods.searchRules({
+						query: {
+							gameId: selectedGameId,
+							query: searchQuery.trim(),
+							limit: searchLimit
+						}
+					});
+
+					if (result.type === 'success') {
+						searchResults = result.data.results;
+						totalResults = result.data.totalResults;
+					} else if (result.type === 'error') {
+						error = result.data.message || 'Search failed';
+						searchResults = [];
+						totalResults = 0;
+					} else if (result.type === 'client_error') {
+						error = result.error.message || 'Search failed';
+						searchResults = [];
+						totalResults = 0;
+					}
+				} catch (err) {
+					error = err instanceof Error ? err.message : 'An unexpected error occurred';
+					searchResults = [];
+					totalResults = 0;
+				} finally {
+					searching = false;
+				}
 			}
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'An unexpected error occurred';
-			searchResults = [];
-			totalResults = 0;
-		} finally {
-			searching = false;
-		}
-	}
 
 	function handleSearchSubmit(event: Event) {
 		event.preventDefault();
@@ -518,7 +528,7 @@
 						{/each}
 					</CardContent>
 				</Card>
-			{:else if searchQuery && selectedGameId && !searching && searchResults.length === 0}
+			{:else if hasSearched && searchQuery && selectedGameId && !searching && searchResults.length === 0}
 				<!-- No Results -->
 				<Card>
 					<CardContent class="p-8 text-center">
