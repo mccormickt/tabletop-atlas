@@ -1,34 +1,37 @@
-use rusqlite::{params, Result as SqliteResult};
+use super::{Database, PaginationInfo, parse_datetime};
+use crate::models::{
+    CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, RulesInfoResponse,
+    UpdateGameRequest,
+};
 use chrono::Utc;
-use crate::models::{Game, GameId, CreateGameRequest, UpdateGameRequest, GameSummary, PaginatedResponse};
-use super::{Database, parse_datetime, PaginationInfo};
+use rusqlite::{Result as SqliteResult, params};
 
-pub async fn list_games(db: &Database, page: u32, limit: u32) -> SqliteResult<PaginatedResponse<GameSummary>> {
+pub async fn list_games(
+    db: &Database,
+    page: u32,
+    limit: u32,
+) -> SqliteResult<PaginatedResponse<GameSummary>> {
     let pagination = PaginationInfo::new(page, limit);
-    
+
     db.with_connection(|conn| {
         // Get total count
-        let total: u32 = conn.query_row(
-            "SELECT COUNT(*) FROM games",
-            [],
-            |row| row.get(0)
-        )?;
+        let total: u32 = conn.query_row("SELECT COUNT(*) FROM games", [], |row| row.get(0))?;
 
         // Get games with house rules count
         let mut stmt = conn.prepare(
             r#"
-            SELECT 
-                g.id, g.name, g.publisher, g.year_published, 
+            SELECT
+                g.id, g.name, g.publisher, g.year_published,
                 g.min_players, g.max_players, g.complexity_rating,
                 g.rules_pdf_path,
                 COUNT(hr.id) as house_rules_count
             FROM games g
             LEFT JOIN house_rules hr ON g.id = hr.game_id AND hr.is_active = TRUE
-            GROUP BY g.id, g.name, g.publisher, g.year_published, 
+            GROUP BY g.id, g.name, g.publisher, g.year_published,
                      g.min_players, g.max_players, g.complexity_rating, g.rules_pdf_path
             ORDER BY g.name ASC
             LIMIT ? OFFSET ?
-            "#
+            "#,
         )?;
 
         let game_iter = stmt.query_map(params![pagination.limit, pagination.offset], |row| {
@@ -60,7 +63,7 @@ pub async fn get_game(db: &Database, game_id: GameId) -> SqliteResult<Option<Gam
                    min_players, max_players, play_time_minutes, complexity_rating,
                    bgg_id, rules_pdf_path, rules_text, created_at, updated_at
             FROM games WHERE id = ?
-            "#
+            "#,
         )?;
 
         let result = stmt.query_row(params![game_id], |row| {
@@ -115,7 +118,7 @@ pub async fn create_game(db: &Database, request: CreateGameRequest) -> SqliteRes
                 request.bgg_id,
                 now_str,
                 now_str
-            ]
+            ],
         )?;
 
         let game_id = conn.last_insert_rowid();
@@ -127,7 +130,7 @@ pub async fn create_game(db: &Database, request: CreateGameRequest) -> SqliteRes
                    min_players, max_players, play_time_minutes, complexity_rating,
                    bgg_id, rules_pdf_path, rules_text, created_at, updated_at
             FROM games WHERE id = ?
-            "#
+            "#,
         )?;
 
         stmt.query_row(params![game_id], |row| {
@@ -151,13 +154,17 @@ pub async fn create_game(db: &Database, request: CreateGameRequest) -> SqliteRes
     })
 }
 
-pub async fn update_game(db: &Database, game_id: GameId, request: UpdateGameRequest) -> SqliteResult<Option<Game>> {
+pub async fn update_game(
+    db: &Database,
+    game_id: GameId,
+    request: UpdateGameRequest,
+) -> SqliteResult<Option<Game>> {
     db.with_transaction(|conn| {
         // Check if game exists
         let exists: bool = conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM games WHERE id = ?)",
             params![game_id],
-            |row| row.get(0)
+            |row| row.get(0),
         )?;
 
         if !exists {
@@ -216,10 +223,7 @@ pub async fn update_game(db: &Database, game_id: GameId, request: UpdateGameRequ
         params_vec.push(&now_str as &dyn rusqlite::ToSql);
         params_vec.push(&game_id as &dyn rusqlite::ToSql);
 
-        let query = format!(
-            "UPDATE games SET {} WHERE id = ?",
-            update_parts.join(", ")
-        );
+        let query = format!("UPDATE games SET {} WHERE id = ?", update_parts.join(", "));
 
         conn.execute(&query, params_vec.as_slice())?;
 
@@ -229,22 +233,64 @@ pub async fn update_game(db: &Database, game_id: GameId, request: UpdateGameRequ
 
 pub async fn delete_game(db: &Database, game_id: GameId) -> SqliteResult<bool> {
     db.with_connection(|conn| {
+        let rows_affected = conn.execute("DELETE FROM games WHERE id = ?", params![game_id])?;
+        Ok(rows_affected > 0)
+    })
+}
+
+pub async fn update_game_rules_text(
+    db: &Database,
+    game_id: GameId,
+    rules_text: String,
+    pdf_path: Option<String>,
+) -> SqliteResult<bool> {
+    db.with_connection(|conn| {
+        let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
         let rows_affected = conn.execute(
-            "DELETE FROM games WHERE id = ?",
-            params![game_id]
+            "UPDATE games SET rules_text = ?, rules_pdf_path = ?, updated_at = ? WHERE id = ?",
+            params![rules_text, pdf_path, now_str, game_id],
         )?;
         Ok(rows_affected > 0)
     })
 }
 
-pub async fn update_game_rules_text(db: &Database, game_id: GameId, rules_text: String, pdf_path: Option<String>) -> SqliteResult<bool> {
+pub async fn get_game_rules_info(
+    db: &Database,
+    game_id: GameId,
+) -> SqliteResult<Option<RulesInfoResponse>> {
     db.with_connection(|conn| {
-        let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
-        let rows_affected = conn.execute(
-            "UPDATE games SET rules_text = ?, rules_pdf_path = ?, updated_at = ? WHERE id = ?",
-            params![rules_text, pdf_path, now_str, game_id]
+        let mut stmt = conn.prepare(
+            r#"
+            SELECT
+                g.name,
+                g.rules_pdf_path,
+                g.rules_text,
+                COUNT(e.id) as chunk_count,
+                MAX(e.created_at) as last_processed
+            FROM games g
+            LEFT JOIN embeddings e ON g.id = e.game_id AND e.source_type = 'rules_pdf'
+            WHERE g.id = ?
+            GROUP BY g.id
+            "#,
         )?;
-        Ok(rows_affected > 0)
+
+        let result = stmt.query_row(params![game_id], |row| {
+            Ok(RulesInfoResponse {
+                game_id: game_id as i64,
+                game_name: row.get(0)?,
+                has_rules_pdf: row.get::<_, Option<String>>(1)?.is_some(),
+                rules_pdf_path: row.get(1)?,
+                text_length: row.get::<_, Option<String>>(2)?.map(|s| s.len()),
+                chunk_count: row.get(3)?,
+                last_processed: row.get(4)?,
+            })
+        });
+
+        match result {
+            Ok(rules_info) => Ok(Some(rules_info)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
     })
 }
 
@@ -256,7 +302,7 @@ fn get_game_by_id_sync(conn: &rusqlite::Connection, game_id: GameId) -> SqliteRe
                min_players, max_players, play_time_minutes, complexity_rating,
                bgg_id, rules_pdf_path, rules_text, created_at, updated_at
         FROM games WHERE id = ?
-        "#
+        "#,
     )?;
 
     stmt.query_row(params![game_id], |row| {

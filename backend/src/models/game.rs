@@ -1,7 +1,7 @@
+use super::GameId;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use super::GameId;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Game {
@@ -34,7 +34,7 @@ pub struct CreateGameRequest {
     pub bgg_id: Option<i32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]  
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateGameRequest {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -58,6 +58,17 @@ pub struct GameSummary {
     pub complexity_rating: Option<f64>,
     pub has_rules_pdf: bool,
     pub house_rules_count: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct RulesInfoResponse {
+    pub game_id: i64,
+    pub game_name: String,
+    pub has_rules_pdf: bool,
+    pub rules_pdf_path: Option<String>,
+    pub text_length: Option<usize>,
+    pub chunk_count: i64,
+    pub last_processed: Option<String>,
 }
 
 impl Game {

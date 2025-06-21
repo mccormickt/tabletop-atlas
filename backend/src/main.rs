@@ -1,7 +1,4 @@
-use std::{
-    path::Path,
-    sync::{Arc, Mutex},
-};
+use std::path::Path;
 
 use anyhow::Result;
 use clap::{Arg, Command};
@@ -18,12 +15,13 @@ mod handlers;
 mod models;
 mod pdf;
 
+use db::Database;
 use embeddings::Embedder;
 use handlers::static_files;
 use handlers::*;
 
 pub struct AppState {
-    db: Arc<Mutex<Connection>>,
+    db: Database,
     embeddings: Embedder,
 }
 
@@ -53,12 +51,12 @@ impl AppState {
         migrations.to_latest(&mut db)?;
 
         Ok(Self {
-            db: Arc::new(Mutex::new(db)),
+            db: Database::new(db),
             embeddings: Embedder::new(),
         })
     }
 
-    pub fn db(&self) -> Arc<Mutex<Connection>> {
+    pub fn db(&self) -> Database {
         self.db.clone()
     }
 
