@@ -122,9 +122,9 @@
 				</div>
 				<nav class="flex space-x-8">
 					<a href="/games" class="text-foreground font-medium transition-colors"> Games </a>
-					<button class="text-muted-foreground hover:text-foreground transition-colors">
+					<a href="/upload" class="text-muted-foreground hover:text-foreground transition-colors">
 						Upload Rules
-					</button>
+					</a>
 					<button class="text-muted-foreground hover:text-foreground transition-colors">
 						Chat
 					</button>

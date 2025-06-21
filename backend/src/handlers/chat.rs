@@ -1,16 +1,17 @@
 use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-use super::success_response;
+use super::{created_response, internal_error, not_found_error, success_response};
 use crate::{
     AppState,
     db::{Database, chat},
-    handlers::{HttpCreated, HttpError, HttpOk, created_response, internal_error, not_found_error},
+    handlers::{HttpCreated, HttpError, HttpOk},
     models::{
         ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionId, ChatSessionSummary,
         CreateChatSessionRequest, GameId, PaginatedResponse, PaginationParams,
     },
+    pdf_processor::PdfProcessor,
 };
 
 #[derive(Deserialize, JsonSchema)]
@@ -23,6 +24,30 @@ pub struct ChatSessionsByGameQuery {
     pub game_id: GameId,
     #[serde(flatten)]
     pub pagination: PaginationParams,
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct RulesSearchQuery {
+    pub game_id: GameId,
+    pub query: String,
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct RulesSearchResponse {
+    pub game_id: i64,
+    pub query: String,
+    pub results: Vec<SearchResult>,
+    pub total_results: usize,
+}
+
+#[derive(Serialize, JsonSchema)]
+pub struct SearchResult {
+    pub chunk_id: i64,
+    pub chunk_text: String,
+    pub chunk_index: i32,
+    pub similarity_score: f32,
+    pub metadata: String,
 }
 
 /// List chat sessions for a specific game
@@ -100,6 +125,49 @@ pub async fn create_chat_session(
             Err(internal_error("Failed to create chat session".to_string()))
         }
     }
+}
+
+/// Search rules text for a specific game using embedding similarity
+#[endpoint {
+    method = GET,
+    path = "/api/chat/search-rules"
+}]
+pub async fn search_rules(
+    rqctx: RequestContext<AppState>,
+    query: Query<RulesSearchQuery>,
+) -> Result<HttpOk<RulesSearchResponse>, HttpError> {
+    let app_state = rqctx.context();
+    let search_query = query.into_inner();
+    let limit = search_query.limit.unwrap_or(5);
+
+    // Use consolidated database function for PDF chunk search
+    let pdf_processor = PdfProcessor::new();
+    let db = Database::new(app_state.db());
+
+    let search_results = pdf_processor
+        .search_similar_chunks(&db, search_query.game_id, &search_query.query, limit)
+        .await
+        .map_err(|e| internal_error(format!("Search failed: {}", e)))?;
+
+    let results: Vec<SearchResult> = search_results
+        .into_iter()
+        .map(|chunk| SearchResult {
+            chunk_id: chunk.id,
+            chunk_text: chunk.chunk_text,
+            chunk_index: chunk.chunk_index,
+            similarity_score: chunk.similarity_score,
+            metadata: chunk.metadata,
+        })
+        .collect();
+
+    let response = RulesSearchResponse {
+        game_id: search_query.game_id,
+        query: search_query.query,
+        total_results: results.len(),
+        results,
+    };
+
+    success_response(response)
 }
 
 /// Send a message and get AI response

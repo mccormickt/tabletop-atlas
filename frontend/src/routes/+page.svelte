@@ -15,8 +15,7 @@
 	}
 
 	function navigateToUpload() {
-		// TODO: Implement upload route
-		console.log('Navigate to upload');
+		goto('/upload');
 	}
 
 	function navigateToChat() {
@@ -65,12 +64,9 @@
 					<a href="/games" class="text-muted-foreground hover:text-foreground transition-colors">
 						Games
 					</a>
-					<button
-						onclick={navigateToUpload}
-						class="text-muted-foreground hover:text-foreground transition-colors"
-					>
+					<a href="/upload" class="text-muted-foreground hover:text-foreground transition-colors">
 						Upload Rules
-					</button>
+					</a>
 					<button
 						onclick={navigateToChat}
 						class="text-muted-foreground hover:text-foreground transition-colors"

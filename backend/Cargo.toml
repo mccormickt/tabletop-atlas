@@ -26,6 +26,9 @@ mime_guess.workspace = true
 include_dir.workspace = true
 hyper.workspace = true
 clap.workspace = true
+pdf-extract.workspace = true
+sqlite-vec.workspace = true
+zerocopy.workspace = true
 
 [build-dependencies]
 # No build dependencies needed for now

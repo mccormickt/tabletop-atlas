@@ -2,10 +2,11 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { api, type Game, formatDate } from '$lib';
+	import { api, type Game, type RulesInfoResponse, type UploadResponse, formatDate } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Badge } from '$lib/components/ui';
+	import PDFUpload from '$lib/components/PDFUpload.svelte';
 
 	// Get game ID from URL parameters
 	let gameId = $derived(parseInt($page.params.id));
@@ -15,6 +16,8 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let deleting = $state(false);
+	let rulesInfo = $state<RulesInfoResponse | null>(null);
+	let showUpload = $state(false);
 
 	onMount(() => {
 		if (gameId && !isNaN(gameId)) {
@@ -36,6 +39,8 @@
 
 			if (result.type === 'success') {
 				game = result.data;
+				// Also load rules info
+				await loadRulesInfo();
 			} else if (result.type === 'error') {
 				error = result.data.message || 'Failed to load game details';
 			} else if (result.type === 'client_error') {
@@ -45,6 +50,24 @@
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function loadRulesInfo() {
+		if (!gameId) return;
+
+		try {
+			const result = await api.methods.getRulesInfo({
+				path: { id: gameId }
+			});
+
+			if (result.type === 'success') {
+				rulesInfo = result.data;
+			} else {
+				rulesInfo = null;
+			}
+		} catch {
+			rulesInfo = null;
 		}
 	}
 
@@ -85,6 +108,21 @@
 
 	function handleBack() {
 		goto('/games');
+	}
+
+	function handleUploadSuccess(event: CustomEvent<UploadResponse>) {
+		// Refresh game and rules info
+		loadGame();
+		showUpload = false;
+	}
+
+	function handleUploadDeleted() {
+		// Refresh game and rules info
+		loadGame();
+	}
+
+	function toggleUpload() {
+		showUpload = !showUpload;
 	}
 
 	function formatPlayerCount(min?: number | null, max?: number | null): string {
@@ -276,7 +314,7 @@
 								<CardTitle>Rules & Documentation</CardTitle>
 							</CardHeader>
 							<CardContent class="space-y-4">
-								{#if game.rulesPdfPath}
+								{#if rulesInfo?.hasRulesPdf}
 									<div
 										class="flex items-center justify-between rounded-md border border-green-200 bg-green-50 p-3"
 									>
@@ -294,9 +332,24 @@
 													d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
 												></path>
 											</svg>
-											<span class="text-sm font-medium text-green-800">PDF Rules Available</span>
+											<div>
+												<span class="text-sm font-medium text-green-800">PDF Rules Available</span>
+												{#if rulesInfo}
+													<p class="text-xs text-green-600">
+														{rulesInfo.chunkCount} chunks processed
+														{#if rulesInfo.textLength}
+															({rulesInfo.textLength.toLocaleString()} characters)
+														{/if}
+													</p>
+												{/if}
+											</div>
 										</div>
-										<Button size="sm" variant="outline">Download Rules</Button>
+										<div class="flex space-x-2">
+											<Button size="sm" variant="outline" onclick={toggleUpload}>
+												{showUpload ? 'Cancel' : 'Replace'}
+											</Button>
+											<Button size="sm" variant="outline">Search Rules</Button>
+										</div>
 									</div>
 								{:else}
 									<div
@@ -318,11 +371,24 @@
 											</svg>
 											<span class="text-sm text-gray-600">No PDF rules uploaded</span>
 										</div>
-										<Button size="sm">Upload Rules</Button>
+										<Button size="sm" onclick={toggleUpload}>Upload Rules</Button>
 									</div>
 								{/if}
 
-								{#if game.rulesText}
+								{#if showUpload}
+									<div class="mt-4">
+										<PDFUpload
+											gameId={game.id}
+											gameName={game.name}
+											existingRulesInfo={rulesInfo}
+											on:uploaded={handleUploadSuccess}
+											on:deleted={handleUploadDeleted}
+											on:error={(e) => (error = e.detail)}
+										/>
+									</div>
+								{/if}
+
+								{#if game.rulesText && !showUpload}
 									<div>
 										<h3 class="mb-2 text-sm font-medium text-gray-500">Extracted Rules Text</h3>
 										<div
@@ -354,10 +420,16 @@
 								</div>
 								<div class="flex items-center justify-between">
 									<span class="text-sm text-gray-600">Has PDF Rules</span>
-									<Badge variant={game.rulesPdfPath ? 'default' : 'secondary'}>
-										{game.rulesPdfPath ? 'Yes' : 'No'}
+									<Badge variant={rulesInfo?.hasRulesPdf ? 'default' : 'secondary'}>
+										{rulesInfo?.hasRulesPdf ? 'Yes' : 'No'}
 									</Badge>
 								</div>
+								{#if rulesInfo?.hasRulesPdf}
+									<div class="flex items-center justify-between">
+										<span class="text-sm text-gray-600">Text Chunks</span>
+										<span class="text-sm font-medium text-gray-900">{rulesInfo.chunkCount}</span>
+									</div>
+								{/if}
 							</CardContent>
 						</Card>
 
@@ -369,8 +441,10 @@
 							<CardContent class="space-y-3">
 								<Button class="w-full" variant="outline">View House Rules</Button>
 								<Button class="w-full" variant="outline">Start Chat Session</Button>
-								{#if !game.rulesPdfPath}
-									<Button class="w-full">Upload Rules PDF</Button>
+								{#if !rulesInfo?.hasRulesPdf}
+									<Button class="w-full" onclick={toggleUpload}>Upload Rules PDF</Button>
+								{:else}
+									<Button class="w-full" variant="outline">Search Rules</Button>
 								{/if}
 							</CardContent>
 						</Card>
