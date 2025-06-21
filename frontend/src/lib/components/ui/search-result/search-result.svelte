@@ -29,7 +29,7 @@
 	import { createEventDispatcher } from 'svelte';
 
 	interface SearchResultProps {
-		chunkId: string;
+		chunkId: string | number;
 		chunkText: string;
 		similarityScore: number;
 		metadata?: string;
@@ -60,7 +60,12 @@
 	}: SearchResultProps = $props();
 
 	const dispatch = createEventDispatcher<{
-		click: { chunkId: string; chunkText: string; similarityScore: number; metadata?: string };
+		click: {
+			chunkId: string | number;
+			chunkText: string;
+			similarityScore: number;
+			metadata?: string;
+		};
 	}>();
 
 	function formatSimilarityScore(score: number): string {
@@ -145,7 +150,7 @@
 	{#if variant !== 'compact' && (chunkId || similarityScore)}
 		<div class="flex items-center justify-between pt-1 text-xs text-gray-500">
 			{#if chunkId}
-				<span>Chunk ID: {chunkId}</span>
+				<span>Chunk ID: {String(chunkId)}</span>
 			{/if}
 			{#if similarityScore}
 				<span>Similarity: {similarityScore.toFixed(3)}</span>

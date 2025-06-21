@@ -31,11 +31,12 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
 
-	interface LoadingSpinnerProps {
+	interface Props {
 		size?: LoadingSpinnerSize;
 		variant?: LoadingSpinnerVariant;
 		text?: string;
 		class?: string;
+		[key: string]: any;
 	}
 
 	let {
@@ -44,7 +45,7 @@
 		text,
 		class: className,
 		...restProps
-	}: LoadingSpinnerProps = $props();
+	}: Props = $props();
 </script>
 
 {#if text}

@@ -149,7 +149,7 @@
 					{#each searchResults as result, index (result.chunkId)}
 						<div class="border-b border-gray-100 last:border-b-0">
 							<SearchResultComponent
-								chunkId={result.chunkId}
+								chunkId={String(result.chunkId)}
 								chunkText={result.chunkText}
 								similarityScore={result.similarityScore}
 								metadata={result.metadata}

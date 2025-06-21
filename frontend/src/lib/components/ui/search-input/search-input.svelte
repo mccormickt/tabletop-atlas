@@ -2,7 +2,7 @@
 	import { type VariantProps, tv } from 'tailwind-variants';
 
 	export const searchInputVariants = tv({
-		base: 'border-input bg-background selection:bg-primary dark:bg-input/30 selection:text-primary-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
+		base: 'border-input bg-background selection:bg-primary dark:bg-input/30 selection:text-primary-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
 		variants: {
 			size: {
 				default: 'h-9',
@@ -19,11 +19,10 @@
 </script>
 
 <script lang="ts">
-	import { cn, type WithElementRef } from '$lib/utils.js';
-	import type { HTMLInputAttributes } from 'svelte/elements';
+	import { cn } from '$lib/utils.js';
 	import { createEventDispatcher } from 'svelte';
 
-	interface SearchInputProps {
+	interface Props {
 		ref?: HTMLInputElement | null;
 		value?: string;
 		size?: SearchInputSize;
@@ -32,6 +31,10 @@
 		keyboardShortcut?: string;
 		onSearch?: (query: string) => void;
 		onClear?: () => void;
+		class?: string;
+		placeholder?: string;
+		disabled?: boolean;
+		[key: string]: any;
 	}
 
 	let {
@@ -47,9 +50,7 @@
 		placeholder = 'Search...',
 		disabled = false,
 		...restProps
-	}: SearchInputProps &
-		WithElementRef<HTMLInputElement> &
-		Omit<HTMLInputAttributes, keyof SearchInputProps> = $props();
+	}: Props = $props();
 
 	const dispatch = createEventDispatcher<{
 		search: string;
@@ -71,7 +72,7 @@
 	}
 
 	function handleSearch() {
-		if (value.trim()) {
+		if (value && value.trim()) {
 			onSearch?.(value.trim());
 			dispatch('search', value.trim());
 		}
@@ -82,10 +83,6 @@
 		onClear?.();
 		dispatch('clear');
 		ref?.focus();
-	}
-
-	function handleSearchButtonClick() {
-		handleSearch();
 	}
 </script>
 
@@ -122,7 +119,7 @@
 	<!-- Input Field -->
 	<input
 		bind:this={ref}
-		{value}
+		bind:value
 		{placeholder}
 		{disabled}
 		class={cn(
