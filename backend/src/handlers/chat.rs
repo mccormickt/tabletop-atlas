@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::{created_response, internal_error, not_found_error, success_response};
 use crate::{
     AppState,
-    db::{Database, chat, embeddings},
+    db::{Database, chat},
     handlers::{HttpCreated, HttpError, HttpOk},
     models::{
         ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionId, ChatSessionSummary,
@@ -140,14 +140,14 @@ pub async fn search_rules(
     let search_query = query.into_inner();
     let limit = search_query.limit.unwrap_or(5);
 
-    // Generate embedding for the search query using shared service
+    // Generate embedding for the search query
     let query_embedding = app_state
-        .embedding_service()
+        .embedder()
         .generate_embedding(&search_query.query)
         .await
         .map_err(|e| internal_error(format!("Failed to generate query embedding: {}", e)))?;
 
-    // Use vector similarity search
+    // Search using database layer directly
     let db = Database::new(app_state.db());
     let similarity_request = SimilaritySearchRequest {
         game_id: search_query.game_id,
@@ -156,9 +156,9 @@ pub async fn search_rules(
         limit: limit as u32,
     };
 
-    let search_results = embeddings::similarity_search(&db, similarity_request)
+    let search_results = crate::db::embeddings::similarity_search(&db, similarity_request)
         .await
-        .map_err(|e| internal_error(format!("Vector similarity search failed: {}", e)))?;
+        .map_err(|e| internal_error(format!("Search failed: {}", e)))?;
 
     let results: Vec<SearchResult> = search_results
         .into_iter()
