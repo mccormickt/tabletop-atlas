@@ -5,13 +5,13 @@ use serde::{Deserialize, Serialize};
 use super::{created_response, internal_error, not_found_error, success_response};
 use crate::{
     AppState,
-    db::{Database, chat},
+    db::{Database, chat, embeddings},
     handlers::{HttpCreated, HttpError, HttpOk},
     models::{
         ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionId, ChatSessionSummary,
         CreateChatSessionRequest, GameId, PaginatedResponse, PaginationParams,
+        SimilaritySearchRequest,
     },
-    pdf_processor::PdfProcessor,
 };
 
 #[derive(Deserialize, JsonSchema)]
@@ -140,23 +140,34 @@ pub async fn search_rules(
     let search_query = query.into_inner();
     let limit = search_query.limit.unwrap_or(5);
 
-    // Use consolidated database function for PDF chunk search
-    let pdf_processor = PdfProcessor::new();
-    let db = Database::new(app_state.db());
-
-    let search_results = pdf_processor
-        .search_similar_chunks(&db, search_query.game_id, &search_query.query, limit)
+    // Generate embedding for the search query using shared service
+    let query_embedding = app_state
+        .embedding_service()
+        .generate_embedding(&search_query.query)
         .await
-        .map_err(|e| internal_error(format!("Search failed: {}", e)))?;
+        .map_err(|e| internal_error(format!("Failed to generate query embedding: {}", e)))?;
+
+    // Use vector similarity search
+    let db = Database::new(app_state.db());
+    let similarity_request = SimilaritySearchRequest {
+        game_id: search_query.game_id,
+        query_embedding,
+        similarity_threshold: 0.0, // Include all results, let sorting handle ranking
+        limit: limit as u32,
+    };
+
+    let search_results = embeddings::similarity_search(&db, similarity_request)
+        .await
+        .map_err(|e| internal_error(format!("Vector similarity search failed: {}", e)))?;
 
     let results: Vec<SearchResult> = search_results
         .into_iter()
-        .map(|chunk| SearchResult {
-            chunk_id: chunk.id,
-            chunk_text: chunk.chunk_text,
-            chunk_index: chunk.chunk_index,
-            similarity_score: chunk.similarity_score,
-            metadata: chunk.metadata,
+        .map(|result| SearchResult {
+            chunk_id: result.id,
+            chunk_text: result.chunk_text,
+            chunk_index: 0, // We don't have chunk_index in the similarity search result
+            similarity_score: result.similarity_score,
+            metadata: result.metadata.unwrap_or_default(),
         })
         .collect();
 

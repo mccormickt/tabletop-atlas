@@ -11,7 +11,7 @@ use crate::{
     db::Database,
     handlers::{HttpError, HttpOk},
     models::{EmbeddingSourceType, GameId},
-    pdf_processor::{PdfProcessor, generate_pdf_filename, validate_pdf_file},
+    pdf::{self, generate_pdf_filename, validate_pdf_file},
 };
 
 #[derive(Deserialize, JsonSchema)]
@@ -89,8 +89,8 @@ pub async fn upload_rules_pdf(
     fs::write(&file_path, body_bytes)
         .map_err(|e| internal_error(format!("Failed to save file: {}", e)))?;
 
-    // Process the PDF and store in database using consolidated functions
-    let pdf_processor = PdfProcessor::new();
+    // Process the PDF and store in database using consolidated functions with shared embedding service
+    let pdf_processor = pdf::Processor::new(app_state.embedding_service());
     let db = Database::new(app_state.db());
 
     let processing_result = pdf_processor
