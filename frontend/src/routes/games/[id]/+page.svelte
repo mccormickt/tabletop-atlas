@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { api, type Game, type RulesInfoResponse, type UploadResponse, formatDate } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Badge } from '$lib/components/ui';
 	import PDFUpload from '$lib/components/PDFUpload.svelte';
-	import RulesSearch from '$lib/components/RulesSearch.svelte';
+
 	import { useHeader } from '$lib/stores/header';
 
 	// Get game ID from URL parameters
-	let gameId = $derived(parseInt($page.params.id));
+	let gameId = $derived(parseInt(page.params.id));
 
 	// Configure header for this page
 	const header = useHeader();
@@ -23,7 +23,6 @@
 	let deleting = $state(false);
 	let rulesInfo = $state<RulesInfoResponse | null>(null);
 	let showUpload = $state(false);
-	let showSearch = $state(false);
 
 	onMount(() => {
 		if (gameId && !isNaN(gameId)) {
@@ -134,15 +133,11 @@
 
 	function toggleUpload() {
 		showUpload = !showUpload;
-		if (showUpload) {
-			showSearch = false;
-		}
 	}
 
-	function toggleSearch() {
-		showSearch = !showSearch;
-		if (showSearch) {
-			showUpload = false;
+	function navigateToSearch() {
+		if (game) {
+			goto(`/search?gameId=${game.id}`);
 		}
 	}
 
@@ -343,9 +338,6 @@
 										<Button size="sm" variant="outline" onclick={toggleUpload}>
 											{showUpload ? 'Cancel' : 'Replace'}
 										</Button>
-										<Button size="sm" variant="outline" onclick={toggleSearch}>
-											{showSearch ? 'Hide Search' : 'Search Rules'}
-										</Button>
 									</div>
 								</div>
 							{:else}
@@ -380,20 +372,6 @@
 										existingRulesInfo={rulesInfo}
 										on:uploaded={handleUploadSuccess}
 										on:deleted={handleUploadDeleted}
-										on:error={(e) => (error = e.detail)}
-									/>
-								</div>
-							{/if}
-
-							{#if showSearch && rulesInfo?.hasRulesPdf}
-								<div class="mt-4">
-									<RulesSearch
-										gameId={game.id}
-										gameName={game.name}
-										compact={true}
-										maxResults={3}
-										on:search={(e) => console.log('Search performed:', e.detail)}
-										on:resultClick={(e) => console.log('Result clicked:', e.detail)}
 										on:error={(e) => (error = e.detail)}
 									/>
 								</div>
@@ -455,8 +433,8 @@
 							{#if !rulesInfo?.hasRulesPdf}
 								<Button class="w-full" onclick={toggleUpload}>Upload Rules PDF</Button>
 							{:else}
-								<Button class="w-full" variant="outline" onclick={toggleSearch}>
-									{showSearch ? 'Hide Search' : 'Search Rules'}
+								<Button class="w-full" variant="outline" onclick={navigateToSearch}>
+									Search Rules
 								</Button>
 							{/if}
 						</CardContent>

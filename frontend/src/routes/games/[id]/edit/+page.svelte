@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { api, type Game, type UpdateGameRequest } from '$lib';
 	import { Button } from '$lib/components/ui';
@@ -16,7 +16,7 @@
 	});
 
 	// Get game ID from URL parameters
-	let gameId = $derived(parseInt($page.params.id));
+	let gameId = $derived(parseInt(page.params.id));
 
 	// State management
 	let game = $state<Game | null>(null);
