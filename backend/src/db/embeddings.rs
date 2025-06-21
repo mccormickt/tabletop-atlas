@@ -1,12 +1,9 @@
 use chrono::Utc;
 use rusqlite::{Result as SqliteResult, params};
 
-use crate::{
-    models::{
-        CreateEmbeddingRequest, Embedding, EmbeddingId, EmbeddingSearchResult, EmbeddingSourceType,
-        GameId, HouseRuleId, SimilaritySearchRequest,
-    },
-    pdf,
+use crate::models::{
+    CreateEmbeddingRequest, Embedding, EmbeddingId, EmbeddingSearchResult, EmbeddingSourceType,
+    GameId, HouseRuleId, SimilaritySearchRequest,
 };
 
 use super::{Database, parse_datetime};
@@ -144,6 +141,7 @@ pub async fn similarity_search(
         let embedding_iter = stmt.query_map(params![request.game_id], |row| {
             let embedding_bytes: Vec<u8> = row.get(2)?;
             let embedding = deserialize_embedding(&embedding_bytes)?;
+
             let source_type_str: String = row.get(3)?;
             let source_type = EmbeddingSourceType::from_str(&source_type_str)
                 .unwrap_or(EmbeddingSourceType::RulesPdf);
@@ -347,92 +345,17 @@ pub async fn create_embeddings_batch(
 }
 
 // PDF-related database operations
-pub async fn store_pdf_chunks_in_database(
+pub async fn update_game_rules_text(
     db: &Database,
     game_id: GameId,
     pdf_path: &std::path::Path,
     text: &str,
-    chunks: &[pdf::ChunkData],
-) -> SqliteResult<pdf::ProcessingResult> {
-    db.with_transaction(|conn| {
-        // Update game record with extracted text
+) -> SqliteResult<()> {
+    db.with_connection(|conn| {
         conn.execute(
             "UPDATE games SET rules_text = ?, rules_pdf_path = ? WHERE id = ?",
             params![text, pdf_path.to_string_lossy().as_ref(), game_id],
         )?;
-
-        let mut processed_chunks = 0;
-
-        // Store each chunk
-        for chunk in chunks {
-            let embedding_json = serde_json::to_string(&chunk.embedding)
-                .map_err(|_| rusqlite::Error::ToSqlConversionFailure(Box::new(std::fmt::Error)))?;
-
-            conn.execute(
-                r#"
-                INSERT INTO embeddings (
-                    game_id,
-                    chunk_text,
-                    embedding,
-                    chunk_index,
-                    source_type,
-                    metadata
-                ) VALUES (?, ?, ?, ?, 'rules_pdf', ?)
-                "#,
-                params![
-                    game_id,
-                    chunk.text,
-                    embedding_json,
-                    chunk.index,
-                    chunk.metadata
-                ],
-            )?;
-
-            processed_chunks += 1;
-        }
-
-        Ok(pdf::ProcessingResult {
-            total_text_length: text.len(),
-            chunks_processed: processed_chunks,
-            file_path: pdf_path.to_string_lossy().to_string(),
-        })
-    })
-}
-
-// Simple text-based search for PDF chunks
-pub async fn search_pdf_chunks(
-    db: &Database,
-    game_id: GameId,
-    query_text: &str,
-    limit: usize,
-) -> SqliteResult<Vec<pdf::SimilarChunk>> {
-    db.with_connection(|conn| {
-        let mut stmt = conn.prepare(
-            r#"
-            SELECT id, chunk_text, metadata, chunk_index
-            FROM embeddings
-            WHERE game_id = ? AND source_type = 'rules_pdf'
-            AND chunk_text LIKE '%' || ? || '%'
-            ORDER BY chunk_index
-            LIMIT ?
-            "#,
-        )?;
-
-        let rows = stmt.query_map(params![game_id, query_text, limit], |row| {
-            Ok(pdf::SimilarChunk {
-                id: row.get(0)?,
-                chunk_text: row.get(1)?,
-                metadata: row.get(2)?,
-                chunk_index: row.get(3)?,
-                similarity_score: 0.8, // Mock similarity score
-            })
-        })?;
-
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(row?);
-        }
-
-        Ok(results)
+        Ok(())
     })
 }

@@ -10,8 +10,8 @@ use crate::{
     AppState,
     db::Database,
     handlers::{HttpError, HttpOk},
-    models::{EmbeddingSourceType, GameId},
-    pdf::{self, generate_pdf_filename, validate_pdf_file},
+    models::{CreateEmbeddingRequest, EmbeddingSourceType, GameId},
+    pdf::{Processor, generate_pdf_filename, validate_pdf_file},
 };
 
 #[derive(Deserialize, JsonSchema)]
@@ -89,27 +89,84 @@ pub async fn upload_rules_pdf(
     fs::write(&file_path, body_bytes)
         .map_err(|e| internal_error(format!("Failed to save file: {}", e)))?;
 
-    // Process the PDF and store in database using consolidated functions with shared embedding service
-    let pdf_processor = pdf::Processor::new(app_state.embedding_service());
-    let db = Database::new(app_state.db());
+    // Process PDF: extract text and create chunks
+    let pdf_service = Processor::new();
+    let processed_pdf = pdf_service.process_pdf(&file_path).await.map_err(|e| {
+        let _ = fs::remove_file(&file_path);
+        internal_error(format!("Failed to extract PDF text: {}", e))
+    })?;
 
-    let processing_result = pdf_processor
-        .process_and_store_pdf(&db, game_id, &file_path, &filename)
+    // Generate embeddings for all chunks
+    let embeddings = app_state
+        .embedder()
+        .generate_embeddings(&processed_pdf.chunks)
         .await
         .map_err(|e| {
-            // Clean up the file if processing fails
             let _ = fs::remove_file(&file_path);
-            internal_error(format!("Failed to process PDF: {}", e))
+            internal_error(format!("Failed to generate embeddings: {}", e))
+        })?;
+
+    // Create embedding requests for database storage
+    let embedding_requests: Vec<CreateEmbeddingRequest> = processed_pdf
+        .chunks
+        .iter()
+        .zip(embeddings.iter())
+        .enumerate()
+        .map(|(chunk_index, (chunk, embedding))| {
+            let metadata = serde_json::json!({
+                "file_name": &filename,
+                "chunk_size": chunk.len(),
+                "total_chunks": processed_pdf.chunks.len(),
+                "processing_timestamp": chrono::Utc::now().to_rfc3339(),
+                "embedding_model": app_state.embedder().get_model()
+            });
+
+            CreateEmbeddingRequest {
+                game_id,
+                chunk_text: chunk.clone(),
+                embedding: embedding.clone(),
+                chunk_index: chunk_index as i32,
+                source_type: EmbeddingSourceType::RulesPdf,
+                source_id: None,
+                metadata: Some(metadata.to_string()),
+            }
+        })
+        .collect();
+
+    // Store everything in database
+    let db = Database::new(app_state.db());
+
+    // Update game with rules text
+    crate::db::embeddings::update_game_rules_text(
+        &db,
+        game_id,
+        &file_path,
+        &processed_pdf.full_text,
+    )
+    .await
+    .map_err(|e| {
+        let _ = fs::remove_file(&file_path);
+        internal_error(format!("Failed to update game rules text: {}", e))
+    })?;
+
+    // Store embeddings in batch
+    crate::db::embeddings::create_embeddings_batch(&db, embedding_requests.clone())
+        .await
+        .map_err(|e| {
+            let _ = fs::remove_file(&file_path);
+            internal_error(format!("Failed to store embeddings: {}", e))
         })?;
 
     let response = UploadResponse {
         message: format!(
             "Successfully uploaded and processed PDF for game {}. Extracted {} characters and created {} text chunks.",
-            game_id as i64, processing_result.total_text_length, processing_result.chunks_processed
+            game_id as i64,
+            processed_pdf.full_text.len(),
+            processed_pdf.chunks.len()
         ),
-        file_path: Some(processing_result.file_path),
-        chunks_processed: Some(processing_result.chunks_processed),
-        text_length: Some(processing_result.total_text_length),
+        file_path: Some(file_path.to_string_lossy().to_string()),
+        chunks_processed: Some(processed_pdf.chunks.len() as u32),
+        text_length: Some(processed_pdf.full_text.len()),
     };
 
     success_response(response)

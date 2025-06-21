@@ -1,25 +1,18 @@
 use anyhow::{Result, anyhow};
-use chrono::Utc;
 use pdf_extract::extract_text;
-use serde_json::json;
 use std::path::Path;
-
-use crate::db::Database;
-use crate::embeddings::Embedder;
-use crate::models::GameId;
 
 /// Configuration for text chunking
 const CHUNK_SIZE: usize = 1000; // characters per chunk
 const CHUNK_OVERLAP: usize = 200; // overlap between chunks
 
-/// PDF processor for extracting text and generating embeddings
-pub struct Processor<'a> {
-    embedding_service: &'a Embedder,
-}
+/// Simple PDF service that only handles PDF text extraction and chunking
+/// Database and embedding operations are handled separately
+pub struct Processor;
 
-impl<'a> Processor<'a> {
-    pub fn new(embedding_service: &'a Embedder) -> Self {
-        Self { embedding_service }
+impl Processor {
+    pub fn new() -> Self {
+        Self
     }
 
     /// Extract text from a PDF file
@@ -68,145 +61,33 @@ impl<'a> Processor<'a> {
         chunks
     }
 
-    /// Generate a real embedding for a text chunk using the embedding service
-    pub async fn generate_embedding(&self, text: &str) -> Result<Vec<f32>> {
-        self.embedding_service
-            .generate_embedding(text)
-            .await
-            .map_err(|e| anyhow!("Failed to generate embedding: {}", e))
-    }
-
-    /// Process a PDF and return text and chunk data for database storage
-    pub async fn process_pdf_for_game(
-        &self,
-        _game_id: GameId,
-        pdf_path: &Path,
-        file_name: &str,
-    ) -> Result<(String, Vec<ChunkData>)> {
+    /// Process a PDF file and return extracted text and chunks
+    /// This is a pure processing function that doesn't touch the database or embeddings
+    pub async fn process_pdf(&self, pdf_path: &Path) -> Result<ProcessedPdf> {
         // Extract text from PDF
         let text = self.extract_text_from_pdf(pdf_path).await?;
 
         // Chunk the text
         let chunks = self.chunk_text(&text);
 
-        let mut chunk_data = Vec::new();
-
-        // Generate embeddings for all chunks at once for efficiency
-        let embeddings = self
-            .embedding_service
-            .generate_embeddings(&chunks)
-            .await
-            .map_err(|e| anyhow!("Failed to generate embeddings: {}", e))?;
-
-        // Process each chunk with its embedding
-        for (chunk_index, (chunk, embedding)) in chunks.iter().zip(embeddings.iter()).enumerate() {
-            // Create metadata
-            let metadata = json!({
-                "file_name": file_name,
-                "chunk_size": chunk.len(),
-                "total_chunks": chunks.len(),
-                "processing_timestamp": Utc::now().to_rfc3339(),
-                "embedding_model": self.embedding_service.get_model()
-            });
-
-            chunk_data.push(ChunkData {
-                text: chunk.clone(),
-                embedding: embedding.clone(),
-                index: chunk_index,
-                metadata: metadata.to_string(),
-            });
-        }
-
-        Ok((text, chunk_data))
-    }
-
-    /// Process a complete PDF workflow - extract, chunk, embed, and store
-    pub async fn process_and_store_pdf(
-        &self,
-        db: &Database,
-        game_id: GameId,
-        pdf_path: &Path,
-        file_name: &str,
-    ) -> Result<ProcessingResult> {
-        // Process PDF to get text and chunks
-        let (text, chunk_data) = self
-            .process_pdf_for_game(game_id, pdf_path, file_name)
-            .await?;
-
-        // Store in database using consolidated DB function
-        let result = crate::db::embeddings::store_pdf_chunks_in_database(
-            db,
-            game_id,
-            pdf_path,
-            &text,
-            &chunk_data,
-        )
-        .await
-        .map_err(|e| anyhow!("Failed to store PDF chunks in database: {}", e))?;
-
-        Ok(result)
-    }
-
-    /// Search for similar chunks using text-based similarity
-    /// Note: This is a simplified implementation. In production, you'd use sqlite-vec's
-    /// vector search capabilities for better performance
-    pub async fn search_similar_chunks(
-        &self,
-        db: &Database,
-        game_id: GameId,
-        query_text: &str,
-        limit: usize,
-    ) -> Result<Vec<SimilarChunk>> {
-        // Generate embedding for the query for future vector search
-        let query_embedding = self.generate_embedding(query_text).await?;
-
-        // For now, use text-based search but we have the embedding ready for vector search
-        // TODO: Implement proper vector similarity search using sqlite-vec
-        let results = crate::db::embeddings::search_pdf_chunks(db, game_id, query_text, limit)
-            .await
-            .map_err(|e| anyhow!("Failed to search PDF chunks: {}", e))?;
-
-        // In the future, we can use the query_embedding for proper vector similarity
-        let _similarity_ready = query_embedding.len() > 0;
-
-        Ok(results)
+        Ok(ProcessedPdf {
+            full_text: text,
+            chunks,
+        })
     }
 }
 
-// Default implementation removed due to lifetime constraints
-// Use PdfProcessor::with_embedding_service() instead
-
-/// Test if the embedding service is available
-pub async fn test_embedding_service() -> Result<()> {
-    let service = Embedder::new();
-    service.test_connection().await
+impl Default for Processor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
-/// Result of PDF processing
-#[derive(Debug)]
-pub struct ProcessingResult {
-    pub total_text_length: usize,
-    pub chunks_processed: u32,
-    pub file_path: String,
-}
-
-/// Data for a processed text chunk
-#[derive(Debug)]
-pub struct ChunkData {
-    pub text: String,
-    pub embedding: Vec<f32>,
-    pub index: usize,
-    pub metadata: String,
-}
-
-/// A chunk similar to a search query
-#[derive(Debug)]
-pub struct SimilarChunk {
-    pub id: i64,
-    pub chunk_text: String,
-    pub metadata: String,
-    pub chunk_index: i32,
-    pub similarity_score: f32,
+/// Result of PDF processing containing extracted text and chunks
+#[derive(Debug, Clone)]
+pub struct ProcessedPdf {
+    pub full_text: String,
+    pub chunks: Vec<String>,
 }
 
 /// Validate that a file is a PDF
@@ -224,8 +105,8 @@ pub fn validate_pdf_file(file_bytes: &[u8]) -> Result<()> {
 }
 
 /// Generate a safe filename for storing uploaded PDFs
-pub fn generate_pdf_filename(game_id: GameId, original_filename: &str) -> String {
-    let timestamp = Utc::now().format("%Y%m%d_%H%M%S");
+pub fn generate_pdf_filename(game_id: crate::models::GameId, original_filename: &str) -> String {
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let _safe_name = original_filename
         .chars()
         .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
@@ -240,10 +121,9 @@ mod tests {
 
     #[test]
     fn test_chunk_text() {
-        let embeddings = Embedder::new();
-        let processor = Processor::new(&embeddings);
+        let service = Processor::new();
         let text = "This is a test text that should be chunked. ".repeat(50);
-        let chunks = processor.chunk_text(&text);
+        let chunks = service.chunk_text(&text);
 
         assert!(!chunks.is_empty());
         assert!(chunks[0].len() <= CHUNK_SIZE);
@@ -260,7 +140,7 @@ mod tests {
 
     #[test]
     fn test_generate_pdf_filename() {
-        let game_id: GameId = 123;
+        let game_id: crate::models::GameId = 123;
         let original = "My Game Rules.pdf";
         let filename = generate_pdf_filename(game_id, original);
 
@@ -268,28 +148,76 @@ mod tests {
         assert!(filename.ends_with(".pdf"));
     }
 
-    // This test requires a running Ollama instance
     #[tokio::test]
-    async fn test_generate_embedding() {
-        let embeddings = Embedder::new();
-        let processor = Processor::new(&embeddings);
+    async fn test_process_pdf_with_nonexistent_file() {
+        let service = Processor::new();
 
-        match processor.generate_embedding("test text").await {
-            Ok(embedding) => {
-                assert!(!embedding.is_empty());
-                println!("Generated embedding with {} dimensions", embedding.len());
-
-                // Check that the embedding is normalized (common for most models)
-                let magnitude: f32 = embedding.iter().map(|&x| x * x).sum::<f32>().sqrt();
-                assert!(magnitude > 0.0);
+        // Test with nonexistent file should return error
+        match service.process_pdf(Path::new("nonexistent.pdf")).await {
+            Ok(_) => {
+                panic!("Expected error for nonexistent file");
             }
-            Err(e) => {
-                println!(
-                    "Embedding test failed (expected if Ollama is not running): {}",
-                    e
-                );
-                // Don't fail the test if Ollama is not available
+            Err(_) => {
+                // Expected - file doesn't exist
             }
         }
+    }
+
+    #[test]
+    fn test_empty_text_chunking() {
+        let service = Processor::new();
+        let chunks = service.chunk_text("");
+        assert!(chunks.is_empty());
+    }
+
+    #[test]
+    fn test_short_text_chunking() {
+        let service = Processor::new();
+        let text = "Short text that shouldn't be chunked.";
+        let chunks = service.chunk_text(text);
+
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0], text);
+    }
+
+    #[test]
+    fn test_long_text_chunking() {
+        let service = Processor::new();
+        let text = "A ".repeat(600); // 1200 characters
+        let chunks = service.chunk_text(&text);
+
+        assert!(chunks.len() >= 2); // Should be split into multiple chunks
+        assert!(chunks[0].len() <= CHUNK_SIZE);
+    }
+
+    #[test]
+    fn test_chunk_overlap() {
+        let service = Processor::new();
+        let text = "word ".repeat(300); // 1500 characters
+        let chunks = service.chunk_text(&text);
+
+        if chunks.len() >= 2 {
+            // Check that there's some overlap between chunks
+            let chunk1_end = &chunks[0][(chunks[0].len() - 50)..];
+            let chunk2_start = &chunks[1][..50];
+
+            // There should be some common words due to overlap
+            let chunk1_words: Vec<&str> = chunk1_end.split_whitespace().collect();
+            let chunk2_words: Vec<&str> = chunk2_start.split_whitespace().collect();
+
+            let has_overlap = chunk1_words.iter().any(|word| chunk2_words.contains(word));
+
+            assert!(has_overlap, "Chunks should have overlapping content");
+        }
+    }
+
+    #[test]
+    fn test_whitespace_cleanup() {
+        let service = Processor::new();
+        let text_with_extra_whitespace = "Line 1\n\n  \n\nLine 2\n   \n\n\nLine 3";
+        let chunks = service.chunk_text(text_with_extra_whitespace);
+
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0], "Line 1 Line 2 Line 3");
     }
 }

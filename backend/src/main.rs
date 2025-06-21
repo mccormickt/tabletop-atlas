@@ -24,7 +24,7 @@ use handlers::*;
 
 pub struct AppState {
     db: Arc<Mutex<Connection>>,
-    embedding_service: Embedder,
+    embeddings: Embedder,
 }
 
 impl AppState {
@@ -54,7 +54,7 @@ impl AppState {
 
         Ok(Self {
             db: Arc::new(Mutex::new(db)),
-            embedding_service: Embedder::new(),
+            embeddings: Embedder::new(),
         })
     }
 
@@ -62,8 +62,8 @@ impl AppState {
         self.db.clone()
     }
 
-    pub fn embedding_service(&self) -> &Embedder {
-        &self.embedding_service
+    pub fn embedder(&self) -> &Embedder {
+        &self.embeddings
     }
 }
 
