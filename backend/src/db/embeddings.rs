@@ -1,10 +1,15 @@
-use super::{Database, parse_datetime};
-use crate::models::{
-    CreateEmbeddingRequest, Embedding, EmbeddingId, EmbeddingSearchResult, EmbeddingSourceType,
-    GameId, HouseRuleId, SimilaritySearchRequest,
-};
 use chrono::Utc;
 use rusqlite::{Result as SqliteResult, params};
+
+use crate::{
+    models::{
+        CreateEmbeddingRequest, Embedding, EmbeddingId, EmbeddingSearchResult, EmbeddingSourceType,
+        GameId, HouseRuleId, SimilaritySearchRequest,
+    },
+    pdf,
+};
+
+use super::{Database, parse_datetime};
 
 pub async fn create_embedding(
     db: &Database,
@@ -347,8 +352,8 @@ pub async fn store_pdf_chunks_in_database(
     game_id: GameId,
     pdf_path: &std::path::Path,
     text: &str,
-    chunks: &[super::super::pdf_processor::ChunkData],
-) -> SqliteResult<super::super::pdf_processor::ProcessingResult> {
+    chunks: &[pdf::ChunkData],
+) -> SqliteResult<pdf::ProcessingResult> {
     db.with_transaction(|conn| {
         // Update game record with extracted text
         conn.execute(
@@ -386,7 +391,7 @@ pub async fn store_pdf_chunks_in_database(
             processed_chunks += 1;
         }
 
-        Ok(super::super::pdf_processor::ProcessingResult {
+        Ok(pdf::ProcessingResult {
             total_text_length: text.len(),
             chunks_processed: processed_chunks,
             file_path: pdf_path.to_string_lossy().to_string(),
@@ -400,7 +405,7 @@ pub async fn search_pdf_chunks(
     game_id: GameId,
     query_text: &str,
     limit: usize,
-) -> SqliteResult<Vec<super::super::pdf_processor::SimilarChunk>> {
+) -> SqliteResult<Vec<pdf::SimilarChunk>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
             r#"
@@ -414,7 +419,7 @@ pub async fn search_pdf_chunks(
         )?;
 
         let rows = stmt.query_map(params![game_id, query_text, limit], |row| {
-            Ok(super::super::pdf_processor::SimilarChunk {
+            Ok(pdf::SimilarChunk {
                 id: row.get(0)?,
                 chunk_text: row.get(1)?,
                 metadata: row.get(2)?,

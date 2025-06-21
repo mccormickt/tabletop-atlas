@@ -29,6 +29,7 @@ clap.workspace = true
 pdf-extract.workspace = true
 sqlite-vec.workspace = true
 zerocopy.workspace = true
+async-openai = "0.23"
 
 [build-dependencies]
 # No build dependencies needed for now

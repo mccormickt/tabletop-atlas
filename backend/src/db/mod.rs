@@ -1,10 +1,10 @@
 use rusqlite::{Connection, Result as SqliteResult, Row};
 use std::sync::{Arc, Mutex};
 
+pub mod chat;
+pub mod embeddings;
 pub mod games;
 pub mod house_rules;
-pub mod embeddings;
-pub mod chat;
 
 // Re-exports are available but not used globally to avoid namespace pollution
 
@@ -48,11 +48,13 @@ pub fn parse_datetime(row: &Row, column: &str) -> SqliteResult<chrono::DateTime<
             chrono::NaiveDateTime::parse_from_str(&datetime_str, "%Y-%m-%d %H:%M:%S")
                 .map(|dt| dt.and_utc())
         })
-        .map_err(|_| rusqlite::Error::InvalidColumnType(
-            row.as_ref().column_index(column).unwrap_or(0),
-            column.to_string(),
-            rusqlite::types::Type::Text,
-        ))
+        .map_err(|_| {
+            rusqlite::Error::InvalidColumnType(
+                row.as_ref().column_index(column).unwrap_or(0),
+                column.to_string(),
+                rusqlite::types::Type::Text,
+            )
+        })
 }
 
 /// Helper function to format datetime for SQLite

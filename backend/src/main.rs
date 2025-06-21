@@ -13,15 +13,18 @@ use rusqlite_migration::{M, Migrations};
 use sqlite_vec::sqlite3_vec_init;
 
 mod db;
+mod embeddings;
 mod handlers;
 mod models;
-mod pdf_processor;
+mod pdf;
 
+use embeddings::Embedder;
 use handlers::static_files;
 use handlers::*;
 
 pub struct AppState {
     db: Arc<Mutex<Connection>>,
+    embedding_service: Embedder,
 }
 
 impl AppState {
@@ -51,11 +54,16 @@ impl AppState {
 
         Ok(Self {
             db: Arc::new(Mutex::new(db)),
+            embedding_service: Embedder::new(),
         })
     }
 
     pub fn db(&self) -> Arc<Mutex<Connection>> {
         self.db.clone()
+    }
+
+    pub fn embedding_service(&self) -> &Embedder {
+        &self.embedding_service
     }
 }
 
