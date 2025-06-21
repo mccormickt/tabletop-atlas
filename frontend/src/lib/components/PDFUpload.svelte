@@ -112,17 +112,10 @@
 				}
 			}, 200);
 
-			const result = await api.methods.uploadRulesPdf(
-				{
-					path: { id: gameId }
-				},
-				{
-					body: selectedFile,
-					headers: {
-						'Content-Type': 'application/octet-stream'
-					}
-				}
-			);
+			const result = await api.methods.uploadRulesPdf({
+				path: { id: gameId },
+				body: selectedFile
+			});
 
 			clearInterval(progressInterval);
 			uploadProgress = 100;
