@@ -1,0 +1,15 @@
+{
+  "name": "tabletop-atlas",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"cargo run -p backend\" \"npm run dev --prefix frontend\"",
+    "build": "cargo build --release && npm run build --prefix frontend",
+    "test": "cargo test && npm test --prefix frontend",
+    "backend": "cargo run -p backend",
+    "frontend": "npm run dev --prefix frontend"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.8",
+    "concurrently": "^8.2.0"
+  }
+}
