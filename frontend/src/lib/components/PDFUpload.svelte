@@ -25,6 +25,7 @@
 	let selectedFile: File | null = $state(null);
 	let error = $state<string | null>(null);
 	let uploadResult: UploadResponse | null = $state(null);
+	let fileInputRef: HTMLInputElement | null = $state(null);
 
 	// Event dispatcher
 	const dispatch = createEventDispatcher<{
@@ -95,6 +96,11 @@
 		}
 	}
 
+	// Handle button click to open file dialog
+	function openFileDialog() {
+		fileInputRef?.click();
+	}
+
 	// Upload file
 	async function uploadFile() {
 		if (!selectedFile) return;
@@ -112,17 +118,10 @@
 				}
 			}, 200);
 
-			const result = await api.methods.uploadRulesPdf(
-				{
-					path: { id: gameId }
-				},
-				{
-					body: selectedFile,
-					headers: {
-						'Content-Type': 'application/octet-stream'
-					}
-				}
-			);
+			const result = await api.methods.uploadRulesPdf({
+				path: { id: gameId },
+				body: selectedFile
+			});
 
 			clearInterval(progressInterval);
 			uploadProgress = 100;
@@ -353,19 +352,14 @@
 							<p class="text-sm text-gray-500">or click to browse files</p>
 						</div>
 						<div class="mt-6">
-							<label for="file-upload" class="cursor-pointer">
-								<Button class="relative">
-									Select PDF File
-									<input
-										id="file-upload"
-										name="file-upload"
-										type="file"
-										class="sr-only"
-										accept=".pdf,application/pdf"
-										onchange={handleFileSelect}
-									/>
-								</Button>
-							</label>
+							<Button onclick={openFileDialog}>Select PDF File</Button>
+							<input
+								bind:this={fileInputRef}
+								type="file"
+								class="sr-only"
+								accept=".pdf,application/pdf"
+								onchange={handleFileSelect}
+							/>
 						</div>
 						<div class="mt-4">
 							<div class="flex items-center space-x-4 text-sm text-gray-500">

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::{created_response, internal_error, not_found_error, success_response};
 use crate::{
     AppState,
-    db::{Database, chat, embeddings},
+    db::{Database, chat},
     handlers::{HttpCreated, HttpError, HttpOk},
     models::{
         ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionId, ChatSessionSummary,
@@ -61,7 +61,7 @@ pub async fn list_chat_sessions(
 ) -> Result<HttpOk<PaginatedResponse<ChatSessionSummary>>, HttpError> {
     let app_state = rqctx.context();
     let query = query.into_inner();
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     match chat::list_chat_sessions(
         &db,
@@ -90,7 +90,7 @@ pub async fn get_chat_session(
 ) -> Result<HttpOk<ChatHistory>, HttpError> {
     let app_state = rqctx.context();
     let session_id = path.into_inner().id;
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     match chat::get_chat_history(&db, session_id).await {
         Ok(Some(history)) => success_response(history),
@@ -116,7 +116,7 @@ pub async fn create_chat_session(
 ) -> Result<HttpCreated<ChatSession>, HttpError> {
     let app_state = rqctx.context();
     let create_request = body.into_inner();
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     match chat::create_chat_session(&db, create_request).await {
         Ok(session) => created_response(session),
@@ -139,16 +139,16 @@ pub async fn search_rules(
     let app_state = rqctx.context();
     let search_query = query.into_inner();
     let limit = search_query.limit.unwrap_or(5);
+    let db = app_state.db();
 
-    // Generate embedding for the search query using shared service
+    // Generate embedding for the search query
     let query_embedding = app_state
-        .embedding_service()
+        .embedder()
         .generate_embedding(&search_query.query)
         .await
         .map_err(|e| internal_error(format!("Failed to generate query embedding: {}", e)))?;
 
-    // Use vector similarity search
-    let db = Database::new(app_state.db());
+    // Search using database layer directly
     let similarity_request = SimilaritySearchRequest {
         game_id: search_query.game_id,
         query_embedding,
@@ -156,9 +156,9 @@ pub async fn search_rules(
         limit: limit as u32,
     };
 
-    let search_results = embeddings::similarity_search(&db, similarity_request)
+    let search_results = crate::db::embeddings::similarity_search(&db, similarity_request)
         .await
-        .map_err(|e| internal_error(format!("Vector similarity search failed: {}", e)))?;
+        .map_err(|e| internal_error(format!("Search failed: {}", e)))?;
 
     let results: Vec<SearchResult> = search_results
         .into_iter()

@@ -38,7 +38,7 @@ pub async fn list_house_rules(
 ) -> Result<HttpOk<PaginatedResponse<HouseRule>>, HttpError> {
     let app_state = rqctx.context();
     let query = query.into_inner();
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     match house_rules::list_house_rules(
         &db,
@@ -67,7 +67,7 @@ pub async fn get_house_rule(
 ) -> Result<HttpOk<HouseRule>, HttpError> {
     let app_state = rqctx.context();
     let house_rule_id = path.into_inner().id;
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     match house_rules::get_house_rule(&db, house_rule_id).await {
         Ok(Some(house_rule)) => success_response(house_rule),
@@ -93,7 +93,7 @@ pub async fn create_house_rule(
 ) -> Result<HttpCreated<HouseRule>, HttpError> {
     let app_state = rqctx.context();
     let create_request = body.into_inner();
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     // Validate the request
     if create_request.title.trim().is_empty() {
@@ -129,7 +129,7 @@ pub async fn update_house_rule(
     let app_state = rqctx.context();
     let house_rule_id = path.into_inner().id;
     let update_request = body.into_inner();
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     // Validate the request
     if let Some(ref title) = update_request.title {
@@ -171,7 +171,7 @@ pub async fn delete_house_rule(
 ) -> Result<HttpDeleted, HttpError> {
     let app_state = rqctx.context();
     let house_rule_id = path.into_inner().id;
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     match house_rules::delete_house_rule(&db, house_rule_id).await {
         Ok(true) => deleted_response(),

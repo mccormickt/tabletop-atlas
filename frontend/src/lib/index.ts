@@ -24,12 +24,18 @@ export type {
 	ChatSession,
 	ChatMessage,
 	ChatHistory,
+	ChatRequest,
+	ChatResponse,
+	ContextSource,
 	RulesInfoResponse,
 	UploadResponse,
 	CreateChatSessionRequest,
 	PaginatedResponse_for_GameSummary,
 	PaginatedResponse_for_HouseRule,
-	PaginatedResponse_for_ChatSessionSummary
+	PaginatedResponse_for_ChatSessionSummary,
+	SearchResult,
+	RulesSearchResponse,
+	SearchRulesQueryParams
 } from '../api/Api';
 
 // Re-export utilities

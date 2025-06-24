@@ -30,7 +30,7 @@ pub async fn list_games(
 ) -> Result<HttpOk<PaginatedResponse<GameSummary>>, HttpError> {
     let app_state = rqctx.context();
     let pagination = query.into_inner();
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     match games::list_games(&db, pagination.page, pagination.limit).await {
         Ok(result) => success_response(result),
@@ -52,7 +52,7 @@ pub async fn get_game(
 ) -> Result<HttpOk<Game>, HttpError> {
     let app_state = rqctx.context();
     let game_id = path.into_inner().id;
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     match games::get_game(&db, game_id).await {
         Ok(Some(game)) => success_response(game),
@@ -78,7 +78,7 @@ pub async fn create_game(
 ) -> Result<HttpCreated<Game>, HttpError> {
     let app_state = rqctx.context();
     let create_request = body.into_inner();
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     // Validate the request
     if create_request.name.trim().is_empty() {
@@ -115,7 +115,7 @@ pub async fn update_game(
     let app_state = rqctx.context();
     let game_id = path.into_inner().id;
     let update_request = body.into_inner();
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     // Validate the request
     if let Some(ref name) = update_request.name {
@@ -156,7 +156,7 @@ pub async fn delete_game(
 ) -> Result<HttpDeleted, HttpError> {
     let app_state = rqctx.context();
     let game_id = path.into_inner().id;
-    let db = Database::new(app_state.db());
+    let db = app_state.db();
 
     match games::delete_game(&db, game_id).await {
         Ok(true) => deleted_response(),

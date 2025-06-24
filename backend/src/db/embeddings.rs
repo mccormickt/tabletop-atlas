@@ -1,12 +1,10 @@
 use chrono::Utc;
 use rusqlite::{Result as SqliteResult, params};
+use serde_json;
 
-use crate::{
-    models::{
-        CreateEmbeddingRequest, Embedding, EmbeddingId, EmbeddingSearchResult, EmbeddingSourceType,
-        GameId, HouseRuleId, SimilaritySearchRequest,
-    },
-    pdf,
+use crate::models::{
+    CreateEmbeddingRequest, Embedding, EmbeddingId, EmbeddingSearchResult, EmbeddingSourceType,
+    GameId, HouseRuleId, SimilaritySearchRequest,
 };
 
 use super::{Database, parse_datetime};
@@ -19,19 +17,20 @@ pub async fn create_embedding(
         let now = Utc::now();
         let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
 
-        // Serialize embedding vector as binary data
-        let embedding_bytes = serialize_embedding(&request.embedding);
+        // Convert embedding vector to JSON string for sqlite-vec
+        let embedding_json = serde_json::to_string(&request.embedding)
+            .map_err(|_| rusqlite::Error::ToSqlConversionFailure(Box::new(std::fmt::Error)))?;
 
+        // Insert into main embeddings table
         conn.execute(
             r#"
             INSERT INTO embeddings (
-                game_id, chunk_text, embedding, chunk_index, source_type, source_id, metadata, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                game_id, chunk_text, chunk_index, source_type, source_id, metadata, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
             "#,
             params![
                 request.game_id,
                 request.chunk_text,
-                embedding_bytes,
                 request.chunk_index,
                 request.source_type.as_str(),
                 request.source_id,
@@ -42,17 +41,26 @@ pub async fn create_embedding(
 
         let embedding_id = conn.last_insert_rowid();
 
+        // Insert into vector embeddings table using virtual table syntax
+        conn.execute(
+            "INSERT INTO vec_embeddings (rowid, embedding_vector) VALUES (?, ?)",
+            params![embedding_id, embedding_json]
+        )?;
+
         // Fetch the created embedding
         let mut stmt = conn.prepare(
             r#"
-            SELECT id, game_id, chunk_text, embedding, chunk_index, source_type, source_id, metadata, created_at
-            FROM embeddings WHERE id = ?
+            SELECT e.id, e.game_id, e.chunk_text, v.embedding_vector, e.chunk_index, e.source_type, e.source_id, e.metadata, e.created_at
+            FROM embeddings e
+            JOIN vec_embeddings v ON e.id = v.rowid
+            WHERE e.id = ?
             "#
         )?;
 
         stmt.query_row(params![embedding_id], |row| {
-            let embedding_bytes: Vec<u8> = row.get(3)?;
-            let embedding = deserialize_embedding(&embedding_bytes)?;
+            let embedding_json: String = row.get(3)?;
+            let embedding: Vec<f32> = serde_json::from_str(&embedding_json)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "embedding_vector".to_string(), rusqlite::types::Type::Text))?;
             let source_type_str: String = row.get(5)?;
             let source_type = EmbeddingSourceType::from_str(&source_type_str)
                 .unwrap_or(EmbeddingSourceType::RulesPdf);
@@ -81,20 +89,22 @@ pub async fn get_embeddings_for_game(
         let (query, params) = if let Some(source_type) = source_type {
             (
                 r#"
-                SELECT id, game_id, chunk_text, embedding, chunk_index, source_type, source_id, metadata, created_at
-                FROM embeddings
-                WHERE game_id = ? AND source_type = ?
-                ORDER BY chunk_index ASC
+                SELECT e.id, e.game_id, e.chunk_text, v.embedding_vector, e.chunk_index, e.source_type, e.source_id, e.metadata, e.created_at
+                FROM embeddings e
+                JOIN vec_embeddings v ON e.id = v.rowid
+                WHERE e.game_id = ? AND e.source_type = ?
+                ORDER BY e.chunk_index ASC
                 "#,
                 params![game_id, source_type.as_str()]
             )
         } else {
             (
                 r#"
-                SELECT id, game_id, chunk_text, embedding, chunk_index, source_type, source_id, metadata, created_at
-                FROM embeddings
-                WHERE game_id = ?
-                ORDER BY source_type ASC, chunk_index ASC
+                SELECT e.id, e.game_id, e.chunk_text, v.embedding_vector, e.chunk_index, e.source_type, e.source_id, e.metadata, e.created_at
+                FROM embeddings e
+                JOIN vec_embeddings v ON e.id = v.rowid
+                WHERE e.game_id = ?
+                ORDER BY e.source_type ASC, e.chunk_index ASC
                 "#,
                 params![game_id]
             )
@@ -103,8 +113,9 @@ pub async fn get_embeddings_for_game(
         let mut stmt = conn.prepare(query)?;
 
         let embedding_iter = stmt.query_map(params, |row| {
-            let embedding_bytes: Vec<u8> = row.get(3)?;
-            let embedding = deserialize_embedding(&embedding_bytes)?;
+            let embedding_json: String = row.get(3)?;
+            let embedding: Vec<f32> = serde_json::from_str(&embedding_json)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "embedding_vector".to_string(), rusqlite::types::Type::Text))?;
             let source_type_str: String = row.get(5)?;
             let source_type = EmbeddingSourceType::from_str(&source_type_str)
                 .unwrap_or(EmbeddingSourceType::RulesPdf);
@@ -122,8 +133,7 @@ pub async fn get_embeddings_for_game(
             })
         })?;
 
-        let embeddings: Result<Vec<Embedding>, _> = embedding_iter.collect();
-        embeddings
+        embedding_iter.collect()
     })
 }
 
@@ -132,59 +142,113 @@ pub async fn similarity_search(
     request: SimilaritySearchRequest,
 ) -> SqliteResult<Vec<EmbeddingSearchResult>> {
     db.with_connection(|conn| {
-        // Get all embeddings for the game
-        let mut stmt = conn.prepare(
+        // Convert query embedding to JSON for sqlite-vec KNN search
+        let query_json = serde_json::to_string(&request.query_embedding)
+            .map_err(|_| rusqlite::Error::ToSqlConversionFailure(Box::new(std::fmt::Error)))?;
+
+        // Query 1: Get vector search results from sqlite-vec (no JOINs, no additional filtering)
+        let search_limit = std::cmp::max(request.limit * 3, 50); // Get more to allow for filtering
+        let mut vec_stmt = conn.prepare(
             r#"
-            SELECT id, chunk_text, embedding, source_type, source_id, metadata
-            FROM embeddings
-            WHERE game_id = ?
+            SELECT rowid, distance
+            FROM vec_embeddings
+            WHERE embedding_vector MATCH ?1
+            ORDER BY distance
+            LIMIT ?2
             "#,
         )?;
 
-        let embedding_iter = stmt.query_map(params![request.game_id], |row| {
-            let embedding_bytes: Vec<u8> = row.get(2)?;
-            let embedding = deserialize_embedding(&embedding_bytes)?;
-            let source_type_str: String = row.get(3)?;
-            let source_type = EmbeddingSourceType::from_str(&source_type_str)
-                .unwrap_or(EmbeddingSourceType::RulesPdf);
+        let vec_results: Vec<(i64, f32)> = vec_stmt
+            .query_map(params![query_json, search_limit], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
 
-            Ok((
-                row.get::<_, i64>(0)?,    // id
-                row.get::<_, String>(1)?, // chunk_text
-                embedding,
-                source_type,
-                row.get::<_, Option<i64>>(4)?,    // source_id
-                row.get::<_, Option<String>>(5)?, // metadata
-            ))
-        })?;
-
-        let mut results = Vec::new();
-
-        for item in embedding_iter {
-            let (id, chunk_text, embedding, source_type, source_id, metadata) = item?;
-
-            // Calculate cosine similarity
-            let similarity = cosine_similarity(&request.query_embedding, &embedding);
-
-            if similarity >= request.similarity_threshold {
-                results.push(EmbeddingSearchResult {
-                    id,
-                    chunk_text,
-                    similarity_score: similarity,
-                    source_type,
-                    source_id,
-                    metadata,
-                });
-            }
+        if vec_results.is_empty() {
+            return Ok(Vec::new());
         }
 
-        // Sort by similarity score (highest first) and limit results
-        results.sort_by(|a, b| {
-            b.similarity_score
-                .partial_cmp(&a.similarity_score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-        results.truncate(request.limit as usize);
+        // Build placeholders for IN clause
+        let placeholders: String = vec_results
+            .iter()
+            .map(|_| "?")
+            .collect::<Vec<_>>()
+            .join(",");
+
+        // Query 2: Get metadata for the vector results, filtered by game_id
+        let metadata_query = format!(
+            r#"
+            SELECT id, chunk_text, source_type, source_id, metadata
+            FROM embeddings
+            WHERE id IN ({}) AND game_id = ?
+            ORDER BY
+                CASE id {} END
+            "#,
+            placeholders,
+            vec_results
+                .iter()
+                .enumerate()
+                .map(|(i, (rowid, _))| format!("WHEN {} THEN {}", rowid, i))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![];
+        for (rowid, _) in &vec_results {
+            params.push(Box::new(*rowid));
+        }
+        params.push(Box::new(request.game_id));
+
+        let mut meta_stmt = conn.prepare(&metadata_query)?;
+        let metadata_results: Vec<(i64, String, String, Option<i64>, Option<String>)> = meta_stmt
+            .query_map(
+                params
+                    .iter()
+                    .map(|p| p.as_ref())
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
+            )?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Combine results, maintaining distance order and applying similarity threshold
+        let mut results = Vec::new();
+        for (rowid, distance) in vec_results {
+            if let Some((id, chunk_text, source_type_str, source_id, metadata)) = metadata_results
+                .iter()
+                .find(|(meta_id, _, _, _, _)| *meta_id == rowid)
+            {
+                let similarity_score = 1.0 - distance as f64;
+
+                // Apply similarity threshold
+                if similarity_score >= request.similarity_threshold as f64 {
+                    let source_type = EmbeddingSourceType::from_str(&source_type_str)
+                        .unwrap_or(EmbeddingSourceType::RulesPdf);
+
+                    results.push(EmbeddingSearchResult {
+                        id: *id,
+                        chunk_text: chunk_text.clone(),
+                        similarity_score: similarity_score as f32,
+                        source_type,
+                        source_id: *source_id,
+                        metadata: metadata.clone(),
+                    });
+
+                    // Stop when we have enough results
+                    if results.len() >= request.limit as usize {
+                        break;
+                    }
+                }
+            }
+        }
 
         Ok(results)
     })
@@ -230,14 +294,17 @@ pub async fn get_embedding_by_id(
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
             r#"
-            SELECT id, game_id, chunk_text, embedding, chunk_index, source_type, source_id, metadata, created_at
-            FROM embeddings WHERE id = ?
+            SELECT e.id, e.game_id, e.chunk_text, v.embedding_vector, e.chunk_index, e.source_type, e.source_id, e.metadata, e.created_at
+            FROM embeddings e
+            JOIN vec_embeddings v ON e.id = v.rowid
+            WHERE e.id = ?
             "#
         )?;
 
         let result = stmt.query_row(params![embedding_id], |row| {
-            let embedding_bytes: Vec<u8> = row.get(3)?;
-            let embedding = deserialize_embedding(&embedding_bytes)?;
+            let embedding_json: String = row.get(3)?;
+            let embedding: Vec<f32> = serde_json::from_str(&embedding_json)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "embedding_vector".to_string(), rusqlite::types::Type::Text))?;
             let source_type_str: String = row.get(5)?;
             let source_type = EmbeddingSourceType::from_str(&source_type_str)
                 .unwrap_or(EmbeddingSourceType::RulesPdf);
@@ -263,51 +330,6 @@ pub async fn get_embedding_by_id(
     })
 }
 
-// Helper functions for embedding serialization
-fn serialize_embedding(embedding: &[f32]) -> Vec<u8> {
-    // Simple serialization: convert f32 array to bytes
-    // In production, you might want to use a more efficient format
-    let mut bytes = Vec::with_capacity(embedding.len() * 4);
-    for &value in embedding {
-        bytes.extend_from_slice(&value.to_le_bytes());
-    }
-    bytes
-}
-
-fn deserialize_embedding(bytes: &[u8]) -> SqliteResult<Vec<f32>> {
-    if bytes.len() % 4 != 0 {
-        return Err(rusqlite::Error::InvalidColumnType(
-            0,
-            "embedding".to_string(),
-            rusqlite::types::Type::Blob,
-        ));
-    }
-
-    let mut embedding = Vec::with_capacity(bytes.len() / 4);
-    for chunk in bytes.chunks_exact(4) {
-        let value = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-        embedding.push(value);
-    }
-    Ok(embedding)
-}
-
-// Helper function for cosine similarity calculation
-fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
-    if a.len() != b.len() {
-        return 0.0;
-    }
-
-    let dot_product: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
-    let magnitude_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
-    let magnitude_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
-
-    if magnitude_a == 0.0 || magnitude_b == 0.0 {
-        return 0.0;
-    }
-
-    dot_product / (magnitude_a * magnitude_b)
-}
-
 // Batch operations for efficiency
 pub async fn create_embeddings_batch(
     db: &Database,
@@ -317,21 +339,26 @@ pub async fn create_embeddings_batch(
         let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
         let mut embedding_ids = Vec::new();
 
-        let mut stmt = conn.prepare(
+        let mut embeddings_stmt = conn.prepare(
             r#"
             INSERT INTO embeddings (
-                game_id, chunk_text, embedding, chunk_index, source_type, source_id, metadata, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+                game_id, chunk_text, chunk_index, source_type, source_id, metadata, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            "#,
         )?;
 
-        for request in requests {
-            let embedding_bytes = serialize_embedding(&request.embedding);
+        let mut vec_stmt =
+            conn.prepare("INSERT INTO vec_embeddings (rowid, embedding_vector) VALUES (?, ?)")?;
 
-            stmt.execute(params![
+        for request in requests {
+            // Convert embedding to JSON for sqlite-vec
+            let embedding_json = serde_json::to_string(&request.embedding)
+                .map_err(|_| rusqlite::Error::ToSqlConversionFailure(Box::new(std::fmt::Error)))?;
+
+            // Insert into embeddings table
+            embeddings_stmt.execute(params![
                 request.game_id,
                 request.chunk_text,
-                embedding_bytes,
                 request.chunk_index,
                 request.source_type.as_str(),
                 request.source_id,
@@ -339,100 +366,14 @@ pub async fn create_embeddings_batch(
                 now_str
             ])?;
 
-            embedding_ids.push(conn.last_insert_rowid());
+            let embedding_id = conn.last_insert_rowid();
+
+            // Insert into vec_embeddings table
+            vec_stmt.execute(params![embedding_id, embedding_json])?;
+
+            embedding_ids.push(embedding_id);
         }
 
         Ok(embedding_ids)
-    })
-}
-
-// PDF-related database operations
-pub async fn store_pdf_chunks_in_database(
-    db: &Database,
-    game_id: GameId,
-    pdf_path: &std::path::Path,
-    text: &str,
-    chunks: &[pdf::ChunkData],
-) -> SqliteResult<pdf::ProcessingResult> {
-    db.with_transaction(|conn| {
-        // Update game record with extracted text
-        conn.execute(
-            "UPDATE games SET rules_text = ?, rules_pdf_path = ? WHERE id = ?",
-            params![text, pdf_path.to_string_lossy().as_ref(), game_id],
-        )?;
-
-        let mut processed_chunks = 0;
-
-        // Store each chunk
-        for chunk in chunks {
-            let embedding_json = serde_json::to_string(&chunk.embedding)
-                .map_err(|_| rusqlite::Error::ToSqlConversionFailure(Box::new(std::fmt::Error)))?;
-
-            conn.execute(
-                r#"
-                INSERT INTO embeddings (
-                    game_id,
-                    chunk_text,
-                    embedding,
-                    chunk_index,
-                    source_type,
-                    metadata
-                ) VALUES (?, ?, ?, ?, 'rules_pdf', ?)
-                "#,
-                params![
-                    game_id,
-                    chunk.text,
-                    embedding_json,
-                    chunk.index,
-                    chunk.metadata
-                ],
-            )?;
-
-            processed_chunks += 1;
-        }
-
-        Ok(pdf::ProcessingResult {
-            total_text_length: text.len(),
-            chunks_processed: processed_chunks,
-            file_path: pdf_path.to_string_lossy().to_string(),
-        })
-    })
-}
-
-// Simple text-based search for PDF chunks
-pub async fn search_pdf_chunks(
-    db: &Database,
-    game_id: GameId,
-    query_text: &str,
-    limit: usize,
-) -> SqliteResult<Vec<pdf::SimilarChunk>> {
-    db.with_connection(|conn| {
-        let mut stmt = conn.prepare(
-            r#"
-            SELECT id, chunk_text, metadata, chunk_index
-            FROM embeddings
-            WHERE game_id = ? AND source_type = 'rules_pdf'
-            AND chunk_text LIKE '%' || ? || '%'
-            ORDER BY chunk_index
-            LIMIT ?
-            "#,
-        )?;
-
-        let rows = stmt.query_map(params![game_id, query_text, limit], |row| {
-            Ok(pdf::SimilarChunk {
-                id: row.get(0)?,
-                chunk_text: row.get(1)?,
-                metadata: row.get(2)?,
-                chunk_index: row.get(3)?,
-                similarity_score: 0.8, // Mock similarity score
-            })
-        })?;
-
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(row?);
-        }
-
-        Ok(results)
     })
 }

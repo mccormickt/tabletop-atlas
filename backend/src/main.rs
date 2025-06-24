@@ -1,7 +1,4 @@
-use std::{
-    path::Path,
-    sync::{Arc, Mutex},
-};
+use std::path::Path;
 
 use anyhow::Result;
 use clap::{Arg, Command};
@@ -18,13 +15,14 @@ mod handlers;
 mod models;
 mod pdf;
 
+use db::Database;
 use embeddings::Embedder;
 use handlers::static_files;
 use handlers::*;
 
 pub struct AppState {
-    db: Arc<Mutex<Connection>>,
-    embedding_service: Embedder,
+    db: Database,
+    embeddings: Embedder,
 }
 
 impl AppState {
@@ -53,17 +51,17 @@ impl AppState {
         migrations.to_latest(&mut db)?;
 
         Ok(Self {
-            db: Arc::new(Mutex::new(db)),
-            embedding_service: Embedder::new(),
+            db: Database::new(db),
+            embeddings: Embedder::new(),
         })
     }
 
-    pub fn db(&self) -> Arc<Mutex<Connection>> {
+    pub fn db(&self) -> Database {
         self.db.clone()
     }
 
-    pub fn embedding_service(&self) -> &Embedder {
-        &self.embedding_service
+    pub fn embedder(&self) -> &Embedder {
+        &self.embeddings
     }
 }
 
@@ -160,6 +158,8 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
 
     // Register specific SPA routes
     api.register(static_files::serve_games_views)?; // /games/{path:.*}
+    api.register(static_files::serve_search_view)?; // /search
+    api.register(static_files::serve_upload_view)?; // /upload
     api.register(static_files::serve_index)?; // /
 
     Ok(api)
