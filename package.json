@@ -2,6 +2,7 @@
   "name": "tabletop-atlas",
   "private": true,
   "scripts": {
+    "generate": "cargo run -p backend -- --openapi > openapi.json && openapi-gen-ts openapi.json frontend/src/api ",
     "dev": "cargo watch -w backend/ -w frontend/ -- cargo run",
     "build": "cargo build --release",
     "test": "cargo test && pnpm test --prefix frontend",
