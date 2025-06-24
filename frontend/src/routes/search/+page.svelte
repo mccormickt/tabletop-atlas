@@ -1,14 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import {
-		api,
-		type Game,
-		type GameSummary,
-		type SearchResult,
-		type RulesSearchResponse
-	} from '$lib';
+	import { page } from '$app/state';
+	import { api, type GameSummary, type SearchResult } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Input, Label } from '$lib/components/ui';
@@ -50,7 +44,7 @@
 
 	onMount(() => {
 		// Read URL params once on mount
-		const params = $page.url.searchParams;
+		const params = page.url.searchParams;
 		initialUrlParams.gameId = params.get('gameId');
 		initialUrlParams.query = params.get('q');
 
@@ -151,44 +145,42 @@
 			if (selectedGameId && !selectedGame?.hasRulesPdf) {
 				error = 'This game does not have uploaded rules. Please upload rules first.';
 			}
-			async function performSearch() {
-				if (!selectedGameId || !searchQuery.trim()) {
-					return;
+			return;
+		}
+
+		searching = true;
+		error = null;
+		hasSearched = true;
+
+		try {
+			const result = await api.methods.searchRules({
+				query: {
+					gameId: selectedGameId,
+					query: searchQuery.trim(),
+					limit: searchLimit
 				}
+			});
 
-				searching = true;
-				error = null;
-				hasSearched = true;
-
-				try {
-					const result = await api.methods.searchRules({
-						query: {
-							gameId: selectedGameId,
-							query: searchQuery.trim(),
-							limit: searchLimit
-						}
-					});
-
-					if (result.type === 'success') {
-						searchResults = result.data.results;
-						totalResults = result.data.totalResults;
-					} else if (result.type === 'error') {
-						error = result.data.message || 'Search failed';
-						searchResults = [];
-						totalResults = 0;
-					} else if (result.type === 'client_error') {
-						error = result.error.message || 'Search failed';
-						searchResults = [];
-						totalResults = 0;
-					}
-				} catch (err) {
-					error = err instanceof Error ? err.message : 'An unexpected error occurred';
-					searchResults = [];
-					totalResults = 0;
-				} finally {
-					searching = false;
-				}
+			if (result.type === 'success') {
+				searchResults = result.data.results;
+				totalResults = result.data.totalResults;
+			} else if (result.type === 'error') {
+				error = result.data.message || 'Search failed';
+				searchResults = [];
+				totalResults = 0;
+			} else if (result.type === 'client_error') {
+				error = result.error.message || 'Search failed';
+				searchResults = [];
+				totalResults = 0;
 			}
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'An unexpected error occurred';
+			searchResults = [];
+			totalResults = 0;
+		} finally {
+			searching = false;
+		}
+	}
 
 	function handleSearchSubmit(event: Event) {
 		event.preventDefault();
@@ -210,11 +202,6 @@
 		if (score >= 0.8) return 'text-green-600';
 		if (score >= 0.6) return 'text-yellow-600';
 		return 'text-gray-600';
-	}
-
-	function truncateText(text: string, maxLength: number = 200): string {
-		if (text.length <= maxLength) return text;
-		return text.substring(0, maxLength) + '...';
 	}
 </script>
 
