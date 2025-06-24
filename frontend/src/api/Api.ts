@@ -400,6 +400,9 @@ export class Api extends HttpClient {
 		/**
 		 * Upload a PDF rules document for a game
 		 */
+
+		// TODO: For some reason this function is not generated with a body parameter
+		// when the dropshot handler is defined with an `UntypedBody`
 		uploadRulesPdf: (
 			{ path, body }: { path: UploadRulesPdfPathParams; body?: File | Blob },
 			params: FetchParams = {}
