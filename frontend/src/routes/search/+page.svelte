@@ -1,14 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import {
-		api,
-		type Game,
-		type GameSummary,
-		type SearchResult,
-		type RulesSearchResponse
-	} from '$lib';
+	import { page } from '$app/state';
+	import { api, type GameSummary, type SearchResult } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Input, Label } from '$lib/components/ui';
@@ -26,6 +20,7 @@
 	let searchQuery = $state('');
 	let searchLimit = $state(5);
 	let totalResults = $state(0);
+	let hasSearched = $state(false);
 
 	// URL search params (read once on mount to avoid reactive loops)
 	let initialUrlParams: { gameId: string | null; query: string | null } = {
@@ -41,9 +36,15 @@
 		currentGame: null
 	});
 
+	// Reset hasSearched when search query changes
+	$effect(() => {
+		searchQuery;
+		hasSearched = false;
+	});
+
 	onMount(() => {
 		// Read URL params once on mount
-		const params = $page.url.searchParams;
+		const params = page.url.searchParams;
 		initialUrlParams.gameId = params.get('gameId');
 		initialUrlParams.query = params.get('q');
 
@@ -149,6 +150,7 @@
 
 		searching = true;
 		error = null;
+		hasSearched = true;
 
 		try {
 			const result = await api.methods.searchRules({
@@ -201,18 +203,13 @@
 		if (score >= 0.6) return 'text-yellow-600';
 		return 'text-gray-600';
 	}
-
-	function truncateText(text: string, maxLength: number = 200): string {
-		if (text.length <= maxLength) return text;
-		return text.substring(0, maxLength) + '...';
-	}
 </script>
 
 <svelte:head>
-	<title>Search Rules - Tabletop Atlas</title>
+	<title>Keyword Search - Tabletop Atlas</title>
 	<meta
 		name="description"
-		content="Search through your board game rules using AI-powered semantic search"
+		content="Search for keywords and concepts in your uploaded game rules."
 	/>
 </svelte:head>
 
@@ -220,10 +217,28 @@
 <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 	<!-- Header -->
 	<div class="mb-8">
-		<h1 class="text-3xl font-bold text-gray-900">Search Game Rules</h1>
+		<h1 class="text-3xl font-bold text-gray-900">Keyword Search</h1>
 		<p class="mt-2 text-gray-600">
-			Use AI-powered semantic search to find specific information in your uploaded game rules
+			Search for keywords and concepts in your uploaded game rules. For conversational Q&A, we're
+			building a chat feature!
 		</p>
+		<div class="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+			<div class="flex items-start">
+				<svg
+					class="mt-0.5 mr-3 h-5 w-5 text-blue-600"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					></path>
+				</svg>
+			</div>
+		</div>
 	</div>
 
 	<div class="grid grid-cols-1 gap-8 lg:grid-cols-4">
@@ -232,7 +247,7 @@
 			<Card>
 				<CardHeader>
 					<CardTitle>Select Game</CardTitle>
-					<CardDescription>Choose which game's rules to search</CardDescription>
+					<CardDescription>Choose which game's rules to search through</CardDescription>
 				</CardHeader>
 				<CardContent>
 					{#if loading}
@@ -373,12 +388,12 @@
 			<!-- Search Form -->
 			<Card>
 				<CardHeader>
-					<CardTitle>Search Rules</CardTitle>
+					<CardTitle>Keyword Search</CardTitle>
 					<CardDescription>
 						{#if selectedGame}
-							Search through the rules for {selectedGame.name}
+							Search for keywords and concepts in {selectedGame.name}
 						{:else}
-							Select a game to start searching its rules
+							Select a game to search for keywords in its rules
 						{/if}
 					</CardDescription>
 				</CardHeader>
@@ -389,12 +404,13 @@
 							<Input
 								id="searchQuery"
 								bind:value={searchQuery}
-								placeholder="e.g. How do I win the game? What happens during combat?"
+								placeholder="e.g. win conditions, combat, movement, setup"
 								disabled={!selectedGameId || !selectedGame?.hasRulesPdf || searching}
-								class="mt-1"
+								class="w-full"
 							/>
 							<p class="mt-1 text-xs text-gray-500">
-								Ask natural language questions or search for specific game concepts
+								Search for keywords, rule names, or game concepts. Try terms like "win condition",
+								"combat", "movement", or "setup"
 							</p>
 						</div>
 
@@ -418,6 +434,7 @@
 										!selectedGame?.hasRulesPdf ||
 										!searchQuery.trim() ||
 										searching}
+									class="w-full sm:w-auto"
 								>
 									{#if searching}
 										<svg class="mr-2 -ml-1 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -456,9 +473,9 @@
 			{#if searchResults.length > 0}
 				<Card>
 					<CardHeader>
-						<CardTitle>Search Results</CardTitle>
+						<CardTitle>Matching Rule Sections</CardTitle>
 						<CardDescription>
-							Found {totalResults} relevant passage{totalResults === 1 ? '' : 's'}
+							Found {totalResults} rule section{totalResults === 1 ? '' : 's'} containing your keywords
 							{#if searchQuery}for "{searchQuery}"{/if}
 						</CardDescription>
 					</CardHeader>
@@ -498,7 +515,7 @@
 						{/each}
 					</CardContent>
 				</Card>
-			{:else if searchQuery && selectedGameId && !searching && searchResults.length === 0}
+			{:else if hasSearched && searchQuery && selectedGameId && !searching && searchResults.length === 0}
 				<!-- No Results -->
 				<Card>
 					<CardContent class="p-8 text-center">
@@ -512,18 +529,34 @@
 								></path>
 							</svg>
 						</div>
-						<h3 class="mb-2 text-lg font-medium text-gray-900">No results found</h3>
+						<h3 class="mb-2 text-lg font-medium text-gray-900">No matching keywords found</h3>
 						<p class="mb-4 text-gray-600">
-							No relevant passages found for "{searchQuery}"{#if selectedGame}
+							No rule sections found containing "{searchQuery}"{#if selectedGame}
 								in {selectedGame.name}{/if}.
 						</p>
 						<div class="text-sm text-gray-500">
-							<p>Try:</p>
-							<ul class="mt-1 list-inside list-disc space-y-1">
-								<li>Using different keywords or phrases</li>
-								<li>Asking more general questions</li>
-								<li>Checking if the rules PDF was properly processed</li>
-							</ul>
+							<p class="mb-2">Try different keywords:</p>
+							<div class="mb-3 flex flex-wrap justify-center gap-2">
+								<span class="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800">victory</span
+								>
+								<span class="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800"
+									>combat</span
+								>
+								<span class="rounded-full bg-purple-100 px-2 py-1 text-xs text-purple-800"
+									>movement</span
+								>
+								<span class="rounded-full bg-orange-100 px-2 py-1 text-xs text-orange-800"
+									>setup</span
+								>
+								<span class="rounded-full bg-red-100 px-2 py-1 text-xs text-red-800">turn</span>
+								<span class="rounded-full bg-yellow-100 px-2 py-1 text-xs text-yellow-800"
+									>scoring</span
+								>
+							</div>
+							<p class="text-xs text-gray-400">
+								💡 For natural language questions like "How do I win?", we're building a chat
+								feature!
+							</p>
 						</div>
 					</CardContent>
 				</Card>
@@ -537,14 +570,31 @@
 									stroke-linecap="round"
 									stroke-linejoin="round"
 									stroke-width="2"
-									d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+									d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
 								></path>
 							</svg>
 						</div>
-						<h3 class="mb-2 text-lg font-medium text-gray-900">Ready to Search</h3>
-						<p class="text-gray-600">
-							Select a game from the sidebar to start searching through its rules.
+						<h3 class="mb-2 text-lg font-medium text-gray-900">Select a Game to Search</h3>
+						<p class="mb-4 text-gray-600">
+							Choose a game from the sidebar to start searching for keywords in its rules.
 						</p>
+						<div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-left">
+							<p class="text-sm font-medium text-gray-900">Example searches:</p>
+							<div class="mt-2 flex flex-wrap gap-2">
+								<span class="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800"
+									>victory conditions</span
+								>
+								<span class="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800"
+									>combat rules</span
+								>
+								<span class="rounded-full bg-purple-100 px-2 py-1 text-xs text-purple-800"
+									>movement</span
+								>
+								<span class="rounded-full bg-orange-100 px-2 py-1 text-xs text-orange-800"
+									>setup</span
+								>
+							</div>
+						</div>
 					</CardContent>
 				</Card>
 			{/if}
@@ -553,14 +603,14 @@
 
 	<!-- Tips Section -->
 	<div class="mt-12">
-		<h2 class="mb-4 text-xl font-semibold text-gray-900">Search Tips</h2>
+		<h2 class="mb-4 text-xl font-semibold text-gray-900">Current Features & Roadmap</h2>
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
 			<Card>
 				<CardContent class="p-6">
 					<div class="mb-3 flex items-center">
 						<div class="flex-shrink-0">
 							<svg
-								class="h-6 w-6 text-blue-600"
+								class="h-8 w-8 text-green-600"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -569,15 +619,15 @@
 									stroke-linecap="round"
 									stroke-linejoin="round"
 									stroke-width="2"
-									d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+									d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
 								></path>
 							</svg>
 						</div>
-						<h3 class="ml-3 text-lg font-medium text-gray-900">Ask Natural Questions</h3>
+						<h3 class="ml-3 text-lg font-medium text-gray-900">Keyword Search</h3>
 					</div>
 					<p class="text-sm text-gray-600">
-						Ask questions like "How do I win?" or "What happens during combat?" instead of just
-						searching for keywords.
+						<strong>Available now:</strong> Search for specific keywords and concepts in your uploaded
+						game rules. Perfect for finding rules about "win condition", "scoring", or "movement".
 					</p>
 				</CardContent>
 			</Card>
@@ -587,7 +637,34 @@
 					<div class="mb-3 flex items-center">
 						<div class="flex-shrink-0">
 							<svg
-								class="h-6 w-6 text-green-600"
+								class="h-8 w-8 text-blue-600"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+								></path>
+							</svg>
+						</div>
+						<h3 class="ml-3 text-lg font-medium text-gray-900">🚧 Chat Interface</h3>
+					</div>
+					<p class="text-sm text-gray-600">
+						<strong>Coming soon:</strong> Ask natural language questions like "How do I win?" and get
+						conversational answers with rule citations. Perfect for complex rule interactions.
+					</p>
+				</CardContent>
+			</Card>
+
+			<Card>
+				<CardContent class="p-6">
+					<div class="mb-3 flex items-center">
+						<div class="flex-shrink-0">
+							<svg
+								class="h-8 w-8 text-purple-600"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -600,38 +677,11 @@
 								></path>
 							</svg>
 						</div>
-						<h3 class="ml-3 text-lg font-medium text-gray-900">Semantic Search</h3>
+						<h3 class="ml-3 text-lg font-medium text-gray-900">Smart Assistance</h3>
 					</div>
 					<p class="text-sm text-gray-600">
-						Our AI understands context and meaning, so you can find relevant information even if
-						your exact words don't appear in the rules.
-					</p>
-				</CardContent>
-			</Card>
-
-			<Card>
-				<CardContent class="p-6">
-					<div class="mb-3 flex items-center">
-						<div class="flex-shrink-0">
-							<svg
-								class="h-6 w-6 text-purple-600"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-								></path>
-							</svg>
-						</div>
-						<h3 class="ml-3 text-lg font-medium text-gray-900">Similarity Scores</h3>
-					</div>
-					<p class="text-sm text-gray-600">
-						Results are ranked by relevance. Higher similarity scores mean the passage is more
-						likely to answer your question.
+						<strong>Future:</strong> AI that understands game context, remembers house rules, and can
+						explain complex rule interactions across multiple games.
 					</p>
 				</CardContent>
 			</Card>
