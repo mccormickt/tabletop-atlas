@@ -112,6 +112,19 @@ pub async fn serve_upload_view(
     serve_spa_fallback().await
 }
 
+/// Serve SPA for chat route
+#[endpoint {
+    method = GET,
+    path = "/chat/{path:.*}",
+    unpublished = true,
+}]
+pub async fn serve_chat_view(
+    _rqctx: RequestContext<AppState>,
+    _path_param: DropPath<AssetPathParam>,
+) -> Result<Response<Body>, HttpError> {
+    serve_spa_fallback().await
+}
+
 async fn serve_static_file(path: &str) -> Result<Response<Body>, HttpError> {
     match FRONTEND_ASSETS.get_file(path) {
         Some(file) => serve_static_file_content(path, file.contents()).await,

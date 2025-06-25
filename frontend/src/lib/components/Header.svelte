@@ -37,8 +37,7 @@
 	}
 
 	function navigateToChat() {
-		// TODO: Implement chat route
-		console.log('Navigate to chat');
+		goto('/chat');
 	}
 </script>
 
@@ -90,12 +89,14 @@
 					>
 						Search
 					</a>
-					<button
-						onclick={navigateToChat}
-						class="text-muted-foreground hover:text-foreground transition-colors"
+					<a
+						href="/chat"
+						class="transition-colors {isActivePath('/chat')
+							? 'text-foreground font-medium'
+							: 'text-muted-foreground hover:text-foreground'}"
 					>
 						Chat
-					</button>
+					</a>
 				</div>
 
 				<!-- Search Button/Controls -->

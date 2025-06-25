@@ -22,6 +22,7 @@ export type {
 	CreateHouseRuleRequest,
 	UpdateHouseRuleRequest,
 	ChatSession,
+	ChatSessionSummary,
 	ChatMessage,
 	ChatHistory,
 	ChatRequest,

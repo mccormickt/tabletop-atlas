@@ -12,6 +12,7 @@ use sqlite_vec::sqlite3_vec_init;
 mod db;
 mod embeddings;
 mod handlers;
+mod llm;
 mod models;
 mod pdf;
 
@@ -19,10 +20,12 @@ use db::Database;
 use embeddings::Embedder;
 use handlers::static_files;
 use handlers::*;
+use llm::LLMClient;
 
 pub struct AppState {
     db: Database,
     embeddings: Embedder,
+    llm: LLMClient,
 }
 
 impl AppState {
@@ -53,6 +56,7 @@ impl AppState {
         Ok(Self {
             db: Database::new(db),
             embeddings: Embedder::new(),
+            llm: LLMClient::new(),
         })
     }
 
@@ -62,6 +66,10 @@ impl AppState {
 
     pub fn embedder(&self) -> &Embedder {
         &self.embeddings
+    }
+
+    pub fn llm(&self) -> &LLMClient {
+        &self.llm
     }
 }
 
@@ -160,6 +168,7 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(static_files::serve_games_views)?; // /games/{path:.*}
     api.register(static_files::serve_search_view)?; // /search
     api.register(static_files::serve_upload_view)?; // /upload
+    api.register(static_files::serve_chat_view)?; // /chat
     api.register(static_files::serve_index)?; // /
 
     Ok(api)

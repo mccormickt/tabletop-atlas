@@ -1,7 +1,7 @@
+use super::{ChatMessageId, ChatSessionId, EmbeddingId, GameId};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use super::{GameId, ChatSessionId, ChatMessageId, EmbeddingId};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ChatSession {
@@ -40,7 +40,7 @@ impl MessageRole {
             MessageRole::System => "system",
         }
     }
-    
+
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "user" => Some(MessageRole::User),
@@ -95,7 +95,11 @@ pub struct ChatHistory {
 }
 
 impl ChatSession {
-    pub fn to_summary(&self, message_count: i32, last_message_at: Option<DateTime<Utc>>) -> ChatSessionSummary {
+    pub fn to_summary(
+        &self,
+        message_count: i32,
+        last_message_at: Option<DateTime<Utc>>,
+    ) -> ChatSessionSummary {
         ChatSessionSummary {
             id: self.id,
             game_id: self.game_id,
