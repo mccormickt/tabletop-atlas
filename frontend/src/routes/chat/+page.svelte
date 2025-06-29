@@ -19,6 +19,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Badge } from '$lib/components/ui/badge';
 	import { LoadingSpinner, EmptyState } from '$lib/components/ui';
+	import { page } from '$app/state';
 
 	// State
 	let games = $state<GameSummary[]>([]);
@@ -163,8 +164,6 @@
 
 			if (result.type === 'success') {
 				currentSession = result.data;
-				console.log('Debug - Chat session data:', currentSession);
-				console.log('Debug - Messages:', currentSession.messages);
 				currentSession.messages.forEach((msg, idx) => {
 					console.log(`Debug - Message ${idx}:`, {
 						id: msg.id,

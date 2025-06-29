@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::{
     AppState,
-    db::{Database, house_rules},
+    db::house_rules,
     handlers::{
         HttpCreated, HttpDeleted, HttpError, HttpOk, bad_request_error, created_response,
         deleted_response, internal_error, not_found_error, success_response,

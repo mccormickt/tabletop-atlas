@@ -117,7 +117,7 @@ impl LLMClient {
                         content: Some(message.content),
                         name: None,
                         tool_calls: None,
-                        function_call: None,
+                        ..Default::default()
                     })
                 }
                 "system" => {

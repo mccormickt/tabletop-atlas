@@ -7,9 +7,10 @@ use crate::{
     AppState,
     db::chat,
     handlers::{HttpCreated, HttpError, HttpOk},
+    llm::ChatMessage,
     models::{
         ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionId, ChatSessionSummary,
-        ContextSource, CreateChatSessionRequest, GameId, PaginatedResponse,
+        ContextSource, CreateChatSessionRequest, GameId, MessageRole, PaginatedResponse,
         SimilaritySearchRequest,
     },
 };
@@ -250,8 +251,8 @@ pub async fn chat_with_rules(
     let similarity_request = SimilaritySearchRequest {
         game_id,
         query_embedding,
-        similarity_threshold: 0.6, // Reasonable threshold for relevance
-        limit: 5,                  // Get top 5 most relevant chunks
+        similarity_threshold: 0.3, // Reasonable threshold for relevance
+        limit: 5,                  // Get top 10 most relevant chunks
     };
 
     let search_results = crate::db::embeddings::similarity_search(&db, similarity_request)
@@ -284,14 +285,18 @@ pub async fn chat_with_rules(
     };
 
     // Get recent message history for better context
-    let _recent_messages = session_history
+    let recent_messages = session_history
         .messages
         .iter()
         .rev()
         .take(6) // Last 6 messages (3 exchanges)
         .rev()
-        .map(|msg| crate::llm::ChatMessage::from(msg))
-        .collect::<Vec<_>>();
+        .map(|msg| {
+            let chat_msg = crate::llm::ChatMessage::from(msg);
+            format!("{}: {}", chat_msg.role, chat_msg.content)
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
 
     // 6. Send to LLM API with context
     let system_prompt = format!(
@@ -300,19 +305,23 @@ pub async fn chat_with_rules(
 Game Rules Context:
 {}
 
+Conversation History:
+{}
+
 Instructions:
 - Answer based on the provided rules context
 - Be concise but thorough
 - If rules are unclear or missing, acknowledge this
 - Use examples when helpful
 - Focus on practical gameplay guidance",
-        context_text
+        context_text,
+        recent_messages,
     );
 
     let assistant_response = app_state
         .llm()
         .chat_completion(
-            vec![crate::llm::ChatMessage {
+            vec![ChatMessage {
                 role: "user".to_string(),
                 content: chat_request.message.clone(),
             }],
@@ -331,7 +340,7 @@ Instructions:
     let assistant_message = chat::add_message_to_session(
         &db,
         chat_request.session_id,
-        crate::models::MessageRole::Assistant,
+        MessageRole::Assistant,
         assistant_response,
         Some(context_chunk_ids),
     )
