@@ -31,8 +31,7 @@
 	}
 
 	function navigateToChat() {
-		// TODO: Implement chat route
-		console.log('Navigate to chat');
+		goto('/chat');
 	}
 
 	async function countGames() {

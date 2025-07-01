@@ -33,6 +33,14 @@
 		}
 	});
 
+	function navigateToChat() {
+		if (gameId) {
+			goto(`/chat?game_id=${gameId}`);
+		} else {
+			goto(`/chat`);
+		}
+	}
+
 	async function loadGame() {
 		loading = true;
 		error = null;
@@ -429,7 +437,9 @@
 						</CardHeader>
 						<CardContent class="space-y-3">
 							<Button class="w-full" variant="outline">View House Rules</Button>
-							<Button class="w-full" variant="outline">Start Chat Session</Button>
+							<Button class="w-full" variant="outline" onclick={navigateToChat}>
+								Start Chat Session
+							</Button>
 							{#if !rulesInfo?.hasRulesPdf}
 								<Button class="w-full" onclick={toggleUpload}>Upload Rules PDF</Button>
 							{:else}
