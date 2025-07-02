@@ -1,8 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { api, type Game, type GameSummary, type SearchResult } from '$lib';
+	import { api, type GameSummary, type SearchResult } from '$lib';
 	import { Button } from '$lib/components/ui';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Label } from '$lib/components/ui';
 	import { Badge } from '$lib/components/ui';
 	import {
@@ -11,17 +9,22 @@
 		EmptyState,
 		LoadingSpinner
 	} from '$lib/components/ui';
-	import { createEventDispatcher } from 'svelte';
 
 	// Props
 	let {
 		isOpen = $bindable(false),
 		initialGameId = null,
-		initialQuery = ''
+		initialQuery = '',
+		onClose,
+		onResultSelect,
+		onGameSelect
 	}: {
 		isOpen?: boolean;
 		initialGameId?: number | null;
 		initialQuery?: string;
+		onClose?: () => void;
+		onResultSelect?: (data: { result: SearchResult; game: GameSummary }) => void;
+		onGameSelect?: (game: GameSummary) => void;
 	} = $props();
 
 	// State
@@ -37,13 +40,6 @@
 	let hasSearched = $state(false);
 	let modalRef: HTMLDivElement | null = $state(null);
 	let searchInputRef: HTMLInputElement | null = $state(null);
-
-	// Event dispatcher
-	const dispatch = createEventDispatcher<{
-		close: void;
-		resultSelect: { result: SearchResult; game: GameSummary };
-		gameSelect: GameSummary;
-	}>();
 
 	// Load games when modal opens
 	$effect(() => {
@@ -124,7 +120,7 @@
 		searchResults = [];
 		totalResults = 0;
 		hasSearched = false;
-		dispatch('gameSelect', game);
+		onGameSelect?.(game);
 	}
 
 	async function performSearch() {
@@ -173,29 +169,14 @@
 
 	function handleResultClick(result: SearchResult) {
 		if (selectedGame) {
-			dispatch('resultSelect', { result, game: selectedGame });
+			onResultSelect?.({ result, game: selectedGame });
 		}
 		closeModal();
 	}
 
 	function closeModal() {
 		isOpen = false;
-		dispatch('close');
-	}
-
-	function formatSimilarityScore(score: number): string {
-		return (score * 100).toFixed(1) + '%';
-	}
-
-	function getSimilarityColor(score: number): string {
-		if (score >= 0.8) return 'text-green-600';
-		if (score >= 0.6) return 'text-yellow-600';
-		return 'text-gray-600';
-	}
-
-	function truncateText(text: string, maxLength: number = 180): string {
-		if (text.length <= maxLength) return text;
-		return text.substring(0, maxLength) + '...';
+		onClose?.();
 	}
 </script>
 

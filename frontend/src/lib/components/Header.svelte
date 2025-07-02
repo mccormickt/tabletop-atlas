@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import type { Game } from '$lib';
 	import HeaderSearch from './HeaderSearch.svelte';
 
@@ -14,7 +14,7 @@
 	} = $props();
 
 	// Derive current path for active navigation
-	let currentPath = $derived($page.url.pathname);
+	let currentPath = $derived(page.url.pathname);
 
 	function isActivePath(path: string): boolean {
 		return currentPath === path || currentPath.startsWith(path + '/');
@@ -128,12 +128,5 @@
 				</div>
 			</nav>
 		</div>
-
-		<!-- Mobile Search (when on game page) -->
-		{#if showSearch && currentGame}
-			<div class="pb-4 lg:hidden">
-				<HeaderSearch {currentGame} showSearchButton={false} />
-			</div>
-		{/if}
 	</div>
 </header>
