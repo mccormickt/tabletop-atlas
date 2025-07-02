@@ -1,7 +1,7 @@
-import Root from "./search-input.svelte";
+import Root from './search-input.svelte';
 
 export {
 	Root,
 	//
-	Root as SearchInput,
+	Root as SearchInput
 };

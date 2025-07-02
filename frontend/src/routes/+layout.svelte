@@ -2,7 +2,6 @@
 	import '../app.css';
 	import Header from '$lib/components/Header.svelte';
 	import { createHeaderStore, setHeaderContext } from '$lib/stores/header';
-	import { onMount } from 'svelte';
 	import type { Game } from '$lib';
 
 	let { children } = $props();

@@ -23,16 +23,16 @@ export function createHeaderStore(initialConfig: HeaderConfig = {}) {
 		set: store.set,
 		update: store.update,
 		setCurrentGame: (game: Game | null) => {
-			store.update(config => ({ ...config, currentGame: game }));
+			store.update((config) => ({ ...config, currentGame: game }));
 		},
 		setShowSearch: (show: boolean) => {
-			store.update(config => ({ ...config, showSearch: show }));
+			store.update((config) => ({ ...config, showSearch: show }));
 		},
 		setTitle: (title: string | undefined) => {
-			store.update(config => ({ ...config, title }));
+			store.update((config) => ({ ...config, title }));
 		},
 		configure: (config: Partial<HeaderConfig>) => {
-			store.update(current => ({ ...current, ...config }));
+			store.update((current) => ({ ...current, ...config }));
 		}
 	};
 }
@@ -47,7 +47,9 @@ export function setHeaderContext(store: HeaderStore) {
 export function getHeaderContext(): HeaderStore {
 	const store = getContext<HeaderStore>(HEADER_CONTEXT_KEY);
 	if (!store) {
-		throw new Error('Header context not found. Make sure to call setHeaderContext in a parent component.');
+		throw new Error(
+			'Header context not found. Make sure to call setHeaderContext in a parent component.'
+		);
 	}
 	return store;
 }
