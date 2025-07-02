@@ -75,11 +75,8 @@
 		// You can dispatch this up to parent or handle navigation here
 	}
 
-	function handleModalResultSelect(
-		event: CustomEvent<{ result: SearchResult; game: GameSummary }>
-	) {
-		const { result, game } = event.detail;
-		console.log('Modal search result selected:', result, 'from game:', game);
+	function handleModalResultSelect(event: { result: SearchResult; game: GameSummary }) {
+		console.log('Modal search result selected:', event.result, 'from game:', event.game);
 		// Handle navigation to result or display in context
 	}
 
@@ -247,9 +244,9 @@
 <!-- Global Search Modal -->
 <SearchModal
 	bind:isOpen={isModalOpen}
-	on:close={closeSearchModal}
-	on:resultSelect={handleModalResultSelect}
-	on:gameSelect={(e) => searchUtils.setCurrentGame(e.detail as unknown as Game)}
+	onClose={closeSearchModal}
+	onResultSelect={handleModalResultSelect}
+	onGameSelect={(e) => searchUtils.setCurrentGame(e as unknown as Game)}
 />
 
 <style>

@@ -5,11 +5,12 @@ use serde::{Deserialize, Serialize};
 use super::{created_response, internal_error, not_found_error, success_response};
 use crate::{
     AppState,
-    db::{Database, chat},
+    db::chat,
     handlers::{HttpCreated, HttpError, HttpOk},
+    llm::ChatMessage,
     models::{
         ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionId, ChatSessionSummary,
-        CreateChatSessionRequest, GameId, PaginatedResponse, PaginationParams,
+        ContextSource, CreateChatSessionRequest, GameId, MessageRole, PaginatedResponse,
         SimilaritySearchRequest,
     },
 };
@@ -21,14 +22,14 @@ pub struct ChatSessionPathParam {
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ChatSessionsByGameQuery {
-    pub game_id: GameId,
-    #[serde(flatten)]
-    pub pagination: PaginationParams,
+    pub game_id: String,
+    pub page: u32,
+    pub limit: u32,
 }
 
 #[derive(Deserialize, JsonSchema)]
 pub struct RulesSearchQuery {
-    pub game_id: GameId,
+    pub game_id: String,
     pub query: String,
     pub limit: Option<usize>,
 }
@@ -63,14 +64,13 @@ pub async fn list_chat_sessions(
     let query = query.into_inner();
     let db = app_state.db();
 
-    match chat::list_chat_sessions(
-        &db,
-        query.game_id,
-        query.pagination.page,
-        query.pagination.limit,
-    )
-    .await
-    {
+    // Parse game_id from string
+    let game_id: GameId = query
+        .game_id
+        .parse()
+        .map_err(|_| super::bad_request_error("Invalid game_id parameter".to_string()))?;
+
+    match chat::list_chat_sessions(&db, game_id, query.page, query.limit).await {
         Ok(result) => success_response(result),
         Err(e) => {
             tracing::error!("Failed to list chat sessions: {}", e);
@@ -141,6 +141,12 @@ pub async fn search_rules(
     let limit = search_query.limit.unwrap_or(5);
     let db = app_state.db();
 
+    // Parse game_id from string
+    let game_id: GameId = search_query
+        .game_id
+        .parse()
+        .map_err(|_| super::bad_request_error("Invalid game_id parameter".to_string()))?;
+
     // Preprocess and enhance the search query for better embedding matching
     let enhanced_query = enhance_search_query(&search_query.query);
 
@@ -153,7 +159,7 @@ pub async fn search_rules(
 
     // Search using database layer directly
     let similarity_request = SimilaritySearchRequest {
-        game_id: search_query.game_id,
+        game_id,
         query_embedding,
         similarity_threshold: 0.0, // Include all results, let sorting handle ranking
         limit: limit as u32,
@@ -175,7 +181,7 @@ pub async fn search_rules(
         .collect();
 
     let response = RulesSearchResponse {
-        game_id: search_query.game_id,
+        game_id,
         query: search_query.query,
         total_results: results.len(),
         results,
@@ -193,21 +199,164 @@ pub async fn chat_with_rules(
     rqctx: RequestContext<AppState>,
     body: TypedBody<ChatRequest>,
 ) -> Result<HttpOk<ChatResponse>, HttpError> {
-    let _app_state = rqctx.context();
-    let _chat_request = body.into_inner();
+    let app_state = rqctx.context();
+    let chat_request = body.into_inner();
+    let db = app_state.db();
 
-    // TODO: Implement chat functionality
-    // 1. Save user message to database
-    // 2. Generate embedding for user's question
-    // 3. Search for relevant rule chunks using similarity search
-    // 4. Prepare context with relevant rules and house rules
-    // 5. Send to LLM API with context
-    // 6. Save assistant response to database
-    // 7. Return response with context sources
+    // 1. Get the chat session to verify it exists and get the game_id
+    let session_history = chat::get_chat_history(&db, chat_request.session_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                "Failed to get chat session {}: {}",
+                chat_request.session_id,
+                e
+            );
+            internal_error("Failed to access chat session".to_string())
+        })?
+        .ok_or_else(|| {
+            not_found_error(format!(
+                "Chat session with id {} not found",
+                chat_request.session_id
+            ))
+        })?;
 
-    Err(internal_error(
-        "Chat functionality not yet implemented".to_string(),
-    ))
+    let game_id = session_history.session.game_id;
+
+    // 2. Save user message to database
+    let _user_message = chat::add_message_to_session(
+        &db,
+        chat_request.session_id,
+        crate::models::MessageRole::User,
+        chat_request.message.clone(),
+        None,
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to save user message: {}", e);
+        internal_error("Failed to save message".to_string())
+    })?;
+
+    // 3. Generate embedding for user's question
+    let query_embedding = app_state
+        .embedder()
+        .generate_embedding(&chat_request.message)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to generate query embedding: {}", e);
+            internal_error("Failed to process question".to_string())
+        })?;
+
+    // 4. Search for relevant rule chunks using similarity search
+    let similarity_request = SimilaritySearchRequest {
+        game_id,
+        query_embedding,
+        similarity_threshold: 0.3, // Reasonable threshold for relevance
+        limit: 5,                  // Get top 10 most relevant chunks
+    };
+
+    let search_results = crate::db::embeddings::similarity_search(&db, similarity_request)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to search embeddings: {}", e);
+            internal_error("Failed to search rules".to_string())
+        })?;
+
+    // 5. Prepare context with relevant rules
+    let context_sources: Vec<ContextSource> = search_results
+        .iter()
+        .map(|result| ContextSource {
+            embedding_id: result.id,
+            chunk_text: result.chunk_text.clone(),
+            source_type: result.source_type.as_str().to_string(),
+            similarity_score: result.similarity_score,
+            metadata: result.metadata.clone(),
+        })
+        .collect();
+
+    let context_text = if search_results.is_empty() {
+        "No specific rules found for this question.".to_string()
+    } else {
+        search_results
+            .iter()
+            .map(|result| format!("Rule: {}", result.chunk_text))
+            .collect::<Vec<_>>()
+            .join("\n\n")
+    };
+
+    // Get recent message history for better context
+    let recent_messages = session_history
+        .messages
+        .iter()
+        .rev()
+        .take(6) // Last 6 messages (3 exchanges)
+        .rev()
+        .map(|msg| {
+            let chat_msg = crate::llm::ChatMessage::from(msg);
+            format!("{}: {}", chat_msg.role, chat_msg.content)
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // 6. Send to LLM API with context
+    let system_prompt = format!(
+        "You are a helpful assistant that explains board game rules. Use the following game rules to answer questions accurately and clearly. If the rules don't contain enough information to answer the question, say so honestly.
+
+Game Rules Context:
+{}
+
+Conversation History:
+{}
+
+Instructions:
+- Answer based on the provided rules context
+- Be concise but thorough
+- If rules are unclear or missing, acknowledge this
+- Use examples when helpful
+- Focus on practical gameplay guidance",
+        context_text,
+        recent_messages,
+    );
+
+    let assistant_response = app_state
+        .llm()
+        .chat_completion(
+            vec![ChatMessage {
+                role: "user".to_string(),
+                content: chat_request.message.clone(),
+            }],
+            Some(system_prompt),
+            Some(512), // Reasonable response length
+            Some(0.7), // Balanced creativity/consistency
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to generate LLM response: {}", e);
+            internal_error("Failed to generate response".to_string())
+        })?;
+
+    // 7. Save assistant response to database
+    let context_chunk_ids: Vec<i64> = search_results.iter().map(|r| r.id).collect();
+    let assistant_message = chat::add_message_to_session(
+        &db,
+        chat_request.session_id,
+        MessageRole::Assistant,
+        assistant_response,
+        Some(context_chunk_ids),
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to save assistant message: {}", e);
+        internal_error("Failed to save response".to_string())
+    })?;
+
+    // 8. Return response with context sources
+    let chat_response = ChatResponse {
+        message: assistant_message,
+        context_sources,
+    };
+
+    success_response(chat_response)
 }
 
 /// Enhance search results by grouping related chunks and providing better context

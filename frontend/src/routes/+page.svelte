@@ -31,8 +31,7 @@
 	}
 
 	function navigateToChat() {
-		// TODO: Implement chat route
-		console.log('Navigate to chat');
+		goto('/chat');
 	}
 
 	async function countGames() {
@@ -206,9 +205,11 @@
 				© 2024 Tabletop Atlas. Made with ♥ for board game enthusiasts.
 			</div>
 			<div class="text-muted-foreground flex space-x-6 text-sm">
-				<button class="hover:text-foreground transition-colors">About</button>
-				<button class="hover:text-foreground transition-colors">Help</button>
-				<button class="hover:text-foreground transition-colors">GitHub</button>
+				<!-- svelte-ignore component_name_lowercase -->
+				<a
+					href="https://github.com/mccormickt/tabletop-atlas"
+					class="hover:text-foreground transition-colors">GitHub</a
+				>
 			</div>
 		</div>
 	</div>

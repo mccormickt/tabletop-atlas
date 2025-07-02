@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { api, type SearchResult, type RulesSearchResponse } from '$lib';
+	import { api, type SearchResult } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Input, Label } from '$lib/components/ui';
 	import { Badge } from '$lib/components/ui';
-	import { createEventDispatcher } from 'svelte';
 
 	// Props
 	let {
@@ -13,7 +12,10 @@
 		placeholder = 'Search game rules...',
 		maxResults = 5,
 		showResultsInline = true,
-		compact = false
+		compact = false,
+		onSearch = () => {},
+		onError = () => {},
+		onResultClick = () => {}
 	}: {
 		gameId: number;
 		gameName?: string;
@@ -21,6 +23,9 @@
 		maxResults?: number;
 		showResultsInline?: boolean;
 		compact?: boolean;
+		onSearch?: (data: { query: string; results: SearchResult[]; totalResults: number }) => void;
+		onError?: (error: string) => void;
+		onResultClick?: (result: SearchResult) => void;
 	} = $props();
 
 	// State
@@ -29,13 +34,6 @@
 	let searchResults = $state<SearchResult[]>([]);
 	let totalResults = $state(0);
 	let error = $state<string | null>(null);
-
-	// Event dispatcher
-	const dispatch = createEventDispatcher<{
-		search: { query: string; results: SearchResult[]; totalResults: number };
-		error: string;
-		resultClick: SearchResult;
-	}>();
 
 	async function performSearch() {
 		if (!gameId || !searchQuery.trim()) {
@@ -57,7 +55,7 @@
 			if (result.type === 'success') {
 				searchResults = result.data.results;
 				totalResults = result.data.totalResults;
-				dispatch('search', {
+				onSearch({
 					query: searchQuery.trim(),
 					results: searchResults,
 					totalResults
@@ -66,18 +64,18 @@
 				error = result.data.message || 'Search failed';
 				searchResults = [];
 				totalResults = 0;
-				dispatch('error', error);
+				onError(error);
 			} else if (result.type === 'client_error') {
 				error = result.error.message || 'Search failed';
 				searchResults = [];
 				totalResults = 0;
-				dispatch('error', error);
+				onError(error);
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
 			searchResults = [];
 			totalResults = 0;
-			dispatch('error', error);
+			onError(error);
 		} finally {
 			searching = false;
 		}
@@ -89,7 +87,7 @@
 	}
 
 	function handleResultClick(result: SearchResult) {
-		dispatch('resultClick', result);
+		onResultClick(result);
 	}
 
 	function formatSimilarityScore(score: number): string {
@@ -146,7 +144,7 @@
 						class={compact ? 'text-sm' : 'mt-1'}
 					/>
 					{#if !compact}
-						<p class="text-xs text-gray-500 mt-1">
+						<p class="mt-1 text-xs text-gray-500">
 							Ask questions like "How do I win?" or "What happens during combat?"
 						</p>
 					{/if}
@@ -160,7 +158,7 @@
 						class="flex items-center"
 					>
 						{#if searching}
-							<svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+							<svg class="mr-2 -ml-1 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
 								<circle
 									class="opacity-25"
 									cx="12"
@@ -219,7 +217,7 @@
 				{#each searchResults as result, index (result.chunkId)}
 					<button
 						onclick={() => handleResultClick(result)}
-						class="w-full text-left border border-gray-200 rounded-lg p-4 space-y-3 hover:bg-gray-50 transition-colors"
+						class="w-full space-y-3 rounded-lg border border-gray-200 p-4 text-left transition-colors hover:bg-gray-50"
 					>
 						<div class="flex items-start justify-between">
 							<div class="flex items-center space-x-2">
@@ -241,7 +239,7 @@
 						</div>
 
 						<div class="prose prose-sm max-w-none">
-							<p class="text-gray-900 leading-relaxed text-sm">
+							<p class="text-sm leading-relaxed text-gray-900">
 								{compact ? truncateText(result.chunkText, 100) : result.chunkText}
 							</p>
 						</div>
@@ -260,7 +258,7 @@
 		<!-- No Results -->
 		<Card class="mt-6">
 			<CardContent class="p-6 text-center">
-				<div class="text-gray-400 mb-4">
+				<div class="mb-4 text-gray-400">
 					<svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
@@ -270,13 +268,14 @@
 						></path>
 					</svg>
 				</div>
-				<h3 class="text-lg font-medium text-gray-900 mb-2">No results found</h3>
-				<p class="text-gray-600 mb-4">
-					No relevant passages found for "{searchQuery}"{#if gameName} in {gameName}{/if}.
+				<h3 class="mb-2 text-lg font-medium text-gray-900">No results found</h3>
+				<p class="mb-4 text-gray-600">
+					No relevant passages found for "{searchQuery}"{#if gameName}
+						in {gameName}{/if}.
 				</p>
 				<div class="text-sm text-gray-500">
 					<p>Try:</p>
-					<ul class="mt-1 list-disc list-inside space-y-1">
+					<ul class="mt-1 list-inside list-disc space-y-1">
 						<li>Using different keywords or phrases</li>
 						<li>Asking more general questions</li>
 						<li>Checking if the rules PDF was properly processed</li>
