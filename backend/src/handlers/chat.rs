@@ -251,8 +251,8 @@ pub async fn chat_with_rules(
     let similarity_request = SimilaritySearchRequest {
         game_id,
         query_embedding,
-        similarity_threshold: 0.3, // Reasonable threshold for relevance
-        limit: 5,                  // Get top 10 most relevant chunks
+        similarity_threshold: 0.0,
+        limit: 10, // Get top 10 most relevant chunks
     };
 
     let search_results = crate::db::embeddings::similarity_search(&db, similarity_request)

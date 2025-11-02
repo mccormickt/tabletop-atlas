@@ -1,7 +1,7 @@
+use super::{GameId, HouseRuleId};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use super::{GameId, HouseRuleId};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct HouseRule {

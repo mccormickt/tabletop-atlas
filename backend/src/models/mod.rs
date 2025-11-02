@@ -19,8 +19,6 @@ pub type EmbeddingId = i64;
 pub type ChatSessionId = i64;
 pub type ChatMessageId = i64;
 
-
-
 // Pagination parameters
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PaginationParams {

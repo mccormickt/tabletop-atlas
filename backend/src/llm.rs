@@ -10,7 +10,8 @@ use async_openai::{
 };
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_MODEL: &str = "mistral-small3.2:24b";
+//const DEFAULT_MODEL: &str = "mistral-small3.2:24b";
+const DEFAULT_MODEL: &str = "gpt-oss:latest";
 
 /// Service for generating chat completions using OpenAI-compatible APIs (like Ollama)
 pub struct LLMClient {
