@@ -254,6 +254,132 @@ pub async fn similarity_search(
     })
 }
 
+/// Similarity search with optional house rule filtering
+pub async fn similarity_search_filtered(
+    db: &Database,
+    request: SimilaritySearchRequest,
+    include_house_rules: bool,
+) -> SqliteResult<Vec<EmbeddingSearchResult>> {
+    db.with_connection(|conn| {
+        // Convert query embedding to JSON for sqlite-vec KNN search
+        let query_json = serde_json::to_string(&request.query_embedding)
+            .map_err(|_| rusqlite::Error::ToSqlConversionFailure(Box::new(std::fmt::Error)))?;
+
+        // Query 1: Get vector search results from sqlite-vec (no JOINs, no additional filtering)
+        let search_limit = std::cmp::max(request.limit * 3, 50); // Get more to allow for filtering
+        let mut vec_stmt = conn.prepare(
+            r#"
+            SELECT rowid, distance
+            FROM vec_embeddings
+            WHERE embedding_vector MATCH ?1
+            ORDER BY distance
+            LIMIT ?2
+            "#,
+        )?;
+
+        let vec_results: Vec<(i64, f32)> = vec_stmt
+            .query_map(params![query_json, search_limit], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if vec_results.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Build placeholders for IN clause
+        let placeholders: String = vec_results
+            .iter()
+            .map(|_| "?")
+            .collect::<Vec<_>>()
+            .join(",");
+
+        // Query 2: Get metadata for the vector results, filtered by game_id and optionally by source_type
+        let source_filter = if include_house_rules {
+            "" // Include all source types
+        } else {
+            " AND source_type = 'rules_pdf'" // Exclude house rules
+        };
+
+        let metadata_query = format!(
+            r#"
+            SELECT id, chunk_text, source_type, source_id, metadata
+            FROM embeddings
+            WHERE id IN ({}) AND game_id = ?{}
+            ORDER BY
+                CASE id {} END
+            "#,
+            placeholders,
+            source_filter,
+            vec_results
+                .iter()
+                .enumerate()
+                .map(|(i, (rowid, _))| format!("WHEN {} THEN {}", rowid, i))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![];
+        for (rowid, _) in &vec_results {
+            params.push(Box::new(*rowid));
+        }
+        params.push(Box::new(request.game_id));
+
+        let mut meta_stmt = conn.prepare(&metadata_query)?;
+        let metadata_results: Vec<(i64, String, String, Option<i64>, Option<String>)> = meta_stmt
+            .query_map(
+                params
+                    .iter()
+                    .map(|p| p.as_ref())
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
+            )?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Combine results, maintaining distance order and applying similarity threshold
+        let mut results = Vec::new();
+        for (rowid, distance) in vec_results {
+            if let Some((id, chunk_text, source_type_str, source_id, metadata)) = metadata_results
+                .iter()
+                .find(|(meta_id, _, _, _, _)| *meta_id == rowid)
+            {
+                let similarity_score = 1.0 - distance as f64;
+
+                // Apply similarity threshold
+                if similarity_score >= request.similarity_threshold as f64 {
+                    let source_type = EmbeddingSourceType::from_str(&source_type_str)
+                        .unwrap_or(EmbeddingSourceType::RulesPdf);
+
+                    results.push(EmbeddingSearchResult {
+                        id: *id,
+                        chunk_text: chunk_text.clone(),
+                        similarity_score: similarity_score as f32,
+                        source_type,
+                        source_id: *source_id,
+                        metadata: metadata.clone(),
+                    });
+
+                    // Stop when we have enough results
+                    if results.len() >= request.limit as usize {
+                        break;
+                    }
+                }
+            }
+        }
+
+        Ok(results)
+    })
+}
+
 pub async fn delete_embeddings_for_game(
     db: &Database,
     game_id: GameId,

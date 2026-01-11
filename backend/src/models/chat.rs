@@ -8,6 +8,7 @@ pub struct ChatSession {
     pub id: ChatSessionId,
     pub game_id: GameId,
     pub title: Option<String>,
+    pub include_house_rules: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -51,10 +52,22 @@ impl MessageRole {
     }
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct CreateChatSessionRequest {
     pub game_id: GameId,
     pub title: Option<String>,
+    #[serde(default = "default_true")]
+    pub include_house_rules: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct UpdateChatSessionRequest {
+    pub title: Option<String>,
+    pub include_house_rules: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -83,6 +96,7 @@ pub struct ChatSessionSummary {
     pub id: ChatSessionId,
     pub game_id: GameId,
     pub title: Option<String>,
+    pub include_house_rules: bool,
     pub message_count: i32,
     pub last_message_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -104,6 +118,7 @@ impl ChatSession {
             id: self.id,
             game_id: self.game_id,
             title: self.title.clone(),
+            include_house_rules: self.include_house_rules,
             message_count,
             last_message_at,
             created_at: self.created_at,

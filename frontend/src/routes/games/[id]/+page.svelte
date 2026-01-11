@@ -7,8 +7,12 @@
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Badge } from '$lib/components/ui';
 	import PDFUpload from '$lib/components/PDFUpload.svelte';
+	import HouseRulesList from '$lib/components/HouseRulesList.svelte';
 
 	import { useHeader } from '$lib/stores/header';
+
+	// Tab type
+	type TabType = 'details' | 'house-rules';
 
 	// Get game ID from URL parameters
 	let gameId = $derived(parseInt(page.params.id));
@@ -23,6 +27,7 @@
 	let deleting = $state(false);
 	let rulesInfo = $state<RulesInfoResponse | null>(null);
 	let showUpload = $state(false);
+	let activeTab = $state<TabType>('details');
 
 	onMount(() => {
 		if (gameId && !isNaN(gameId)) {
@@ -237,9 +242,37 @@
 				{/if}
 			</div>
 
-			<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-				<!-- Main Information -->
-				<div class="space-y-6 lg:col-span-2">
+			<!-- Tab Navigation -->
+			<div class="mb-6 border-b border-gray-200">
+				<nav class="-mb-px flex space-x-8" aria-label="Tabs">
+					<button
+						onclick={() => (activeTab = 'details')}
+						class="border-b-2 px-1 py-4 text-sm font-medium whitespace-nowrap {activeTab ===
+						'details'
+							? 'border-blue-500 text-blue-600'
+							: 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}"
+					>
+						Details
+					</button>
+					<button
+						onclick={() => (activeTab = 'house-rules')}
+						class="border-b-2 px-1 py-4 text-sm font-medium whitespace-nowrap {activeTab ===
+						'house-rules'
+							? 'border-blue-500 text-blue-600'
+							: 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}"
+					>
+						House Rules
+					</button>
+				</nav>
+			</div>
+
+			<!-- Tab Content -->
+			{#if activeTab === 'house-rules'}
+				<HouseRulesList gameId={game.id} />
+			{:else}
+				<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+					<!-- Main Information -->
+					<div class="space-y-6 lg:col-span-2">
 					<!-- Description -->
 					{#if game.description}
 						<Card>
@@ -436,7 +469,13 @@
 							<CardTitle>Actions</CardTitle>
 						</CardHeader>
 						<CardContent class="space-y-3">
-							<Button class="w-full" variant="outline">View House Rules</Button>
+							<Button
+								class="w-full"
+								variant={activeTab === 'house-rules' ? 'default' : 'outline'}
+								onclick={() => (activeTab = 'house-rules')}
+							>
+								View House Rules
+							</Button>
 							<Button class="w-full" variant="outline" onclick={navigateToChat}>
 								Start Chat Session
 							</Button>
@@ -470,6 +509,7 @@
 					</Card>
 				</div>
 			</div>
+			{/if}
 		{/if}
 	</div>
 </main>

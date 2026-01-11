@@ -49,6 +49,9 @@ impl AppState {
                 "../../migrations/V003__create_embeddings_table.sql"
             )),
             M::up(include_str!("../../migrations/V004__seed_games_data.sql")),
+            M::up(include_str!(
+                "../../migrations/V005__add_house_rules_toggle_to_chat_sessions.sql"
+            )),
         ]);
 
         migrations.to_latest(&mut db)?;
@@ -171,6 +174,7 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(chat::list_chat_sessions)?;
     api.register(chat::get_chat_session)?;
     api.register(chat::create_chat_session)?;
+    api.register(chat::update_chat_session)?;
     api.register(chat::search_rules)?;
 
     // Register health check

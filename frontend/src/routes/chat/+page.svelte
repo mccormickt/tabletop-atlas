@@ -6,7 +6,8 @@
 		type GameSummary,
 		type ChatSessionSummary,
 		type ChatHistory,
-		type ChatMessage
+		type ChatMessage,
+		type ContextSource
 	} from '$lib';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -32,6 +33,10 @@
 	let loadingCurrentSession = $state(false);
 	let sendingMessage = $state(false);
 	let error = $state<string | null>(null);
+	let togglingHouseRules = $state(false);
+
+	// Derived state for include_house_rules
+	let includeHouseRules = $derived(currentSession?.session.includeHouseRules ?? true);
 
 	// Load games on mount
 	onMount(async () => {
@@ -228,6 +233,37 @@
 		}
 	}
 
+	async function toggleHouseRules() {
+		if (!currentSession) return;
+
+		togglingHouseRules = true;
+		try {
+			const result = await api.methods.updateChatSession({
+				path: { id: currentSession.session.id },
+				body: {
+					includeHouseRules: !includeHouseRules
+				}
+			});
+
+			if (result.type === 'success') {
+				// Update the current session with the new value
+				currentSession = {
+					...currentSession,
+					session: {
+						...currentSession.session,
+						includeHouseRules: result.data.includeHouseRules
+					}
+				};
+			} else {
+				error = 'Failed to update session settings';
+			}
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'An unexpected error occurred';
+		} finally {
+			togglingHouseRules = false;
+		}
+	}
+
 	function formatTime(date: Date | string): string {
 		try {
 			const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -393,12 +429,41 @@
 				{:else}
 					<Card class="flex h-[calc(100vh-12rem)] flex-col">
 						<CardHeader class="flex-shrink-0">
-							<CardTitle>
-								{currentSession.session.title || `Chat about ${selectedGame.name}`}
-							</CardTitle>
-							<CardDescription>
-								Ask questions about {selectedGame.name} rules and get AI-powered answers
-							</CardDescription>
+							<div class="flex items-center justify-between">
+								<div>
+									<CardTitle>
+										{currentSession.session.title || `Chat about ${selectedGame.name}`}
+									</CardTitle>
+									<CardDescription>
+										Ask questions about {selectedGame.name} rules and get AI-powered answers
+									</CardDescription>
+								</div>
+								<div class="flex items-center space-x-2">
+									<label
+										for="house-rules-toggle"
+										class="text-sm font-medium text-gray-700"
+									>
+										Include House Rules
+									</label>
+									<button
+										id="house-rules-toggle"
+										type="button"
+										onclick={toggleHouseRules}
+										disabled={togglingHouseRules}
+										class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 {includeHouseRules
+											? 'bg-blue-600'
+											: 'bg-gray-200'}"
+										role="switch"
+										aria-checked={includeHouseRules}
+									>
+										<span
+											class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {includeHouseRules
+												? 'translate-x-5'
+												: 'translate-x-0'}"
+										></span>
+									</button>
+								</div>
+							</div>
 						</CardHeader>
 
 						<!-- Messages -->
