@@ -66,9 +66,122 @@ npm run test
 - Migration files follow `V001__description.sql` pattern
 - Database initialization and migration running handled in backend startup
 
+## Version Control: Jujutsu (JJ)
+
+This project uses **Jujutsu (JJ)** for version control instead of Git. JJ is a Git-compatible VCS that provides a simpler and more powerful workflow.
+
+### Common JJ Commands
+
+#### Repository & Remote Operations
+```bash
+# Initialize a JJ repository with Git backend
+jj git init --colocate
+
+# Clone a repository
+jj git clone <source>
+
+# Fetch from remote
+jj git fetch
+
+# Push all bookmarks (branches)
+jj git push --all
+```
+
+#### Daily Workflow
+```bash
+# Check status
+jj st
+# or
+jj status
+
+# View log/history
+jj log
+
+# Show diff of current change
+jj diff
+
+# Describe (add commit message to) current change
+jj describe -m "Your message here"
+
+# Create a new change (like committing in git)
+jj new
+
+# Commit with message and start new change
+jj commit -m "Your message here"
+```
+
+#### Branching (Bookmarks in JJ)
+```bash
+# Create a bookmark (branch) at current revision
+jj bookmark set my-branch
+
+# Create bookmark at specific revision
+jj bookmark set -r @ 'feat/branch'
+
+# Push to remote with new bookmark
+jj git push -r @ --allow-new --remote origin
+
+# Track a remote bookmark
+jj bookmark track main@origin
+```
+
+#### Advanced Operations
+```bash
+# Undo last jj command
+jj undo
+
+# Split current change into two
+jj split
+
+# Squash changes together
+jj squash
+jj squash file  # squash specific file
+jj squash -i    # interactive selection
+
+# Rebase changes
+jj rebase -s <source> -d <destination>
+
+# View operation history
+jj op log
+
+# Edit a previous change
+jj edit <change-id>
+
+# Annotate file (like git blame)
+jj file annotate <filename>
+```
+
+### Git to JJ Command Reference
+
+| Git Command | JJ Equivalent | Notes |
+|-------------|---------------|-------|
+| `git status` | `jj st` | Show working copy status |
+| `git log` | `jj log` | View history |
+| `git diff` | `jj diff` | Show changes |
+| `git commit -a` | `jj commit` | Commit changes |
+| `git add -p; git commit` | `jj split` | Partial commits |
+| `git checkout -b <branch>` | `jj bookmark create <branch>` | Create branch |
+| `git switch <branch>` | `jj edit <change>` | Switch to change |
+| `git rebase` | `jj rebase` | Rebase changes |
+| `git cherry-pick` | `jj duplicate` | Copy changes |
+| `git blame` | `jj file annotate` | Show line authors |
+| `git fetch` | `jj git fetch` | Fetch from remote |
+| `git push` | `jj git push` | Push to remote |
+| `git restore` | `jj restore` | Restore files |
+| N/A | `jj undo` | Undo last operation |
+| N/A | `jj squash` | Combine changes |
+
+### JJ Resources
+
+- [Official Jujutsu Documentation](http://docs.jj-vcs.dev/latest/)
+- [Git Command Comparison](http://docs.jj-vcs.dev/latest/git-comparison/)
+- [Jujutsu Tutorial by Steve Klabnik](https://steveklabnik.github.io/jujutsu-tutorial/)
+- [Comprehensive Cheat Sheet](https://www.rahuljuliato.com/posts/jj-cheat-sheet)
+
 ## Development Workflow
 
 - Both frontend and backend can be developed simultaneously
 - API changes should include OpenAPI schema updates
 - shadcn components can be added via `npx shadcn@latest add [component]`
 - Database schema changes require new migration files
+- Use JJ (Jujutsu) for all version control operations instead of Git
