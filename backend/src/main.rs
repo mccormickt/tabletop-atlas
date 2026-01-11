@@ -91,7 +91,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("bind-address")
                 .help("Address to bind the server to")
                 .value_name("ADDRESS")
-                .default_value("127.0.0.1:8080"),
+                .conflicts_with("port"),
+        )
+        .arg(
+            Arg::new("port")
+                .short('p')
+                .long("port")
+                .help("Port to bind the server to (binds to 127.0.0.1)")
+                .value_name("PORT"),
         )
         .get_matches();
 
@@ -101,7 +108,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let bind_address = matches.get_one::<String>("bind-address").unwrap();
+    // Determine bind address with priority: --bind-address > --port > PORT env var > default
+    let bind_address = if let Some(addr) = matches.get_one::<String>("bind-address") {
+        addr.clone()
+    } else if let Some(port) = matches.get_one::<String>("port") {
+        format!("127.0.0.1:{}", port)
+    } else if let Ok(port) = std::env::var("PORT") {
+        format!("127.0.0.1:{}", port)
+    } else {
+        "127.0.0.1:8080".to_string()
+    };
 
     // Set up logging
     let config_logging = ConfigLogging::StderrTerminal {
