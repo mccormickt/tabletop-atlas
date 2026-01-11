@@ -49,11 +49,7 @@ export const parseIfDate = (k: string | undefined, v: unknown) => {
 		(k?.startsWith('time_') ||
 			k?.endsWith('_time') ||
 			k?.endsWith('_expiration') ||
-			k?.endsWith('At') ||
-			k === 'timestamp' ||
-			k === 'lastMessageAt' ||
-			k === 'createdAt' ||
-			k === 'updatedAt')
+			k === 'timestamp')
 	) {
 		const d = new Date(v);
 		if (isNaN(d.getTime())) return v;

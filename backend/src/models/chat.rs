@@ -107,4 +107,3 @@ pub struct ChatHistory {
     pub session: ChatSession,
     pub messages: Vec<ChatMessage>,
 }
-

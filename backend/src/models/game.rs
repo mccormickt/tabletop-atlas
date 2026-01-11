@@ -70,4 +70,3 @@ pub struct RulesInfoResponse {
     pub chunk_count: i64,
     pub last_processed: Option<String>,
 }
-

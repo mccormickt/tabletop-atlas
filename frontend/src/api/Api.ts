@@ -63,11 +63,6 @@ export type CreateChatSessionRequest = {
 	title?: string | null;
 };
 
-export type UpdateChatSessionRequest = {
-	includeHouseRules?: boolean | null;
-	title?: string | null;
-};
-
 export type CreateGameRequest = {
 	bggId?: number | null;
 	complexityRating?: number | null;
@@ -183,6 +178,11 @@ export type RulesSearchResponse = {
 	totalResults: number;
 };
 
+export type UpdateChatSessionRequest = {
+	includeHouseRules?: boolean | null;
+	title?: string | null;
+};
+
 export type UpdateGameRequest = {
 	bggId?: number | null;
 	complexityRating?: number | null;
@@ -210,15 +210,15 @@ export type UploadResponse = {
 };
 
 export interface SearchRulesQueryParams {
-	gameId: number;
+	gameId: string;
 	limit?: number | null;
 	query: string;
 }
 
 export interface ListChatSessionsQueryParams {
-	gameId: number;
-	limit?: number;
-	page?: number;
+	gameId: string;
+	limit: number;
+	page: number;
 }
 
 export interface GetChatSessionPathParams {
@@ -429,17 +429,10 @@ export class Api extends HttpClient {
 		/**
 		 * Upload a PDF rules document for a game
 		 */
-
-		// TODO: For some reason this function is not generated with a body parameter
-		// when the dropshot handler is defined with an `UntypedBody`
-		uploadRulesPdf: (
-			{ path, body }: { path: UploadRulesPdfPathParams; body?: File | Blob },
-			params: FetchParams = {}
-		) => {
+		uploadRulesPdf: ({ path }: { path: UploadRulesPdfPathParams }, params: FetchParams = {}) => {
 			return this.request<UploadResponse>({
 				path: `/api/games/${path.id}/rules-upload`,
 				method: 'POST',
-				body,
 				...params
 			});
 		},

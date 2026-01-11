@@ -146,29 +146,9 @@ export class HttpClient {
 		...fetchParams
 	}: FullParams): Promise<ApiResult<Data>> {
 		const url = (host || this.host) + path + toQueryString(query);
-
-		// Handle binary uploads (File, Blob, etc.) differently from JSON
-		let processedBody: string | File | Blob | FormData | undefined;
-		let mergedParams = mergeParams(this.baseParams, fetchParams);
-
-		if (body instanceof File || body instanceof Blob || body instanceof FormData) {
-			processedBody = body;
-			// Remove Content-Type header to let browser set it with boundary for FormData
-			// or set appropriate content type for File/Blob
-			const headers = new Headers(mergedParams.headers);
-			if (body instanceof File || body instanceof Blob) {
-				headers.set('Content-Type', 'application/octet-stream');
-			} else {
-				headers.delete('Content-Type');
-			}
-			mergedParams = { ...mergedParams, headers };
-		} else if (body !== undefined) {
-			processedBody = JSON.stringify(snakeify(body), replacer);
-		}
-
 		const init = {
-			...mergedParams,
-			body: processedBody
+			...mergeParams(this.baseParams, fetchParams),
+			body: JSON.stringify(snakeify(body), replacer)
 		};
 		return handleResponse(await fetch(url, init));
 	}
