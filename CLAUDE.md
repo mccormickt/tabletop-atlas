@@ -125,6 +125,34 @@ jj git push -r @ --allow-new --remote origin
 jj bookmark track main@origin
 ```
 
+#### GitHub CLI (gh) with JJ
+
+When using `gh` commands with JJ, note that JJ doesn't maintain a traditional Git branch checkout. This causes issues with commands like `gh pr create` which expect to detect the current branch automatically.
+
+**Problem:** `gh pr create` fails with "not on any branch" error.
+
+**Solution:** Always specify `--head` and `--base` explicitly:
+```bash
+# Instead of just: gh pr create
+# Use:
+gh pr create --head <bookmark-name> --base main --title "..." --body "..."
+```
+
+**Full PR workflow with JJ:**
+```bash
+# 1. Describe your change
+jj describe -m "feat: your feature description"
+
+# 2. Create a bookmark for the change
+jj bookmark set -r @ 'feat/your-feature'
+
+# 3. Push to remote
+jj git push -r @ --allow-new --remote origin
+
+# 4. Create PR with explicit head/base
+gh pr create --head feat/your-feature --base main --title "feat: your feature" --body "..."
+```
+
 #### Advanced Operations
 ```bash
 # Undo last jj command
