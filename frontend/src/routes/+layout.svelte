@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import Header from '$lib/components/Header.svelte';
+	import MobileNav from '$lib/components/MobileNav.svelte';
 	import { createHeaderStore, setHeaderContext } from '$lib/stores/header';
 	import type { Game } from '$lib';
 
@@ -26,10 +27,15 @@
 	});
 </script>
 
-<div class="bg-background min-h-screen">
+<div class="bg-background min-h-screen flex flex-col">
 	<!-- Global Header -->
 	<Header currentGame={headerConfig.currentGame} showSearch={headerConfig.showSearch} />
 
-	<!-- Page Content -->
-	{@render children()}
+	<!-- Page Content with bottom padding for mobile nav -->
+	<main class="flex-1 pb-20 md:pb-0">
+		{@render children()}
+	</main>
+
+	<!-- Mobile Bottom Navigation -->
+	<MobileNav />
 </div>

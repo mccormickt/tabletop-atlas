@@ -6,71 +6,98 @@
 
 :root {
 	--radius: 0.625rem;
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.129 0.042 264.695);
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.129 0.042 264.695);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.129 0.042 264.695);
-	--primary: oklch(0.208 0.042 265.755);
-	--primary-foreground: oklch(0.984 0.003 247.858);
-	--secondary: oklch(0.968 0.007 247.896);
-	--secondary-foreground: oklch(0.208 0.042 265.755);
-	--muted: oklch(0.968 0.007 247.896);
-	--muted-foreground: oklch(0.554 0.046 257.417);
-	--accent: oklch(0.968 0.007 247.896);
-	--accent-foreground: oklch(0.208 0.042 265.755);
-	--destructive: oklch(0.577 0.245 27.325);
-	--border: oklch(0.929 0.013 255.508);
-	--input: oklch(0.929 0.013 255.508);
-	--ring: oklch(0.704 0.04 256.788);
-	--chart-1: oklch(0.646 0.222 41.116);
-	--chart-2: oklch(0.6 0.118 184.704);
-	--chart-3: oklch(0.398 0.07 227.392);
-	--chart-4: oklch(0.828 0.189 84.429);
-	--chart-5: oklch(0.769 0.188 70.08);
-	--sidebar: oklch(0.984 0.003 247.858);
-	--sidebar-foreground: oklch(0.129 0.042 264.695);
-	--sidebar-primary: oklch(0.208 0.042 265.755);
-	--sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-	--sidebar-accent: oklch(0.968 0.007 247.896);
-	--sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-	--sidebar-border: oklch(0.929 0.013 255.508);
-	--sidebar-ring: oklch(0.704 0.04 256.788);
+
+	/* Meeple/Token Colors - Vibrant game piece palette */
+	--game-red: oklch(0.65 0.25 25);
+	--game-blue: oklch(0.55 0.2 250);
+	--game-green: oklch(0.6 0.2 145);
+	--game-yellow: oklch(0.85 0.18 85);
+	--game-orange: oklch(0.7 0.2 50);
+	--game-purple: oklch(0.55 0.2 300);
+
+	/* Background/Texture Colors */
+	--parchment: oklch(0.96 0.02 85);
+	--parchment-dark: oklch(0.92 0.03 80);
+	--wood-light: oklch(0.75 0.08 70);
+	--wood-dark: oklch(0.45 0.1 55);
+	--felt-green: oklch(0.45 0.15 150);
+
+	/* Accent Colors */
+	--gold-foil: oklch(0.78 0.15 85);
+	--gold-dark: oklch(0.65 0.12 80);
+
+	/* Theme mapping - warm parchment theme */
+	--background: var(--parchment);
+	--foreground: oklch(0.25 0.05 50);
+	--card: oklch(0.98 0.01 85);
+	--card-foreground: oklch(0.25 0.05 50);
+	--popover: oklch(0.98 0.01 85);
+	--popover-foreground: oklch(0.25 0.05 50);
+	--primary: var(--game-blue);
+	--primary-foreground: oklch(0.98 0.01 85);
+	--secondary: var(--parchment-dark);
+	--secondary-foreground: oklch(0.25 0.05 50);
+	--muted: oklch(0.92 0.02 80);
+	--muted-foreground: oklch(0.5 0.04 60);
+	--accent: var(--game-orange);
+	--accent-foreground: oklch(0.15 0.03 50);
+	--destructive: var(--game-red);
+	--border: oklch(0.85 0.05 75);
+	--input: oklch(0.9 0.03 80);
+	--ring: var(--gold-foil);
+	--chart-1: var(--game-red);
+	--chart-2: var(--game-blue);
+	--chart-3: var(--game-green);
+	--chart-4: var(--game-yellow);
+	--chart-5: var(--game-purple);
+	--sidebar: var(--wood-light);
+	--sidebar-foreground: oklch(0.2 0.05 50);
+	--sidebar-primary: var(--game-blue);
+	--sidebar-primary-foreground: oklch(0.98 0.01 85);
+	--sidebar-accent: var(--gold-foil);
+	--sidebar-accent-foreground: oklch(0.2 0.05 50);
+	--sidebar-border: var(--wood-dark);
+	--sidebar-ring: var(--gold-foil);
+
+	/* Typography */
+	--font-display: 'Cinzel', serif;
+	--font-body: 'Merriweather', serif;
+	--font-ui: system-ui, -apple-system, sans-serif;
 }
 
 .dark {
-	--background: oklch(0.129 0.042 264.695);
-	--foreground: oklch(0.984 0.003 247.858);
-	--card: oklch(0.208 0.042 265.755);
-	--card-foreground: oklch(0.984 0.003 247.858);
-	--popover: oklch(0.208 0.042 265.755);
-	--popover-foreground: oklch(0.984 0.003 247.858);
-	--primary: oklch(0.929 0.013 255.508);
-	--primary-foreground: oklch(0.208 0.042 265.755);
-	--secondary: oklch(0.279 0.041 260.031);
-	--secondary-foreground: oklch(0.984 0.003 247.858);
-	--muted: oklch(0.279 0.041 260.031);
-	--muted-foreground: oklch(0.704 0.04 256.788);
-	--accent: oklch(0.279 0.041 260.031);
-	--accent-foreground: oklch(0.984 0.003 247.858);
-	--destructive: oklch(0.704 0.191 22.216);
-	--border: oklch(1 0 0 / 10%);
-	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.551 0.027 264.364);
-	--chart-1: oklch(0.488 0.243 264.376);
-	--chart-2: oklch(0.696 0.17 162.48);
-	--chart-3: oklch(0.769 0.188 70.08);
-	--chart-4: oklch(0.627 0.265 303.9);
-	--chart-5: oklch(0.645 0.246 16.439);
-	--sidebar: oklch(0.208 0.042 265.755);
-	--sidebar-foreground: oklch(0.984 0.003 247.858);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-	--sidebar-accent: oklch(0.279 0.041 260.031);
-	--sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.551 0.027 264.364);
+	/* Dark mode - felt green table theme */
+	--background: oklch(0.2 0.04 150);
+	--foreground: oklch(0.92 0.02 85);
+	--card: oklch(0.25 0.05 145);
+	--card-foreground: oklch(0.92 0.02 85);
+	--popover: oklch(0.25 0.05 145);
+	--popover-foreground: oklch(0.92 0.02 85);
+	--primary: oklch(0.7 0.18 85);
+	--primary-foreground: oklch(0.2 0.04 150);
+	--secondary: oklch(0.3 0.05 150);
+	--secondary-foreground: oklch(0.92 0.02 85);
+	--muted: oklch(0.28 0.04 150);
+	--muted-foreground: oklch(0.7 0.03 90);
+	--accent: var(--game-orange);
+	--accent-foreground: oklch(0.15 0.03 50);
+	--destructive: oklch(0.6 0.22 25);
+	--border: oklch(0.35 0.06 150);
+	--input: oklch(0.3 0.05 150);
+	--ring: var(--gold-foil);
+	--chart-1: var(--game-red);
+	--chart-2: var(--game-blue);
+	--chart-3: var(--game-green);
+	--chart-4: var(--game-yellow);
+	--chart-5: var(--game-purple);
+	--sidebar: oklch(0.22 0.04 150);
+	--sidebar-foreground: oklch(0.92 0.02 85);
+	--sidebar-primary: var(--gold-foil);
+	--sidebar-primary-foreground: oklch(0.2 0.04 150);
+	--sidebar-accent: oklch(0.3 0.05 150);
+	--sidebar-accent-foreground: oklch(0.92 0.02 85);
+	--sidebar-border: oklch(0.35 0.06 150);
+	--sidebar-ring: var(--gold-foil);
 }
 
 @theme inline {
@@ -109,6 +136,28 @@
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
+
+	/* Game piece colors */
+	--color-game-red: var(--game-red);
+	--color-game-blue: var(--game-blue);
+	--color-game-green: var(--game-green);
+	--color-game-yellow: var(--game-yellow);
+	--color-game-orange: var(--game-orange);
+	--color-game-purple: var(--game-purple);
+
+	/* Texture colors */
+	--color-parchment: var(--parchment);
+	--color-parchment-dark: var(--parchment-dark);
+	--color-wood-light: var(--wood-light);
+	--color-wood-dark: var(--wood-dark);
+	--color-felt-green: var(--felt-green);
+	--color-gold-foil: var(--gold-foil);
+	--color-gold-dark: var(--gold-dark);
+
+	/* Typography families */
+	--font-family-display: var(--font-display);
+	--font-family-body: var(--font-body);
+	--font-family-ui: var(--font-ui);
 }
 
 @layer base {
@@ -117,5 +166,224 @@
 	}
 	body {
 		@apply bg-background text-foreground;
+		font-family: var(--font-body);
 	}
+	h1, h2, h3, h4, h5, h6 {
+		font-family: var(--font-display);
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+	button, input, select, textarea {
+		font-family: var(--font-ui);
+	}
+}
+
+/* ===== Boardgame Decorative Utility Classes ===== */
+
+/* Game Box Lid Container - Main content containers with decorative border */
+.game-box-lid {
+	background: var(--card);
+	border: 3px solid var(--wood-dark);
+	border-radius: 0.75rem;
+	box-shadow:
+		inset 0 2px 4px rgba(255, 255, 255, 0.3),
+		0 4px 12px rgba(0, 0, 0, 0.15),
+		0 2px 4px rgba(0, 0, 0, 0.1);
+	position: relative;
+	overflow: hidden;
+}
+
+.game-box-lid::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border: 2px solid var(--gold-foil);
+	border-radius: 0.5rem;
+	margin: 4px;
+	pointer-events: none;
+	opacity: 0.6;
+}
+
+/* Card Sleeve - List items with angled card effect */
+.card-sleeve {
+	background: linear-gradient(135deg, var(--card) 0%, var(--parchment-dark) 100%);
+	border: 2px solid var(--border);
+	border-radius: 0.5rem;
+	transform: rotate(-1deg);
+	transition: all 0.2s ease;
+	box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card-sleeve:hover {
+	transform: rotate(0deg) translateX(8px);
+	box-shadow: 4px 4px 16px rgba(0, 0, 0, 0.15);
+	border-color: var(--gold-foil);
+}
+
+/* Component Tray - Inset container like game box insert */
+.component-tray {
+	background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-dark) 100%);
+	border: 2px solid var(--wood-dark);
+	border-radius: 0.5rem;
+	box-shadow:
+		inset 0 4px 8px rgba(0, 0, 0, 0.2),
+		inset 0 -2px 4px rgba(255, 255, 255, 0.1);
+	padding: 1rem;
+}
+
+.component-tray-section {
+	background: var(--parchment);
+	border-radius: 0.375rem;
+	padding: 0.75rem;
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Score Track - Progress indicator styled as numbered track */
+.score-track {
+	display: flex;
+	align-items: center;
+	background: var(--wood-light);
+	border: 2px solid var(--wood-dark);
+	border-radius: 9999px;
+	padding: 0.25rem;
+	gap: 0.125rem;
+}
+
+.score-track-segment {
+	width: 1.5rem;
+	height: 1.5rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--wood-dark);
+	border-radius: 50%;
+	background: var(--parchment);
+	border: 1px solid var(--border);
+	transition: all 0.2s ease;
+}
+
+.score-track-segment.active {
+	background: var(--game-blue);
+	color: white;
+	border-color: var(--game-blue);
+	transform: scale(1.1);
+}
+
+.score-track-segment.completed {
+	background: var(--game-green);
+	color: white;
+	border-color: var(--game-green);
+}
+
+/* Paper/Parchment Texture Background */
+.paper-texture {
+	background-color: var(--parchment);
+	background-image:
+		url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+	background-blend-mode: multiply;
+	background-size: 150px 150px;
+}
+
+/* Dice-style rating indicator */
+.dice-rating {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
+	background: white;
+	border: 2px solid var(--foreground);
+	border-radius: 0.375rem;
+	font-family: var(--font-display);
+	font-weight: 700;
+	font-size: 1rem;
+	box-shadow: 2px 2px 0 var(--foreground);
+}
+
+/* Meeple-shaped badge/indicator */
+.meeple-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.25rem 0.75rem;
+	background: var(--game-blue);
+	color: white;
+	font-weight: 600;
+	font-size: 0.875rem;
+	border-radius: 0.375rem 0.375rem 0 0;
+	clip-path: polygon(0% 0%, 100% 0%, 100% 70%, 85% 70%, 85% 100%, 50% 70%, 15% 100%, 15% 70%, 0% 70%);
+	padding-bottom: 0.75rem;
+}
+
+.meeple-badge.red { background: var(--game-red); }
+.meeple-badge.green { background: var(--game-green); }
+.meeple-badge.yellow { background: var(--game-yellow); color: var(--foreground); }
+.meeple-badge.orange { background: var(--game-orange); }
+.meeple-badge.purple { background: var(--game-purple); }
+
+/* Decorative corner pieces */
+.decorative-corners {
+	position: relative;
+}
+
+.decorative-corners::before,
+.decorative-corners::after {
+	content: '';
+	position: absolute;
+	width: 1.5rem;
+	height: 1.5rem;
+	border-style: solid;
+	border-color: var(--gold-foil);
+	opacity: 0.8;
+}
+
+.decorative-corners::before {
+	top: 0.5rem;
+	left: 0.5rem;
+	border-width: 3px 0 0 3px;
+	border-radius: 0.25rem 0 0 0;
+}
+
+.decorative-corners::after {
+	bottom: 0.5rem;
+	right: 0.5rem;
+	border-width: 0 3px 3px 0;
+	border-radius: 0 0 0.25rem 0;
+}
+
+/* Rulebook-style header */
+.rulebook-header {
+	font-family: var(--font-display);
+	font-weight: 700;
+	text-align: center;
+	padding: 1rem 2rem;
+	border-bottom: 3px double var(--wood-dark);
+	margin-bottom: 1.5rem;
+	position: relative;
+}
+
+.rulebook-header::before {
+	content: '◆';
+	position: absolute;
+	left: 50%;
+	bottom: -0.75rem;
+	transform: translateX(-50%);
+	background: var(--background);
+	padding: 0 0.5rem;
+	color: var(--gold-foil);
+}
+
+/* Typography utilities */
+.font-display {
+	font-family: var(--font-display);
+}
+
+.font-body {
+	font-family: var(--font-body);
+}
+
+.font-ui {
+	font-family: var(--font-ui);
 }

@@ -2,19 +2,18 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { api, type GameSummary } from '$lib';
-	import { Button } from '$lib/components/ui';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui';
-	import { Badge } from '$lib/components/ui';
+	import { Button, GameBox, LoadingSpinner } from '$lib/components/ui';
+	import CollectionDashboard from '$lib/components/CollectionDashboard.svelte';
+	import FilterPanel from '$lib/components/FilterPanel.svelte';
+	import { GameBoxIcon, Rulebook } from '$lib/components/icons';
 	import { useHeader } from '$lib/stores/header';
 
-	// Configure header for this page
 	const header = useHeader();
 	header.configure({
 		showSearch: true,
 		currentGame: null
 	});
 
-	// State management
 	let games = $state<GameSummary[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -22,6 +21,9 @@
 	let totalPages = $state(1);
 	let total = $state(0);
 	let limit = $state(20);
+
+	let showFilters = $state(false);
+	let filters = $state({});
 
 	onMount(() => {
 		loadGames(1);
@@ -67,7 +69,6 @@
 			});
 
 			if (result.type === 'success') {
-				// Reload the current page
 				await loadGames(currentPage);
 			} else if (result.type === 'error') {
 				alert(result.data.message || 'Failed to delete game');
@@ -79,34 +80,16 @@
 		}
 	}
 
-	function handleView(game: GameSummary) {
-		goto(`/games/${game.id}`);
-	}
-
-	function handleEdit(game: GameSummary) {
-		goto(`/games/${game.id}/edit`);
-	}
-
 	function navigateToAddGame() {
 		goto('/games/add');
 	}
 
-	function nextPage() {
-		if (currentPage < totalPages) {
-			loadGames(currentPage + 1);
-		}
+	function handlePageChange(page: number) {
+		loadGames(page);
 	}
 
-	function prevPage() {
-		if (currentPage > 1) {
-			loadGames(currentPage - 1);
-		}
-	}
-
-	function goToPage(page: number) {
-		if (page >= 1 && page <= totalPages) {
-			loadGames(page);
-		}
+	function toggleFilters() {
+		showFilters = !showFilters;
 	}
 </script>
 
@@ -115,188 +98,145 @@
 	<meta name="description" content="Browse and manage your board game collection" />
 </svelte:head>
 
-<!-- Main Content -->
 <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<!-- Header -->
-	<div class="mb-6 flex items-center justify-between">
-		<div>
-			<h1 class="text-3xl font-bold text-gray-900">Game Library</h1>
-			<p class="text-sm text-gray-600">
-				{total > 0
-					? `${total} game${total === 1 ? '' : 's'} in your collection`
-					: 'No games in your collection yet'}
-			</p>
+	<!-- Page Header with Rulebook Style -->
+	<div class="mb-8">
+		<div class="rulebook-header">
+			<h1 class="text-3xl md:text-4xl">Game Library</h1>
 		</div>
-		<Button onclick={navigateToAddGame}>Add New Game</Button>
+		<p class="text-center text-muted-foreground font-body">
+			{#if total > 0}
+				{total} game{total === 1 ? '' : 's'} in your collection
+			{:else}
+				Your collection awaits
+			{/if}
+		</p>
 	</div>
 
-	<!-- Loading State -->
-	{#if loading}
-		<div class="flex items-center justify-center py-12">
-			<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
-			<span class="ml-2 text-gray-600">Loading games...</span>
-		</div>
-	{/if}
-
-	<!-- Error State -->
-	{#if error && !loading}
-		<Card class="text-center">
-			<CardContent class="p-6">
-				<div class="mb-4 text-red-600">
-					<svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-						></path>
-					</svg>
-				</div>
-				<h3 class="mb-2 text-lg font-semibold text-gray-900">Unable to Load Games</h3>
-				<p class="mb-4 text-gray-600">{error}</p>
-				<Button onclick={() => loadGames(currentPage)}>Try Again</Button>
-			</CardContent>
-		</Card>
-	{/if}
-
-	<!-- Empty State -->
-	{#if !loading && !error && games.length === 0}
-		<Card class="text-center">
-			<CardContent class="p-8">
-				<div class="mb-4 text-gray-400">
-					<svg class="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-						></path>
-					</svg>
-				</div>
-				<h3 class="mb-2 text-lg font-semibold text-gray-900">No Games Yet</h3>
-				<p class="mb-4 text-gray-600">
-					Start building your board game library by adding your first game.
-				</p>
-				<Button onclick={navigateToAddGame}>Add Your First Game</Button>
-			</CardContent>
-		</Card>
-	{/if}
-
-	<!-- Games Grid -->
-	{#if !loading && !error && games.length > 0}
-		<div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-			{#each games as game (game.id)}
-				<Card class="transition-shadow hover:shadow-lg">
-					<CardHeader>
-						<CardTitle class="text-lg">{game.name}</CardTitle>
-						{#if game.publisher}
-							<p class="text-sm text-gray-600">{game.publisher}</p>
-						{/if}
-					</CardHeader>
-					<CardContent>
-						<!-- Game Details -->
-						<div class="mb-4 space-y-2 text-sm text-gray-600">
-							{#if game.yearPublished}
-								<div class="flex items-center">
-									<span class="w-20 font-medium">Year:</span>
-									<span>{game.yearPublished}</span>
-								</div>
-							{/if}
-
-							{#if game.minPlayers && game.maxPlayers}
-								<div class="flex items-center">
-									<span class="w-20 font-medium">Players:</span>
-									<span
-										>{game.minPlayers === game.maxPlayers
-											? game.minPlayers
-											: `${game.minPlayers}-${game.maxPlayers}`}</span
-									>
-								</div>
-							{/if}
-
-							{#if game.complexityRating}
-								<div class="flex items-center">
-									<span class="w-20 font-medium">Complexity:</span>
-									<span>{game.complexityRating.toFixed(1)}/5.0</span>
-								</div>
-							{/if}
-						</div>
-
-						<!-- Badges -->
-						<div class="mb-4 flex flex-wrap gap-2">
-							{#if game.hasRulesPdf}
-								<Badge variant="secondary" class="text-xs">PDF Rules</Badge>
-							{/if}
-
-							{#if game.houseRulesCount > 0}
-								<Badge variant="outline" class="text-xs">
-									{game.houseRulesCount} House Rule{game.houseRulesCount === 1 ? '' : 's'}
-								</Badge>
-							{/if}
-						</div>
-
-						<!-- Actions -->
-						<div class="flex items-center justify-between border-t border-gray-200 pt-4">
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => handleView(game)}
-								class="text-blue-600 hover:text-blue-800"
-							>
-								View Details
-							</Button>
-
-							<div class="flex space-x-2">
-								<Button variant="outline" size="sm" onclick={() => handleEdit(game)}>Edit</Button>
-								<Button variant="destructive" size="sm" onclick={() => handleDelete(game)}>
-									Delete
-								</Button>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
-			{/each}
+	<!-- Action Bar -->
+	<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+		<div class="flex items-center gap-2">
+			<Button
+				variant="game-secondary"
+				size="sm"
+				onclick={toggleFilters}
+				class="md:hidden"
+			>
+				{showFilters ? 'Hide Filters' : 'Filters'}
+			</Button>
 		</div>
 
-		<!-- Pagination -->
-		{#if totalPages > 1}
-			<div class="flex items-center justify-between">
-				<div class="text-sm text-gray-700">
-					Showing page {currentPage} of {totalPages} ({total} total games)
-				</div>
+		<!-- Desktop: Regular button -->
+		<Button variant="game-primary" onclick={navigateToAddGame} class="gap-2 hidden md:flex">
+			<GameBoxIcon size={18} />
+			Add New Game
+		</Button>
+	</div>
 
-				<div class="flex items-center space-x-2">
-					<Button variant="outline" size="sm" onclick={prevPage} disabled={currentPage <= 1}>
-						Previous
-					</Button>
+	<!-- Mobile: Floating Action Button -->
+	<button
+		onclick={navigateToAddGame}
+		class="md:hidden fixed right-4 bottom-24 z-40 w-14 h-14 rounded-full bg-game-blue text-white shadow-lg hover:bg-game-blue/90 active:scale-95 transition-all flex items-center justify-center"
+		aria-label="Add new game"
+	>
+		<GameBoxIcon size={24} />
+	</button>
 
-					<!-- Page Numbers -->
-					<div class="flex items-center space-x-1">
-						{#each Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-							const startPage = Math.max(1, currentPage - 2);
-							return startPage + i;
-						}).filter((page) => page <= totalPages) as page (page)}
-							<Button
-								variant={page === currentPage ? 'default' : 'outline'}
-								size="sm"
-								onclick={() => goToPage(page)}
-								class="h-8 w-8 p-0"
-							>
-								{page}
-							</Button>
-						{/each}
+	<div class="flex gap-6">
+		<!-- Filter Sidebar (Desktop) -->
+		<aside class="hidden md:block w-64 flex-shrink-0">
+			<FilterPanel
+				bind:filters
+				onApply={() => loadGames(1)}
+				onClear={() => loadGames(1)}
+			/>
+		</aside>
+
+		<!-- Mobile Filter Drawer -->
+		{#if showFilters}
+			<div class="fixed inset-0 z-40 md:hidden">
+				<div class="absolute inset-0 bg-black/50" onclick={toggleFilters}></div>
+				<div class="absolute left-0 top-0 bottom-0 w-72 bg-background p-4 shadow-lg overflow-y-auto">
+					<div class="flex items-center justify-between mb-4">
+						<h2 class="font-display font-semibold text-lg">Filters</h2>
+						<button onclick={toggleFilters} class="text-muted-foreground hover:text-foreground">
+							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							</svg>
+						</button>
 					</div>
-
-					<Button
-						variant="outline"
-						size="sm"
-						onclick={nextPage}
-						disabled={currentPage >= totalPages}
-					>
-						Next
-					</Button>
+					<FilterPanel
+						bind:filters
+						onApply={() => { loadGames(1); showFilters = false; }}
+						onClear={() => { loadGames(1); showFilters = false; }}
+					/>
 				</div>
 			</div>
 		{/if}
-	{/if}
+
+		<!-- Main Content -->
+		<div class="flex-1 min-w-0">
+			<!-- Loading State -->
+			{#if loading}
+				<div class="game-box-lid p-12 text-center">
+					<LoadingSpinner class="mx-auto mb-4" />
+					<p class="text-muted-foreground font-body">Loading your collection...</p>
+				</div>
+			{/if}
+
+			<!-- Error State -->
+			{#if error && !loading}
+				<GameBox variant="default" class="text-center">
+					<div class="py-8">
+						<div class="mb-4 text-destructive">
+							<svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+								></path>
+							</svg>
+						</div>
+						<h3 class="mb-2 text-lg font-display font-semibold">Unable to Load Games</h3>
+						<p class="mb-4 text-muted-foreground font-body">{error}</p>
+						<Button variant="game-primary" onclick={() => loadGames(currentPage)}>Try Again</Button>
+					</div>
+				</GameBox>
+			{/if}
+
+			<!-- Empty State -->
+			{#if !loading && !error && games.length === 0}
+				<GameBox variant="featured" showCorners={true} class="text-center">
+					<div class="py-12">
+						<div class="mb-6">
+							<div class="mx-auto w-24 h-24 rounded-full bg-parchment-dark flex items-center justify-center">
+								<Rulebook size={48} class="text-game-blue" />
+							</div>
+						</div>
+						<h3 class="mb-3 text-xl font-display font-semibold">No Games Yet</h3>
+						<p class="mb-6 text-muted-foreground font-body max-w-md mx-auto">
+							Your game library is empty. Start building your collection by adding your first board game.
+						</p>
+						<Button variant="game-accent" onclick={navigateToAddGame} class="gap-2">
+							<GameBoxIcon size={18} />
+							Add Your First Game
+						</Button>
+					</div>
+				</GameBox>
+			{/if}
+
+			<!-- Games Dashboard -->
+			{#if !loading && !error && games.length > 0}
+				<CollectionDashboard
+					{games}
+					{currentPage}
+					{totalPages}
+					{total}
+					onPageChange={handlePageChange}
+					onDelete={handleDelete}
+				/>
+			{/if}
+		</div>
+	</div>
 </main>

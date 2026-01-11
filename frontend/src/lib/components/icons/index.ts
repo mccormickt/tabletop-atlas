@@ -1,0 +1,9 @@
+export { default as Meeple } from './Meeple.svelte';
+export { default as Dice } from './Dice.svelte';
+export { default as CardStack } from './CardStack.svelte';
+export { default as Rulebook } from './Rulebook.svelte';
+export { default as GameBoxIcon } from './GameBoxIcon.svelte';
+export { default as SearchGlass } from './SearchGlass.svelte';
+export { default as ChatBubble } from './ChatBubble.svelte';
+export { default as Home } from './Home.svelte';
+export { default as Upload } from './Upload.svelte';

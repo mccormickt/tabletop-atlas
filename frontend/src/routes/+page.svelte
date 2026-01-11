@@ -1,19 +1,18 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { api } from '$lib';
-	import { Button } from '$lib/components/ui';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
+	import { Button, GameBox } from '$lib/components/ui';
+	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
+	import { Meeple, Dice, GameBoxIcon, Rulebook, SearchGlass, ChatBubble } from '$lib/components/icons';
 	import { useHeader } from '$lib/stores/header';
 	import { onMount } from 'svelte';
 
-	// Configure header for this page
 	const header = useHeader();
 	header.configure({
 		showSearch: true,
 		currentGame: null
 	});
 
-	// Navigation functions
 	function navigateToGames() {
 		goto('/games');
 	}
@@ -39,17 +38,16 @@
 
 		if (result.type === 'success') {
 			return result.data.total;
-		} else if (result.type === 'error') {
-			return result.data.message || 'Failed to load games';
-		} else if (result.type === 'client_error') {
-			return result.error.message || 'Failed to load games';
 		}
 		return 0;
 	}
 
-	let totalGames = $state();
+	let totalGames = $state(0);
+	let loading = $state(true);
+
 	onMount(async () => {
 		totalGames = await countGames();
+		loading = false;
 	});
 </script>
 
@@ -58,158 +56,210 @@
 	<meta name="description" content="Comprehensive board game rules management system" />
 </svelte:head>
 
-<!-- Main Content -->
 <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<!-- Hero Section -->
-	<div class="mb-12 text-center">
-		<h1 class="text-foreground mb-4 text-4xl font-bold">Manage Your Board Game Collection</h1>
-		<p class="text-muted-foreground mx-auto max-w-3xl text-xl">
-			Organize your board games, upload rule books, create house rules, and get instant answers
-			about gameplay through our AI-powered chat interface.
-		</p>
+	<!-- Hero Section - Game Table Theme -->
+	<div class="mb-12 text-center relative">
+		<!-- Decorative scattered game pieces -->
+		<div class="absolute inset-0 overflow-hidden pointer-events-none hidden lg:block">
+			<Meeple size={32} color="red" class="absolute top-4 left-16 opacity-20 rotate-12" />
+			<Meeple size={24} color="blue" class="absolute top-12 right-24 opacity-20 -rotate-6" />
+			<Meeple size={28} color="green" class="absolute bottom-4 left-32 opacity-20 rotate-45" />
+			<Dice size={24} value={4} class="absolute top-8 right-40 opacity-20 rotate-12" />
+			<Dice size={20} value={2} class="absolute bottom-8 right-16 opacity-20 -rotate-12" />
+		</div>
+
+		<div class="relative z-10">
+			<div class="inline-flex items-center gap-2 mb-4 px-4 py-2 bg-parchment-dark rounded-full border border-wood-dark">
+				<Dice size={18} value={6} class="text-game-blue" />
+				<span class="text-sm font-ui text-muted-foreground">Your tabletop companion</span>
+			</div>
+
+			<h1 class="font-display text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-foreground">
+				Manage Your<br/>
+				<span class="text-game-blue">Board Game</span> Collection
+			</h1>
+
+			<p class="text-muted-foreground mx-auto max-w-2xl text-lg font-body mb-8">
+				Organize your board games, upload rule books, create house rules, and get instant answers
+				about gameplay through our AI-powered chat interface.
+			</p>
+
+			<div class="flex flex-wrap items-center justify-center gap-4">
+				<Button variant="game-primary" size="lg" onclick={navigateToAddGame} class="gap-2">
+					<GameBoxIcon size={20} />
+					Add Your First Game
+				</Button>
+				<Button variant="game-secondary" size="lg" onclick={navigateToGames} class="gap-2">
+					Browse Collection
+				</Button>
+			</div>
+		</div>
 	</div>
 
-	<!-- Quick Actions -->
-	<div class="mb-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-		<Card class="transition-shadow hover:shadow-lg">
-			<CardHeader>
-				<div class="text-primary mb-4">
-					<svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"
-						></path>
-					</svg>
-				</div>
-				<CardTitle>Add New Game</CardTitle>
-				<CardDescription>
-					Add a new board game to your collection with detailed information and metadata.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<Button onclick={navigateToAddGame} class="w-full">Add Game</Button>
-			</CardContent>
-		</Card>
-
-		<Card class="transition-shadow hover:shadow-lg">
-			<CardHeader>
-				<div class="text-primary mb-4">
-					<svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C20.832 18.477 19.246 18 17.5 18c-1.746 0-3.332.477-4.5 1.253"
-						></path>
-					</svg>
-				</div>
-				<CardTitle>Upload Rules</CardTitle>
-				<CardDescription>
-					Upload PDF rule books and we'll extract and index the content for easy searching.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<Button variant="outline" onclick={navigateToUpload} class="w-full">Upload PDF</Button>
-			</CardContent>
-		</Card>
-
-		<Card class="transition-shadow hover:shadow-lg">
-			<CardHeader>
-				<div class="text-primary mb-4">
-					<svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-						></path>
-					</svg>
-				</div>
-				<CardTitle>Search Rules</CardTitle>
-				<CardDescription>
-					Use AI-powered semantic search to find specific information in your uploaded game rules.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<Button variant="outline" onclick={navigateToSearch} class="w-full">Search Rules</Button>
-			</CardContent>
-		</Card>
-
-		<Card class="transition-shadow hover:shadow-lg">
-			<CardHeader>
-				<div class="text-primary mb-4">
-					<svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-						></path>
-					</svg>
-				</div>
-				<CardTitle>Ask Questions</CardTitle>
-				<CardDescription>
-					Get instant answers about game rules using our AI-powered chat interface.
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<Button variant="outline" onclick={navigateToChat} class="w-full">Start Chat</Button>
-			</CardContent>
-		</Card>
-	</div>
-
-	<!-- Recent Activity / Stats -->
-	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-		<Card>
-			<CardHeader>
-				<CardTitle>Your Collection</CardTitle>
-				<CardDescription>Quick overview of your board game library</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<div class="flex items-center justify-between">
-					<div>
-						<p class="text-foreground text-2xl font-bold">{totalGames}</p>
-						<p class="text-muted-foreground text-sm">Games in collection</p>
+	<!-- Quick Actions - Game Box Lids -->
+	<div class="mb-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+		<button onclick={navigateToAddGame} class="group text-left">
+			<GameBox variant="default" class="h-full transition-all group-hover:shadow-xl group-hover:-translate-y-1">
+				<div class="flex flex-col items-center text-center p-4">
+					<div class="w-16 h-16 rounded-full bg-game-blue/10 flex items-center justify-center mb-4 group-hover:bg-game-blue/20 transition-colors">
+						<GameBoxIcon size={32} class="text-game-blue" />
 					</div>
-					<Button variant="outline" onclick={navigateToGames}>View All Games</Button>
+					<h3 class="font-display font-semibold text-lg mb-2">Add New Game</h3>
+					<p class="text-sm text-muted-foreground font-body">
+						Add a new board game to your collection
+					</p>
 				</div>
-			</CardContent>
-		</Card>
+			</GameBox>
+		</button>
 
-		<Card>
-			<CardHeader>
-				<CardTitle>Quick Start</CardTitle>
-				<CardDescription>Get started with Tabletop Atlas</CardDescription>
-			</CardHeader>
-			<CardContent class="space-y-3">
-				<div class="flex items-center justify-between">
-					<span class="text-muted-foreground text-sm">1. Add your first game</span>
-					<Button size="sm" variant="outline" onclick={navigateToAddGame}>Add Game</Button>
+		<button onclick={navigateToUpload} class="group text-left">
+			<GameBox variant="default" class="h-full transition-all group-hover:shadow-xl group-hover:-translate-y-1">
+				<div class="flex flex-col items-center text-center p-4">
+					<div class="w-16 h-16 rounded-full bg-game-orange/10 flex items-center justify-center mb-4 group-hover:bg-game-orange/20 transition-colors">
+						<Rulebook size={32} class="text-game-orange" />
+					</div>
+					<h3 class="font-display font-semibold text-lg mb-2">Upload Rules</h3>
+					<p class="text-sm text-muted-foreground font-body">
+						Upload PDF rule books for easy access
+					</p>
 				</div>
-				<div class="flex items-center justify-between">
-					<span class="text-muted-foreground text-sm">2. Upload rule books</span>
-					<Button size="sm" variant="outline" onclick={navigateToUpload}>Upload</Button>
+			</GameBox>
+		</button>
+
+		<button onclick={navigateToSearch} class="group text-left">
+			<GameBox variant="default" class="h-full transition-all group-hover:shadow-xl group-hover:-translate-y-1">
+				<div class="flex flex-col items-center text-center p-4">
+					<div class="w-16 h-16 rounded-full bg-game-green/10 flex items-center justify-center mb-4 group-hover:bg-game-green/20 transition-colors">
+						<SearchGlass size={32} class="text-game-green" />
+					</div>
+					<h3 class="font-display font-semibold text-lg mb-2">Search Rules</h3>
+					<p class="text-sm text-muted-foreground font-body">
+						Find specific rules with AI-powered search
+					</p>
 				</div>
-				<div class="flex items-center justify-between">
-					<span class="text-muted-foreground text-sm">3. Search or ask questions</span>
-					<Button size="sm" variant="outline" onclick={navigateToSearch}>Search</Button>
+			</GameBox>
+		</button>
+
+		<button onclick={navigateToChat} class="group text-left">
+			<GameBox variant="default" class="h-full transition-all group-hover:shadow-xl group-hover:-translate-y-1">
+				<div class="flex flex-col items-center text-center p-4">
+					<div class="w-16 h-16 rounded-full bg-game-purple/10 flex items-center justify-center mb-4 group-hover:bg-game-purple/20 transition-colors">
+						<ChatBubble size={32} class="text-game-purple" />
+					</div>
+					<h3 class="font-display font-semibold text-lg mb-2">Ask Questions</h3>
+					<p class="text-sm text-muted-foreground font-body">
+						Get instant answers about game rules
+					</p>
 				</div>
-			</CardContent>
-		</Card>
+			</GameBox>
+		</button>
+	</div>
+
+	<!-- Stats & Quick Start Row -->
+	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+		<!-- Collection Stats - Component Tray -->
+		<ComponentTray title="Your Collection">
+			<ComponentTraySection>
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-4">
+						<div class="w-12 h-12 rounded-lg bg-game-blue flex items-center justify-center">
+							<GameBoxIcon size={24} class="text-white" />
+						</div>
+						<div>
+							{#if loading}
+								<p class="text-2xl font-display font-bold text-parchment">...</p>
+							{:else}
+								<p class="text-2xl font-display font-bold text-parchment">{totalGames}</p>
+							{/if}
+							<p class="text-sm text-parchment/70">Games in collection</p>
+						</div>
+					</div>
+					<Button variant="game-secondary" size="sm" onclick={navigateToGames}>
+						View All
+					</Button>
+				</div>
+			</ComponentTraySection>
+
+			<div class="mt-4 grid grid-cols-3 gap-2">
+				<div class="text-center p-2 rounded bg-parchment/10">
+					<Meeple size={20} color="red" class="mx-auto mb-1 opacity-60" />
+					<p class="text-xs text-parchment/70">Ready to play</p>
+				</div>
+				<div class="text-center p-2 rounded bg-parchment/10">
+					<Rulebook size={20} class="mx-auto mb-1 opacity-60 text-parchment" />
+					<p class="text-xs text-parchment/70">With PDF rules</p>
+				</div>
+				<div class="text-center p-2 rounded bg-parchment/10">
+					<Dice size={20} value={5} class="mx-auto mb-1 opacity-60 text-parchment" />
+					<p class="text-xs text-parchment/70">House rules</p>
+				</div>
+			</div>
+		</ComponentTray>
+
+		<!-- Quick Start - Rulebook Style -->
+		<GameBox variant="default" title="Getting Started" showCorners={true}>
+			<div class="space-y-4">
+				<div class="flex items-center gap-4 p-3 rounded-lg bg-parchment-dark/50 border border-border">
+					<div class="flex-shrink-0 w-8 h-8 rounded-full bg-game-blue flex items-center justify-center">
+						<span class="text-white font-display font-bold text-sm">1</span>
+					</div>
+					<div class="flex-1 min-w-0">
+						<p class="font-display font-medium">Add your first game</p>
+						<p class="text-sm text-muted-foreground">Enter game details and metadata</p>
+					</div>
+					<Button variant="ghost" size="sm" onclick={navigateToAddGame}>
+						Start
+					</Button>
+				</div>
+
+				<div class="flex items-center gap-4 p-3 rounded-lg bg-parchment-dark/50 border border-border">
+					<div class="flex-shrink-0 w-8 h-8 rounded-full bg-game-orange flex items-center justify-center">
+						<span class="text-white font-display font-bold text-sm">2</span>
+					</div>
+					<div class="flex-1 min-w-0">
+						<p class="font-display font-medium">Upload rule books</p>
+						<p class="text-sm text-muted-foreground">We'll index the content for you</p>
+					</div>
+					<Button variant="ghost" size="sm" onclick={navigateToUpload}>
+						Upload
+					</Button>
+				</div>
+
+				<div class="flex items-center gap-4 p-3 rounded-lg bg-parchment-dark/50 border border-border">
+					<div class="flex-shrink-0 w-8 h-8 rounded-full bg-game-green flex items-center justify-center">
+						<span class="text-white font-display font-bold text-sm">3</span>
+					</div>
+					<div class="flex-1 min-w-0">
+						<p class="font-display font-medium">Search or ask questions</p>
+						<p class="text-sm text-muted-foreground">AI-powered rule lookups</p>
+					</div>
+					<Button variant="ghost" size="sm" onclick={navigateToSearch}>
+						Search
+					</Button>
+				</div>
+			</div>
+		</GameBox>
 	</div>
 </main>
 
 <!-- Footer -->
-<footer class="bg-card mt-16 border-t">
+<footer class="bg-wood-light/30 mt-16 border-t-2 border-wood-dark">
 	<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-		<div class="flex items-center justify-between">
-			<div class="text-muted-foreground text-sm">
-				© 2024 Tabletop Atlas. Made with ♥ for board game enthusiasts.
+		<div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+			<div class="flex items-center gap-2 text-muted-foreground text-sm font-ui">
+				<Meeple size={16} color="blue" />
+				<span>© 2024 Tabletop Atlas. Made with ♥ for board game enthusiasts.</span>
 			</div>
-			<div class="text-muted-foreground flex space-x-6 text-sm">
-				<!-- svelte-ignore component_name_lowercase -->
+			<div class="flex items-center gap-6 text-sm font-ui">
 				<a
 					href="https://github.com/mccormickt/tabletop-atlas"
-					class="hover:text-foreground transition-colors">GitHub</a
+					class="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
 				>
+					<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+						<path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+					</svg>
+					GitHub
+				</a>
 			</div>
 		</div>
 	</div>
