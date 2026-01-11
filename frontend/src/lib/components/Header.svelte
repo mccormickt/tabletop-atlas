@@ -16,8 +16,19 @@
 	// Derive current path for active navigation
 	let currentPath = $derived(page.url.pathname);
 
+	// Mobile menu state
+	let mobileMenuOpen = $state(false);
+
 	function isActivePath(path: string): boolean {
 		return currentPath === path || currentPath.startsWith(path + '/');
+	}
+
+	function toggleMobileMenu() {
+		mobileMenuOpen = !mobileMenuOpen;
+	}
+
+	function closeMobileMenu() {
+		mobileMenuOpen = false;
 	}
 
 	function navigateHome() {
@@ -109,24 +120,84 @@
 				<!-- Mobile Menu Button -->
 				<div class="md:hidden">
 					<button
-						onclick={() => {
-							// TODO: Implement mobile menu
-							console.log('Toggle mobile menu');
-						}}
+						onclick={toggleMobileMenu}
 						class="text-muted-foreground hover:text-foreground p-2"
 						aria-label="Toggle mobile menu"
 					>
-						<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M4 6h16M4 12h16M4 18h16"
-							></path>
-						</svg>
+						{#if mobileMenuOpen}
+							<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								></path>
+							</svg>
+						{:else}
+							<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M4 6h16M4 12h16M4 18h16"
+								></path>
+							</svg>
+						{/if}
 					</button>
 				</div>
 			</nav>
 		</div>
+
+		<!-- Mobile Menu Dropdown -->
+		{#if mobileMenuOpen}
+			<div class="border-t md:hidden">
+				<nav class="space-y-1 px-4 pb-4 pt-2">
+					<a
+						href="/games"
+						onclick={closeMobileMenu}
+						class="block rounded-md px-3 py-2 text-base font-medium transition-colors {isActivePath(
+							'/games'
+						)
+							? 'bg-primary text-primary-foreground'
+							: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
+					>
+						Games
+					</a>
+					<a
+						href="/upload"
+						onclick={closeMobileMenu}
+						class="block rounded-md px-3 py-2 text-base font-medium transition-colors {isActivePath(
+							'/upload'
+						)
+							? 'bg-primary text-primary-foreground'
+							: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
+					>
+						Upload
+					</a>
+					<a
+						href="/search"
+						onclick={closeMobileMenu}
+						class="block rounded-md px-3 py-2 text-base font-medium transition-colors {isActivePath(
+							'/search'
+						)
+							? 'bg-primary text-primary-foreground'
+							: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
+					>
+						Search
+					</a>
+					<a
+						href="/chat"
+						onclick={closeMobileMenu}
+						class="block rounded-md px-3 py-2 text-base font-medium transition-colors {isActivePath(
+							'/chat'
+						)
+							? 'bg-primary text-primary-foreground'
+							: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
+					>
+						Chat
+					</a>
+				</nav>
+			</div>
+		{/if}
 	</div>
 </header>

@@ -219,8 +219,7 @@
 	<div class="mb-8">
 		<h1 class="text-3xl font-bold text-gray-900">Keyword Search</h1>
 		<p class="mt-2 text-gray-600">
-			Search for keywords and concepts in your uploaded game rules. For conversational Q&A, we're
-			building a chat feature!
+			Search for keywords and concepts in your uploaded game rules. For conversational Q&A, try our <a href="/chat" class="text-blue-600 hover:underline">Chat feature</a>!
 		</p>
 		<div class="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
 			<div class="flex items-start">
@@ -554,8 +553,7 @@
 								>
 							</div>
 							<p class="text-xs text-gray-400">
-								💡 For natural language questions like "How do I win?", we're building a chat
-								feature!
+								💡 For natural language questions like "How do I win?", try our <a href="/chat" class="text-blue-600 hover:underline">Chat feature</a>!
 							</p>
 						</div>
 					</CardContent>
@@ -637,7 +635,7 @@
 					<div class="mb-3 flex items-center">
 						<div class="flex-shrink-0">
 							<svg
-								class="h-8 w-8 text-blue-600"
+								class="h-8 w-8 text-green-600"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -646,15 +644,15 @@
 									stroke-linecap="round"
 									stroke-linejoin="round"
 									stroke-width="2"
-									d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+									d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
 								></path>
 							</svg>
 						</div>
-						<h3 class="ml-3 text-lg font-medium text-gray-900">🚧 Chat Interface</h3>
+						<h3 class="ml-3 text-lg font-medium text-gray-900">Chat Interface</h3>
 					</div>
 					<p class="text-sm text-gray-600">
-						<strong>Coming soon:</strong> Ask natural language questions like "How do I win?" and get
-						conversational answers with rule citations. Perfect for complex rule interactions.
+						<strong>Available now:</strong> Ask natural language questions like "How do I win?" and get
+						conversational answers with rule citations. Perfect for complex rule interactions. <a href="/chat" class="text-blue-600 hover:underline">Try it now</a>
 					</p>
 				</CardContent>
 			</Card>
