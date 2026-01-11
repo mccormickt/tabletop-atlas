@@ -16,10 +16,14 @@
 				ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
 				link: 'text-primary underline-offset-4 hover:underline',
 				// Boardgame-themed variants
-				'game-primary': 'bg-game-blue text-white font-display font-semibold tracking-wide shadow-md border-2 border-game-blue hover:bg-game-blue/90 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0',
-				'game-secondary': 'bg-parchment text-foreground font-display border-2 border-wood-dark shadow-sm hover:bg-parchment-dark hover:shadow-md',
-				'game-accent': 'bg-game-orange text-white font-display font-semibold shadow-md border-2 border-game-orange hover:bg-game-orange/90 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0',
-				'token': 'rounded-full bg-game-blue text-white font-display font-bold shadow-md border-2 border-white/30 hover:scale-110 hover:shadow-lg active:scale-100'
+				'game-primary':
+					'bg-game-blue text-white font-display font-semibold tracking-wide shadow-md border-2 border-game-blue hover:bg-game-blue/90 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0',
+				'game-secondary':
+					'bg-parchment text-foreground font-display border-2 border-wood-dark shadow-sm hover:bg-parchment-dark hover:shadow-md',
+				'game-accent':
+					'bg-game-orange text-white font-display font-semibold shadow-md border-2 border-game-orange hover:bg-game-orange/90 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0',
+				token:
+					'rounded-full bg-game-blue text-white font-display font-bold shadow-md border-2 border-white/30 hover:scale-110 hover:shadow-lg active:scale-100'
 			},
 			size: {
 				default: 'h-9 px-4 py-2 has-[>svg]:px-3',

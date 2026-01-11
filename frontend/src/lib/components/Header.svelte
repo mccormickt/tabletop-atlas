@@ -31,10 +31,14 @@
 	];
 </script>
 
-<header class="header-board-edge relative bg-card border-b-4 border-wood-dark shadow-lg">
+<header class="header-board-edge bg-card border-wood-dark relative border-b-4 shadow-lg">
 	<!-- Decorative corner pieces -->
-	<div class="absolute top-2 left-2 w-4 h-4 border-l-3 border-t-3 border-gold-foil opacity-70 hidden lg:block"></div>
-	<div class="absolute top-2 right-2 w-4 h-4 border-r-3 border-t-3 border-gold-foil opacity-70 hidden lg:block"></div>
+	<div
+		class="border-gold-foil absolute top-2 left-2 hidden h-4 w-4 border-t-3 border-l-3 opacity-70 lg:block"
+	></div>
+	<div
+		class="border-gold-foil absolute top-2 right-2 hidden h-4 w-4 border-t-3 border-r-3 opacity-70 lg:block"
+	></div>
 
 	<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 		<div class="flex items-center justify-between py-4">
@@ -42,22 +46,26 @@
 			<div class="flex items-center gap-3">
 				<button
 					onclick={navigateHome}
-					class="group flex items-center gap-3 text-foreground hover:text-primary transition-all duration-200"
+					class="group text-foreground hover:text-primary flex items-center gap-3 transition-all duration-200"
 				>
 					<!-- Compass/Map logo with game pieces -->
 					<div class="relative">
-						<div class="w-10 h-10 rounded-lg bg-game-blue flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+						<div
+							class="bg-game-blue flex h-10 w-10 items-center justify-center rounded-lg shadow-md transition-transform group-hover:scale-105"
+						>
 							<Meeple size={24} color="current" class="text-white" />
 						</div>
-						<div class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-game-orange flex items-center justify-center shadow-sm">
+						<div
+							class="bg-game-orange absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full shadow-sm"
+						>
 							<Dice size={12} value={6} class="text-foreground" />
 						</div>
 					</div>
 					<div class="flex flex-col">
-						<span class="font-display text-xl font-bold tracking-wide leading-none">
+						<span class="font-display text-xl leading-none font-bold tracking-wide">
 							Tabletop Atlas
 						</span>
-						<span class="text-xs text-muted-foreground font-ui hidden sm:block">
+						<span class="text-muted-foreground font-ui hidden text-xs sm:block">
 							Your Game Library
 						</span>
 					</div>
@@ -75,21 +83,21 @@
 			<nav class="flex items-center gap-2">
 				<!-- Main Navigation Links (desktop) -->
 				<div class="hidden items-center md:flex">
-					{#each navItems as item, i}
+					{#each navItems as item, i (item.path)}
 						{#if i > 0}
 							<!-- Dice dot divider -->
-							<span class="mx-2 text-gold-foil opacity-60">◆</span>
+							<span class="text-gold-foil mx-2 opacity-60">◆</span>
 						{/if}
 						<a
 							href={item.path}
-							class="nav-link relative px-3 py-2 font-display text-sm font-medium tracking-wide transition-all duration-200
-								{isActivePath(item.path)
-									? 'text-game-blue'
-									: 'text-muted-foreground hover:text-foreground'}"
+							class="nav-link font-display relative px-3 py-2 text-sm font-medium tracking-wide transition-all duration-200
+								{isActivePath(item.path) ? 'text-game-blue' : 'text-muted-foreground hover:text-foreground'}"
 						>
 							{item.label}
 							{#if isActivePath(item.path)}
-								<span class="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-game-blue rounded-full"></span>
+								<span
+									class="bg-game-blue absolute bottom-0 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full"
+								></span>
 							{/if}
 						</a>
 					{/each}
@@ -97,7 +105,7 @@
 
 				<!-- Search Button/Controls -->
 				{#if showSearch}
-					<div class="flex items-center ml-4">
+					<div class="ml-4 flex items-center">
 						<HeaderSearch {currentGame} showQuickSearch={false} showSearchButton={true} />
 					</div>
 				{/if}
@@ -106,7 +114,9 @@
 	</div>
 
 	<!-- Bottom decorative border pattern -->
-	<div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gold-foil/30 to-transparent"></div>
+	<div
+		class="via-gold-foil/30 absolute right-0 bottom-0 left-0 h-1 bg-gradient-to-r from-transparent to-transparent"
+	></div>
 </header>
 
 <style>

@@ -6,11 +6,7 @@
 		size?: number | string;
 	};
 
-	let {
-		size = 24,
-		class: className,
-		...restProps
-	}: Props = $props();
+	let { size = 24, class: className, ...restProps }: Props = $props();
 </script>
 
 <svg
@@ -28,7 +24,11 @@
 	{...restProps}
 >
 	<!-- Box bottom -->
-	<path d="M3 9L12 4L21 9V18L12 23L3 18V9Z" fill="var(--wood-light, #d4a574)" stroke="currentColor" />
+	<path
+		d="M3 9L12 4L21 9V18L12 23L3 18V9Z"
+		fill="var(--wood-light, #d4a574)"
+		stroke="currentColor"
+	/>
 	<!-- Box lid slightly open -->
 	<path d="M3 9L12 4L21 9" fill="none" stroke="currentColor" stroke-width="2" />
 	<path d="M12 4V2" stroke="currentColor" stroke-width="1.5" />

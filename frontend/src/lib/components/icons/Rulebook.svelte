@@ -6,11 +6,7 @@
 		size?: number | string;
 	};
 
-	let {
-		size = 24,
-		class: className,
-		...restProps
-	}: Props = $props();
+	let { size = 24, class: className, ...restProps }: Props = $props();
 </script>
 
 <svg
@@ -29,7 +25,10 @@
 >
 	<!-- Book cover -->
 	<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-	<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" fill="var(--wood-light, #d4a574)" />
+	<path
+		d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
+		fill="var(--wood-light, #d4a574)"
+	/>
 	<!-- Book spine -->
 	<path d="M4 4.5V19.5" stroke="var(--wood-dark, #8b6914)" stroke-width="3" />
 	<!-- Page lines -->

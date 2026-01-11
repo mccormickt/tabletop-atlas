@@ -163,10 +163,12 @@ export const searchUtils = {
 			// Load search history
 			const historyData = localStorage.getItem('tabletop-atlas-search-history');
 			if (historyData) {
-				const searches = JSON.parse(historyData).map((item: any) => ({
-					...item,
-					timestamp: new Date(item.timestamp)
-				}));
+				const searches = JSON.parse(historyData).map(
+					(item: Omit<SearchHistoryItem, 'timestamp'> & { timestamp: string }) => ({
+						...item,
+						timestamp: new Date(item.timestamp)
+					})
+				);
 
 				searchStore.update((state) => ({
 					...state,

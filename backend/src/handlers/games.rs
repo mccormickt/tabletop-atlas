@@ -1,6 +1,6 @@
 use crate::{
     AppState,
-    db::{Database, games},
+    db::games,
     handlers::{
         HttpCreated, HttpDeleted, HttpError, HttpOk, bad_request_error, created_response,
         deleted_response, internal_error, not_found_error, success_response,
@@ -85,12 +85,12 @@ pub async fn create_game(
         return Err(bad_request_error("Game name cannot be empty".to_string()));
     }
 
-    if let Some(complexity) = create_request.complexity_rating {
-        if complexity < 1.0 || complexity > 5.0 {
-            return Err(bad_request_error(
-                "Complexity rating must be between 1.0 and 5.0".to_string(),
-            ));
-        }
+    if let Some(complexity) = create_request.complexity_rating
+        && !(1.0..=5.0).contains(&complexity)
+    {
+        return Err(bad_request_error(
+            "Complexity rating must be between 1.0 and 5.0".to_string(),
+        ));
     }
 
     match games::create_game(&db, create_request).await {
@@ -118,18 +118,18 @@ pub async fn update_game(
     let db = app_state.db();
 
     // Validate the request
-    if let Some(ref name) = update_request.name {
-        if name.trim().is_empty() {
-            return Err(bad_request_error("Game name cannot be empty".to_string()));
-        }
+    if let Some(ref name) = update_request.name
+        && name.trim().is_empty()
+    {
+        return Err(bad_request_error("Game name cannot be empty".to_string()));
     }
 
-    if let Some(complexity) = update_request.complexity_rating {
-        if complexity < 1.0 || complexity > 5.0 {
-            return Err(bad_request_error(
-                "Complexity rating must be between 1.0 and 5.0".to_string(),
-            ));
-        }
+    if let Some(complexity) = update_request.complexity_rating
+        && !(1.0..=5.0).contains(&complexity)
+    {
+        return Err(bad_request_error(
+            "Complexity rating must be between 1.0 and 5.0".to_string(),
+        ));
     }
 
     match games::update_game(&db, game_id, update_request).await {

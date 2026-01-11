@@ -284,13 +284,16 @@ pub async fn chat_with_rules(
         limit: 10, // Get top 10 most relevant chunks
     };
 
-    let search_results =
-        crate::db::embeddings::similarity_search_filtered(&db, similarity_request, include_house_rules)
-            .await
-            .map_err(|e| {
-                tracing::error!("Failed to search embeddings: {}", e);
-                internal_error("Failed to search rules".to_string())
-            })?;
+    let search_results = crate::db::embeddings::similarity_search_filtered(
+        &db,
+        similarity_request,
+        include_house_rules,
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to search embeddings: {}", e);
+        internal_error("Failed to search rules".to_string())
+    })?;
 
     // 5. Prepare context with relevant rules
     let context_sources: Vec<ContextSource> = search_results
@@ -310,11 +313,12 @@ pub async fn chat_with_rules(
         search_results
             .iter()
             .map(|result| {
-                let source_label = if result.source_type == crate::models::EmbeddingSourceType::HouseRule {
-                    "House Rule"
-                } else {
-                    "Official Rule"
-                };
+                let source_label =
+                    if result.source_type == crate::models::EmbeddingSourceType::HouseRule {
+                        "House Rule"
+                    } else {
+                        "Official Rule"
+                    };
                 format!("[{}]: {}", source_label, result.chunk_text)
             })
             .collect::<Vec<_>>()
@@ -396,69 +400,6 @@ Instructions:
     success_response(chat_response)
 }
 
-/// Enhance search results by grouping related chunks and providing better context
-fn enhance_search_results(
-    mut results: Vec<crate::models::EmbeddingSearchResult>,
-    limit: usize,
-) -> Vec<crate::models::EmbeddingSearchResult> {
-    // Sort by similarity score (highest first)
-    results.sort_by(|a, b| {
-        b.similarity_score
-            .partial_cmp(&a.similarity_score)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-
-    // Deduplicate very similar chunks (same source, similar content)
-    let mut deduplicated = Vec::new();
-    for result in results {
-        let is_duplicate =
-            deduplicated
-                .iter()
-                .any(|existing: &crate::models::EmbeddingSearchResult| {
-                    // Check if chunks are very similar (same source type and high text overlap)
-                    existing.source_type == result.source_type
-                        && text_similarity(&existing.chunk_text, &result.chunk_text) > 0.8
-                });
-
-        if !is_duplicate {
-            deduplicated.push(result);
-        }
-
-        if deduplicated.len() >= limit {
-            break;
-        }
-    }
-
-    deduplicated
-}
-
-/// Create a context preview that shows the key information from a chunk
-fn create_context_preview(chunk_text: &str) -> String {
-    let sentences: Vec<&str> = chunk_text
-        .split(|c| ".!?".contains(c))
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty() && s.len() > 10)
-        .take(2) // Take first 2 complete sentences
-        .collect();
-
-    if sentences.is_empty() {
-        // Fallback to first 150 characters
-        if chunk_text.len() > 150 {
-            format!("{}...", &chunk_text[..147])
-        } else {
-            chunk_text.to_string()
-        }
-    } else {
-        let preview = sentences.join(". ");
-        if preview.len() > 200 {
-            format!("{}...", &preview[..197])
-        } else {
-            format!("{}.", preview)
-        }
-    }
-}
-
-/// Calculate text similarity between two chunks (simple word overlap)
 /// Enhance search queries to better match rule document content
 fn enhance_search_query(query: &str) -> String {
     let query_lower = query.to_lowercase();
@@ -507,7 +448,7 @@ fn enhance_search_query(query: &str) -> String {
     // Join with the original query for comprehensive matching
     let mut final_query = query.to_string();
     if !enhanced_parts.is_empty() {
-        final_query.push_str(" ");
+        final_query.push(' ');
         final_query.push_str(&enhanced_parts.join(" "));
     }
 
@@ -540,22 +481,4 @@ fn extract_game_terms(query: &str) -> Vec<String> {
     }
 
     terms
-}
-
-fn text_similarity(text1: &str, text2: &str) -> f32 {
-    let words1: std::collections::HashSet<&str> = text1
-        .split_whitespace()
-        .filter(|w| w.len() > 3) // Only consider meaningful words
-        .collect();
-    let words2: std::collections::HashSet<&str> =
-        text2.split_whitespace().filter(|w| w.len() > 3).collect();
-
-    if words1.is_empty() || words2.is_empty() {
-        return 0.0;
-    }
-
-    let intersection = words1.intersection(&words2).count();
-    let union = words1.union(&words2).count();
-
-    intersection as f32 / union as f32
 }

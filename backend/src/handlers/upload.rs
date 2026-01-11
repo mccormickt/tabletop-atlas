@@ -57,7 +57,7 @@ pub async fn upload_rules_pdf(
         .map_err(|e| internal_error(format!("Failed to get game: {}", e)))?
         .ok_or(not_found_error(format!(
             "Game with id {} not found",
-            game_id as i64
+            game_id
         )))?;
 
     // Create uploads directory if it doesn't exist
@@ -143,7 +143,7 @@ pub async fn upload_rules_pdf(
     let response = UploadResponse {
         message: format!(
             "Successfully uploaded and processed PDF for game {}. Extracted {} characters and created {} text chunks.",
-            game_id as i64,
+            game_id,
             processed_pdf.full_text.len(),
             processed_pdf.chunks.len()
         ),
@@ -174,7 +174,7 @@ pub async fn get_rules_info(
         .map_err(|e| internal_error(format!("Database error: {}", e)))?
         .ok_or(not_found_error(format!(
             "Game with id {} not found",
-            game_id as i64
+            game_id
         )))?;
 
     success_response(result)
@@ -199,13 +199,13 @@ pub async fn delete_rules(
         .with_connection(|conn| {
             conn.query_row(
                 "SELECT rules_pdf_path FROM games WHERE id = ?",
-                [game_id as i64],
+                [game_id],
                 |row| row.get(0),
             )
         })
         .map_err(|e| match e {
             rusqlite::Error::QueryReturnedNoRows => {
-                not_found_error(format!("Game with id {} not found", game_id as i64))
+                not_found_error(format!("Game with id {} not found", game_id))
             }
             _ => internal_error(format!("Database error: {}", e)),
         })?;
@@ -223,7 +223,7 @@ pub async fn delete_rules(
     db.with_connection(|conn| {
         conn.execute(
             "UPDATE games SET rules_pdf_path = NULL, rules_text = NULL WHERE id = ?",
-            [game_id as i64],
+            [game_id],
         )
     })
     .map_err(|e| internal_error(format!("Failed to update game record: {}", e)))?;
@@ -243,7 +243,7 @@ pub async fn delete_rules(
     let response = DeleteRulesResponse {
         message: format!(
             "Successfully deleted rules for game {}. Removed {} embedding chunks.",
-            game_id as i64, embeddings_deleted
+            game_id, embeddings_deleted
         ),
         embeddings_deleted: embeddings_deleted as u32,
         file_deleted,

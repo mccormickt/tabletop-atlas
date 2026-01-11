@@ -305,8 +305,8 @@
 									class="mt-1"
 								/>
 								<p class="mt-1 text-xs text-gray-500">
-									Enter keywords or rule concepts. For conversational Q&A like "How do I win?",
-									try our <a href="/chat" class="text-blue-600 hover:underline">Chat feature</a>!
+									Enter keywords or rule concepts. For conversational Q&A like "How do I win?", try
+									our <a href="/chat" class="text-blue-600 hover:underline">Chat feature</a>!
 								</p>
 							</div>
 
@@ -459,7 +459,10 @@
 										<p class="text-sm font-medium text-blue-900">Keyword Search vs Chat</p>
 										<p class="mt-1 text-xs text-blue-700">
 											This keyword search finds rule sections. For conversational Q&A like "How do I
-											win?", try our <a href="/chat" class="text-blue-600 hover:underline font-medium">Chat feature</a>!
+											win?", try our <a
+												href="/chat"
+												class="font-medium text-blue-600 hover:underline">Chat feature</a
+											>!
 										</p>
 									</div>
 								</div>

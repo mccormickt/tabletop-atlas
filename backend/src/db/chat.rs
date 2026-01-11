@@ -238,16 +238,6 @@ pub async fn add_message_to_session(
     })
 }
 
-pub async fn delete_chat_session(db: &Database, session_id: ChatSessionId) -> SqliteResult<bool> {
-    db.with_connection(|conn| {
-        let rows_affected = conn.execute(
-            "DELETE FROM chat_sessions WHERE id = ?",
-            params![session_id],
-        )?;
-        Ok(rows_affected > 0)
-    })
-}
-
 pub async fn update_chat_session(
     db: &Database,
     session_id: ChatSessionId,
@@ -335,58 +325,5 @@ pub async fn update_chat_session(
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(e) => Err(e),
         }
-    })
-}
-
-pub async fn get_session_messages(
-    db: &Database,
-    session_id: ChatSessionId,
-    limit: Option<u32>,
-) -> SqliteResult<Vec<ChatMessage>> {
-    db.with_connection(|conn| {
-        let query = if let Some(limit) = limit {
-            format!(
-                r#"
-                SELECT id, session_id, role, content, context_chunks, created_at
-                FROM chat_messages
-                WHERE session_id = ?
-                ORDER BY created_at DESC
-                LIMIT {}
-                "#,
-                limit
-            )
-        } else {
-            r#"
-            SELECT id, session_id, role, content, context_chunks, created_at
-            FROM chat_messages
-            WHERE session_id = ?
-            ORDER BY created_at ASC
-            "#
-            .to_string()
-        };
-
-        let mut stmt = conn.prepare(&query)?;
-
-        let message_iter = stmt.query_map(params![session_id], |row| {
-            let role_str: String = row.get(2)?;
-            let role = crate::models::MessageRole::from_str(&role_str)
-                .unwrap_or(crate::models::MessageRole::User);
-
-            let context_chunks: Option<String> = row.get(4)?;
-            let context_chunks =
-                context_chunks.and_then(|s| serde_json::from_str::<Vec<i64>>(&s).ok());
-
-            Ok(ChatMessage {
-                id: row.get(0)?,
-                session_id: row.get(1)?,
-                role,
-                content: row.get(3)?,
-                context_chunks,
-                created_at: parse_datetime(row, "created_at")?,
-            })
-        })?;
-
-        let messages: Result<Vec<ChatMessage>, _> = message_iter.collect();
-        messages
     })
 }

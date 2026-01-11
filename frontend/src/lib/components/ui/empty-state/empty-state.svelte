@@ -19,6 +19,7 @@
 </script>
 
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { cn } from '$lib/utils.js';
 	import { Button } from '$lib/components/ui/button';
 
@@ -32,7 +33,11 @@
 		class?: string;
 		onAction?: () => void;
 		onSecondaryAction?: () => void;
-		children?: any;
+		children?: {
+			icon?: Snippet;
+			content?: Snippet;
+			actions?: Snippet;
+		};
 	}
 
 	let {
@@ -83,6 +88,7 @@
 	<!-- Icon -->
 	{#if icon && icon !== 'custom'}
 		<div class="mb-4">
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -- Safe SVG from getIconSvg -->
 			{@html getIconSvg(icon)}
 		</div>
 	{:else if children?.icon}

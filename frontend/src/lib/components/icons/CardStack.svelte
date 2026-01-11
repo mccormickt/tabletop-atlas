@@ -6,11 +6,7 @@
 		size?: number | string;
 	};
 
-	let {
-		size = 24,
-		class: className,
-		...restProps
-	}: Props = $props();
+	let { size = 24, class: className, ...restProps }: Props = $props();
 </script>
 
 <svg
@@ -28,9 +24,27 @@
 	{...restProps}
 >
 	<!-- Bottom card -->
-	<rect x="4" y="6" width="14" height="18" rx="2" fill="var(--parchment, #f5f5dc)" stroke="currentColor" transform="rotate(-8 11 15)" />
+	<rect
+		x="4"
+		y="6"
+		width="14"
+		height="18"
+		rx="2"
+		fill="var(--parchment, #f5f5dc)"
+		stroke="currentColor"
+		transform="rotate(-8 11 15)"
+	/>
 	<!-- Middle card -->
-	<rect x="5" y="4" width="14" height="18" rx="2" fill="var(--parchment, #f5f5dc)" stroke="currentColor" transform="rotate(-4 12 13)" />
+	<rect
+		x="5"
+		y="4"
+		width="14"
+		height="18"
+		rx="2"
+		fill="var(--parchment, #f5f5dc)"
+		stroke="currentColor"
+		transform="rotate(-4 12 13)"
+	/>
 	<!-- Top card -->
 	<rect x="6" y="2" width="14" height="18" rx="2" fill="white" stroke="currentColor" />
 	<!-- Card decoration -->

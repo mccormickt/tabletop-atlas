@@ -1,3 +1,6 @@
+// Dropshot's #[endpoint] macro generates NeedRequestContext structs that trigger dead_code warnings
+#![allow(dead_code)]
+
 use dropshot::{
     HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseHeaders, HttpResponseOk,
 };

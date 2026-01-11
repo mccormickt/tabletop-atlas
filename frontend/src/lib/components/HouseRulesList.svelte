@@ -85,7 +85,7 @@
 	<div class="flex items-center justify-between">
 		<div>
 			<h2 class="text-xl font-semibold">House Rules</h2>
-			<p class="text-sm text-muted-foreground">
+			<p class="text-muted-foreground text-sm">
 				{total} house rule{total === 1 ? '' : 's'}
 			</p>
 		</div>
@@ -157,8 +157,8 @@
 										<Badge variant="outline">{rule.category}</Badge>
 									{/if}
 								</div>
-								<p class="mt-2 text-sm text-muted-foreground">{rule.description}</p>
-								<p class="mt-2 text-xs text-muted-foreground">
+								<p class="text-muted-foreground mt-2 text-sm">{rule.description}</p>
+								<p class="text-muted-foreground mt-2 text-xs">
 									Created {formatDate(new Date(rule.createdAt))}
 								</p>
 							</div>
@@ -185,7 +185,7 @@
 				>
 					Previous
 				</Button>
-				<span class="text-sm text-muted-foreground">
+				<span class="text-muted-foreground text-sm">
 					Page {currentPage} of {totalPages}
 				</span>
 				<Button

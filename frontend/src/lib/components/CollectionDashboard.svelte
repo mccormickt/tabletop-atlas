@@ -10,7 +10,6 @@
 
 	let {
 		games,
-		loading = false,
 		currentPage = 1,
 		totalPages = 1,
 		total = 0,
@@ -18,7 +17,6 @@
 		onDelete
 	}: {
 		games: GameSummary[];
-		loading?: boolean;
 		currentPage?: number;
 		totalPages?: number;
 		total?: number;
@@ -101,9 +99,9 @@
 
 <div class="collection-dashboard">
 	<!-- Toolbar -->
-	<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+	<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 		<div class="flex items-center gap-2">
-			<span class="text-sm text-muted-foreground font-ui">
+			<span class="text-muted-foreground font-ui text-sm">
 				{total} game{total === 1 ? '' : 's'}
 			</span>
 			{#if selectedGames.size > 0}
@@ -114,25 +112,31 @@
 		</div>
 
 		<!-- View Mode Toggle -->
-		<div class="flex items-center gap-1 bg-secondary rounded-lg p-1">
+		<div class="bg-secondary flex items-center gap-1 rounded-lg p-1">
 			<button
 				onclick={() => (viewMode = 'table')}
-				class="px-3 py-1 rounded text-sm font-ui transition-colors
-					{viewMode === 'table' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}"
+				class="font-ui rounded px-3 py-1 text-sm transition-colors
+					{viewMode === 'table'
+					? 'bg-card text-foreground shadow-sm'
+					: 'text-muted-foreground hover:text-foreground'}"
 			>
 				List
 			</button>
 			<button
 				onclick={() => (viewMode = 'cards')}
-				class="px-3 py-1 rounded text-sm font-ui transition-colors
-					{viewMode === 'cards' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}"
+				class="font-ui rounded px-3 py-1 text-sm transition-colors
+					{viewMode === 'cards'
+					? 'bg-card text-foreground shadow-sm'
+					: 'text-muted-foreground hover:text-foreground'}"
 			>
 				Cards
 			</button>
 			<button
 				onclick={() => (viewMode = 'compact')}
-				class="px-3 py-1 rounded text-sm font-ui transition-colors
-					{viewMode === 'compact' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}"
+				class="font-ui rounded px-3 py-1 text-sm transition-colors
+					{viewMode === 'compact'
+					? 'bg-card text-foreground shadow-sm'
+					: 'text-muted-foreground hover:text-foreground'}"
 			>
 				Compact
 			</button>
@@ -144,20 +148,20 @@
 		<div class="game-box-lid overflow-hidden">
 			<div class="overflow-x-auto">
 				<table class="w-full">
-					<thead class="bg-parchment-dark border-b-2 border-wood-dark">
+					<thead class="bg-parchment-dark border-wood-dark border-b-2">
 						<tr>
 							<th class="px-4 py-3 text-left">
 								<input
 									type="checkbox"
 									checked={selectedGames.size === games.length && games.length > 0}
 									onchange={selectAll}
-									class="w-4 h-4 rounded"
+									class="h-4 w-4 rounded"
 								/>
 							</th>
 							<th class="px-4 py-3 text-left">
 								<button
 									onclick={() => toggleSort('name')}
-									class="flex items-center gap-1 font-display font-semibold text-sm hover:text-game-blue"
+									class="font-display hover:text-game-blue flex items-center gap-1 text-sm font-semibold"
 								>
 									Game
 									{#if sortField === 'name'}
@@ -165,10 +169,10 @@
 									{/if}
 								</button>
 							</th>
-							<th class="px-4 py-3 text-left hidden sm:table-cell">
+							<th class="hidden px-4 py-3 text-left sm:table-cell">
 								<button
 									onclick={() => toggleSort('yearPublished')}
-									class="flex items-center gap-1 font-display font-semibold text-sm hover:text-game-blue"
+									class="font-display hover:text-game-blue flex items-center gap-1 text-sm font-semibold"
 								>
 									Year
 									{#if sortField === 'yearPublished'}
@@ -176,10 +180,10 @@
 									{/if}
 								</button>
 							</th>
-							<th class="px-4 py-3 text-center hidden md:table-cell">
+							<th class="hidden px-4 py-3 text-center md:table-cell">
 								<button
 									onclick={() => toggleSort('minPlayers')}
-									class="flex items-center gap-1 font-display font-semibold text-sm hover:text-game-blue"
+									class="font-display hover:text-game-blue flex items-center gap-1 text-sm font-semibold"
 								>
 									Players
 									{#if sortField === 'minPlayers'}
@@ -187,10 +191,10 @@
 									{/if}
 								</button>
 							</th>
-							<th class="px-4 py-3 text-center hidden lg:table-cell">
+							<th class="hidden px-4 py-3 text-center lg:table-cell">
 								<button
 									onclick={() => toggleSort('complexityRating')}
-									class="flex items-center gap-1 font-display font-semibold text-sm hover:text-game-blue"
+									class="font-display hover:text-game-blue flex items-center gap-1 text-sm font-semibold"
 								>
 									Complexity
 									{#if sortField === 'complexityRating'}
@@ -198,11 +202,11 @@
 									{/if}
 								</button>
 							</th>
-							<th class="px-4 py-3 text-center hidden lg:table-cell">Status</th>
+							<th class="hidden px-4 py-3 text-center lg:table-cell">Status</th>
 							<th class="px-4 py-3 text-right">Actions</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
+					<tbody class="divide-border divide-y">
 						{#each sortedGames() as game (game.id)}
 							<tr class="hover:bg-parchment-dark/50 transition-colors">
 								<td class="px-4 py-3">
@@ -210,31 +214,34 @@
 										type="checkbox"
 										checked={selectedGames.has(game.id)}
 										onchange={() => toggleSelect(game.id)}
-										class="w-4 h-4 rounded"
+										class="h-4 w-4 rounded"
 									/>
 								</td>
 								<td class="px-4 py-3">
-									<button onclick={() => handleView(game)} class="text-left hover:text-game-blue transition-colors">
+									<button
+										onclick={() => handleView(game)}
+										class="hover:text-game-blue text-left transition-colors"
+									>
 										<div class="font-display font-semibold">{game.name}</div>
 										{#if game.publisher}
-											<div class="text-sm text-muted-foreground">{game.publisher}</div>
+											<div class="text-muted-foreground text-sm">{game.publisher}</div>
 										{/if}
 									</button>
 								</td>
-								<td class="px-4 py-3 text-muted-foreground hidden sm:table-cell">
+								<td class="text-muted-foreground hidden px-4 py-3 sm:table-cell">
 									{game.yearPublished || '-'}
 								</td>
-								<td class="px-4 py-3 text-center hidden md:table-cell">
+								<td class="hidden px-4 py-3 text-center md:table-cell">
 									{formatPlayers(game.minPlayers, game.maxPlayers)}
 								</td>
-								<td class="px-4 py-3 hidden lg:table-cell">
+								<td class="hidden px-4 py-3 lg:table-cell">
 									<div class="flex items-center justify-center gap-1">
 										<div class="dice-rating text-sm {getComplexityColor(game.complexityRating)}">
 											{game.complexityRating?.toFixed(1) || '-'}
 										</div>
 									</div>
 								</td>
-								<td class="px-4 py-3 hidden lg:table-cell">
+								<td class="hidden px-4 py-3 lg:table-cell">
 									<div class="flex items-center justify-center gap-1">
 										{#if game.hasRulesPdf}
 											<Badge variant="secondary" class="text-xs">PDF</Badge>
@@ -246,12 +253,8 @@
 								</td>
 								<td class="px-4 py-3 text-right">
 									<div class="flex items-center justify-end gap-1">
-										<Button variant="ghost" size="sm" onclick={() => handleView(game)}>
-											View
-										</Button>
-										<Button variant="ghost" size="sm" onclick={() => handleEdit(game)}>
-											Edit
-										</Button>
+										<Button variant="ghost" size="sm" onclick={() => handleView(game)}>View</Button>
+										<Button variant="ghost" size="sm" onclick={() => handleEdit(game)}>Edit</Button>
 									</div>
 								</td>
 							</tr>
@@ -264,15 +267,15 @@
 
 	<!-- Card View -->
 	{#if viewMode === 'cards'}
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 			{#each sortedGames() as game (game.id)}
 				<CardSleeve variant="default" class="p-0">
-					<button onclick={() => handleView(game)} class="w-full text-left p-4">
-						<div class="flex items-start justify-between mb-3">
+					<button onclick={() => handleView(game)} class="w-full p-4 text-left">
+						<div class="mb-3 flex items-start justify-between">
 							<div>
-								<h3 class="font-display font-semibold text-lg">{game.name}</h3>
+								<h3 class="font-display text-lg font-semibold">{game.name}</h3>
 								{#if game.publisher}
-									<p class="text-sm text-muted-foreground">{game.publisher}</p>
+									<p class="text-muted-foreground text-sm">{game.publisher}</p>
 								{/if}
 							</div>
 							{#if game.complexityRating}
@@ -282,7 +285,7 @@
 							{/if}
 						</div>
 
-						<div class="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-3">
+						<div class="text-muted-foreground mb-3 flex flex-wrap items-center gap-3 text-sm">
 							{#if game.yearPublished}
 								<span>{game.yearPublished}</span>
 							{/if}
@@ -306,10 +309,15 @@
 						</div>
 					</button>
 
-					<div class="flex items-center justify-end gap-2 px-4 pb-4 border-t border-border pt-3">
+					<div class="border-border flex items-center justify-end gap-2 border-t px-4 pt-3 pb-4">
 						<Button variant="ghost" size="sm" onclick={() => handleEdit(game)}>Edit</Button>
 						{#if onDelete}
-							<Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" onclick={() => onDelete(game)}>
+							<Button
+								variant="ghost"
+								size="sm"
+								class="text-destructive hover:text-destructive"
+								onclick={() => onDelete(game)}
+							>
 								Delete
 							</Button>
 						{/if}
@@ -322,25 +330,27 @@
 	<!-- Compact View -->
 	{#if viewMode === 'compact'}
 		<div class="game-box-lid p-2">
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+			<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 				{#each sortedGames() as game (game.id)}
 					<button
 						onclick={() => handleView(game)}
-						class="flex items-center gap-3 p-3 rounded-lg hover:bg-parchment-dark transition-colors text-left"
+						class="hover:bg-parchment-dark flex items-center gap-3 rounded-lg p-3 text-left transition-colors"
 					>
-						<div class="flex-shrink-0 w-8 h-8 rounded bg-game-blue flex items-center justify-center">
-							<span class="text-white font-display font-bold text-sm">
+						<div
+							class="bg-game-blue flex h-8 w-8 flex-shrink-0 items-center justify-center rounded"
+						>
+							<span class="font-display text-sm font-bold text-white">
 								{game.name.charAt(0).toUpperCase()}
 							</span>
 						</div>
-						<div class="flex-1 min-w-0">
-							<div class="font-display font-medium truncate">{game.name}</div>
-							<div class="text-xs text-muted-foreground">
+						<div class="min-w-0 flex-1">
+							<div class="font-display truncate font-medium">{game.name}</div>
+							<div class="text-muted-foreground text-xs">
 								{game.yearPublished || 'N/A'} · {formatPlayers(game.minPlayers, game.maxPlayers)}p
 							</div>
 						</div>
 						{#if game.hasRulesPdf}
-							<div class="flex-shrink-0 w-2 h-2 rounded-full bg-game-green" title="Has PDF"></div>
+							<div class="bg-game-green h-2 w-2 flex-shrink-0 rounded-full" title="Has PDF"></div>
 						{/if}
 					</button>
 				{/each}
@@ -350,8 +360,8 @@
 
 	<!-- Pagination using Score Track -->
 	{#if totalPages > 1}
-		<div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-			<div class="text-sm text-muted-foreground font-ui">
+		<div class="mt-6 flex flex-col items-center justify-between gap-4 sm:flex-row">
+			<div class="text-muted-foreground font-ui text-sm">
 				Page {currentPage} of {totalPages}
 			</div>
 

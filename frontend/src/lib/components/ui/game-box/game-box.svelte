@@ -47,11 +47,7 @@
 </script>
 
 <div
-	class={cn(
-		gameBoxVariants({ variant, size }),
-		showCorners && 'decorative-corners',
-		className
-	)}
+	class={cn(gameBoxVariants({ variant, size }), showCorners && 'decorative-corners', className)}
 	{...restProps}
 >
 	{#if title}

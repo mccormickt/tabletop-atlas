@@ -17,24 +17,32 @@
 	] as const;
 </script>
 
-<nav class="mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-50 border-t-2 border-wood-dark bg-parchment safe-area-inset-bottom">
+<nav
+	class="mobile-nav border-wood-dark bg-parchment safe-area-inset-bottom fixed right-0 bottom-0 left-0 z-50 border-t-2 md:hidden"
+>
 	<div class="flex items-stretch justify-around">
-		{#each navItems as item}
+		{#each navItems as item (item.path)}
 			<a
 				href={item.path}
-				class="mobile-nav-item flex flex-1 flex-col items-center justify-center py-2 px-1 transition-all
+				class="mobile-nav-item flex flex-1 flex-col items-center justify-center px-1 py-2 transition-all
 					{isActivePath(item.path)
-						? 'text-game-blue bg-parchment-dark'
-						: 'text-muted-foreground hover:text-foreground hover:bg-parchment-dark/50'}"
+					? 'text-game-blue bg-parchment-dark'
+					: 'text-muted-foreground hover:text-foreground hover:bg-parchment-dark/50'}"
 				aria-current={isActivePath(item.path) ? 'page' : undefined}
 			>
 				<div class="relative">
-					<svelte:component this={item.icon} size={24} class={isActivePath(item.path) ? 'text-game-blue' : ''} />
+					<svelte:component
+						this={item.icon}
+						size={24}
+						class={isActivePath(item.path) ? 'text-game-blue' : ''}
+					/>
 					{#if isActivePath(item.path)}
-						<div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-game-blue"></div>
+						<div
+							class="bg-game-blue absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
+						></div>
 					{/if}
 				</div>
-				<span class="text-xs mt-1 font-ui font-medium">{item.label}</span>
+				<span class="font-ui mt-1 text-xs font-medium">{item.label}</span>
 			</a>
 		{/each}
 	</div>

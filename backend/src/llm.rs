@@ -91,8 +91,8 @@ impl LLMClient {
         &self,
         messages: Vec<ChatMessage>,
         system_prompt: Option<String>,
-        max_tokens: Option<u16>,
-        temperature: Option<f32>,
+        _max_tokens: Option<u16>,
+        _temperature: Option<f32>,
     ) -> Result<String> {
         let mut request_messages = Vec::new();
 
