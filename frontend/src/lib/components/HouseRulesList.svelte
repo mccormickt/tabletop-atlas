@@ -1,70 +1,51 @@
 <script lang="ts">
-	import { api } from '$lib';
+	import { formatDate } from '$lib';
 	import { Button, Badge, Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui';
 	import { EmptyState, LoadingSpinner } from '$lib/components/ui';
 	import HouseRuleForm from './HouseRuleForm.svelte';
-	import type { HouseRule, PaginatedResponse_for_HouseRule } from '$lib';
+	import type { HouseRule } from '$lib';
 
-	// Props
-	let { gameId }: { gameId: number } = $props();
+	// Props - data passed from parent
+	let {
+		gameId,
+		houseRules = [],
+		isLoading = false,
+		error = null,
+		currentPage = 1,
+		totalPages = 1,
+		total = 0,
+		onPageChange,
+		onDelete,
+		onSaved
+	}: {
+		gameId: number;
+		houseRules: HouseRule[];
+		isLoading?: boolean;
+		error?: string | null;
+		currentPage?: number;
+		totalPages?: number;
+		total?: number;
+		onPageChange?: (page: number) => void;
+		onDelete?: (rule: HouseRule) => Promise<void>;
+		onSaved?: (rule: HouseRule) => void;
+	} = $props();
 
-	// State
-	let houseRules = $state<HouseRule[]>([]);
-	let isLoading = $state(true);
-	let error = $state<string | null>(null);
+	// Local UI state only
 	let showForm = $state(false);
 	let editingRule = $state<HouseRule | null>(null);
-	let currentPage = $state(1);
-	let totalPages = $state(1);
-	let total = $state(0);
-	const limit = 10;
+	let deleteError = $state<string | null>(null);
 
-	// Load house rules
-	async function loadHouseRules() {
-		isLoading = true;
-		error = null;
-
-		try {
-			const result = await api.methods.listHouseRules({
-				query: { gameId, page: currentPage, limit }
-			});
-
-			if (result.type === 'success') {
-				houseRules = result.data.items;
-				totalPages = result.data.totalPages;
-				total = result.data.total;
-			} else if (result.type === 'error') {
-				error = result.data.message || 'Failed to load house rules';
-			} else if (result.type === 'client_error') {
-				error = result.error.message || 'Failed to load house rules';
-			}
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'An unexpected error occurred';
-		} finally {
-			isLoading = false;
-		}
-	}
-
-	// Delete a house rule
-	async function deleteRule(rule: HouseRule) {
+	// Handle delete with confirmation
+	async function handleDelete(rule: HouseRule) {
 		if (!confirm(`Are you sure you want to delete "${rule.title}"?`)) {
 			return;
 		}
 
+		deleteError = null;
 		try {
-			const result = await api.methods.deleteHouseRule({
-				path: { id: rule.id }
-			});
-
-			if (result.type === 'success') {
-				await loadHouseRules();
-			} else if (result.type === 'error') {
-				error = result.data.message || 'Failed to delete house rule';
-			} else if (result.type === 'client_error') {
-				error = result.error.message || 'Failed to delete house rule';
-			}
+			await onDelete?.(rule);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'An unexpected error occurred';
+			deleteError = err instanceof Error ? err.message : 'Failed to delete house rule';
 		}
 	}
 
@@ -72,7 +53,7 @@
 	function handleSaved(rule: HouseRule) {
 		showForm = false;
 		editingRule = null;
-		loadHouseRules();
+		onSaved?.(rule);
 	}
 
 	// Handle form cancel
@@ -93,23 +74,10 @@
 		showForm = true;
 	}
 
-	// Format date
-	function formatDate(date: Date | string): string {
-		const d = typeof date === 'string' ? new Date(date) : date;
-		return d.toLocaleDateString();
+	// Handle page change
+	function goToPage(page: number) {
+		onPageChange?.(page);
 	}
-
-	// Load on mount
-	$effect(() => {
-		loadHouseRules();
-	});
-
-	// Reload when page changes
-	$effect(() => {
-		if (currentPage > 0) {
-			loadHouseRules();
-		}
-	});
 </script>
 
 <div class="space-y-6">
@@ -126,10 +94,17 @@
 		{/if}
 	</div>
 
-	<!-- Error -->
+	<!-- Error from parent -->
 	{#if error}
 		<div class="rounded-md border border-red-200 bg-red-50 p-4">
 			<p class="text-sm text-red-700">{error}</p>
+		</div>
+	{/if}
+
+	<!-- Delete error (local) -->
+	{#if deleteError}
+		<div class="rounded-md border border-red-200 bg-red-50 p-4">
+			<p class="text-sm text-red-700">{deleteError}</p>
 		</div>
 	{/if}
 
@@ -184,12 +159,12 @@
 								</div>
 								<p class="mt-2 text-sm text-muted-foreground">{rule.description}</p>
 								<p class="mt-2 text-xs text-muted-foreground">
-									Created {formatDate(rule.createdAt)}
+									Created {formatDate(new Date(rule.createdAt))}
 								</p>
 							</div>
 							<div class="flex space-x-2">
 								<Button variant="outline" size="sm" onclick={() => startEdit(rule)}>Edit</Button>
-								<Button variant="destructive" size="sm" onclick={() => deleteRule(rule)}
+								<Button variant="destructive" size="sm" onclick={() => handleDelete(rule)}
 									>Delete</Button
 								>
 							</div>
@@ -206,7 +181,7 @@
 					variant="outline"
 					size="sm"
 					disabled={currentPage <= 1}
-					onclick={() => (currentPage = currentPage - 1)}
+					onclick={() => goToPage(currentPage - 1)}
 				>
 					Previous
 				</Button>
@@ -217,7 +192,7 @@
 					variant="outline"
 					size="sm"
 					disabled={currentPage >= totalPages}
-					onclick={() => (currentPage = currentPage + 1)}
+					onclick={() => goToPage(currentPage + 1)}
 				>
 					Next
 				</Button>

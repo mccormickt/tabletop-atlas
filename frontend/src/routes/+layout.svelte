@@ -11,19 +11,22 @@
 	const headerStore = createHeaderStore();
 	setHeaderContext(headerStore);
 
-	// Subscribe to header config
+	// Subscribe to header config with proper cleanup
 	let headerConfig = $state({
 		currentGame: null as Game | null,
 		showSearch: true,
 		title: undefined as string | undefined
 	});
 
-	headerStore.subscribe((config) => {
-		headerConfig = {
-			currentGame: config.currentGame ?? null,
-			showSearch: config.showSearch ?? true,
-			title: config.title
-		};
+	$effect(() => {
+		const unsubscribe = headerStore.subscribe((config) => {
+			headerConfig = {
+				currentGame: config.currentGame ?? null,
+				showSearch: config.showSearch ?? true,
+				title: config.title
+			};
+		});
+		return unsubscribe;
 	});
 </script>
 

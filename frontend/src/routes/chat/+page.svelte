@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import {
 		api,
@@ -29,7 +28,16 @@
 
 	let includeHouseRules = $derived(currentSession?.session.includeHouseRules ?? true);
 
-	onMount(async () => {
+	let initialized = $state(false);
+
+	$effect(() => {
+		if (!initialized) {
+			initialized = true;
+			initialize();
+		}
+	});
+
+	async function initialize() {
 		await loadGames();
 
 		if (games.length > 0) {
@@ -50,7 +58,7 @@
 				}
 			}
 		}
-	});
+	}
 
 	async function loadGames() {
 		loadingGames = true;
