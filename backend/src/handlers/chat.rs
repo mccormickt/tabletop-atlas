@@ -11,7 +11,7 @@ use crate::{
     models::{
         ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionId, ChatSessionSummary,
         ContextSource, CreateChatSessionRequest, GameId, MessageRole, PaginatedResponse,
-        SimilaritySearchRequest,
+        SimilaritySearchRequest, UpdateChatSessionRequest,
     },
 };
 
@@ -127,6 +127,34 @@ pub async fn create_chat_session(
     }
 }
 
+/// Update a chat session (e.g., toggle include_house_rules)
+#[endpoint {
+    method = PUT,
+    path = "/api/chat/sessions/{id}"
+}]
+pub async fn update_chat_session(
+    rqctx: RequestContext<AppState>,
+    path: Path<ChatSessionPathParam>,
+    body: TypedBody<UpdateChatSessionRequest>,
+) -> Result<HttpOk<ChatSession>, HttpError> {
+    let app_state = rqctx.context();
+    let session_id = path.into_inner().id;
+    let update_request = body.into_inner();
+    let db = app_state.db();
+
+    match chat::update_chat_session(&db, session_id, update_request).await {
+        Ok(Some(session)) => success_response(session),
+        Ok(None) => Err(not_found_error(format!(
+            "Chat session with id {} not found",
+            session_id
+        ))),
+        Err(e) => {
+            tracing::error!("Failed to update chat session {}: {}", session_id, e);
+            Err(internal_error("Failed to update chat session".to_string()))
+        }
+    }
+}
+
 /// Search rules text for a specific game using embedding similarity
 #[endpoint {
     method = GET,
@@ -222,6 +250,7 @@ pub async fn chat_with_rules(
         })?;
 
     let game_id = session_history.session.game_id;
+    let include_house_rules = session_history.session.include_house_rules;
 
     // 2. Save user message to database
     let _user_message = chat::add_message_to_session(
@@ -247,7 +276,7 @@ pub async fn chat_with_rules(
             internal_error("Failed to process question".to_string())
         })?;
 
-    // 4. Search for relevant rule chunks using similarity search
+    // 4. Search for relevant rule chunks using similarity search (filtered by house rules setting)
     let similarity_request = SimilaritySearchRequest {
         game_id,
         query_embedding,
@@ -255,12 +284,13 @@ pub async fn chat_with_rules(
         limit: 10, // Get top 10 most relevant chunks
     };
 
-    let search_results = crate::db::embeddings::similarity_search(&db, similarity_request)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to search embeddings: {}", e);
-            internal_error("Failed to search rules".to_string())
-        })?;
+    let search_results =
+        crate::db::embeddings::similarity_search_filtered(&db, similarity_request, include_house_rules)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to search embeddings: {}", e);
+                internal_error("Failed to search rules".to_string())
+            })?;
 
     // 5. Prepare context with relevant rules
     let context_sources: Vec<ContextSource> = search_results
@@ -279,7 +309,14 @@ pub async fn chat_with_rules(
     } else {
         search_results
             .iter()
-            .map(|result| format!("Rule: {}", result.chunk_text))
+            .map(|result| {
+                let source_label = if result.source_type == crate::models::EmbeddingSourceType::HouseRule {
+                    "House Rule"
+                } else {
+                    "Official Rule"
+                };
+                format!("[{}]: {}", source_label, result.chunk_text)
+            })
             .collect::<Vec<_>>()
             .join("\n\n")
     };

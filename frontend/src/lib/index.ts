@@ -31,6 +31,7 @@ export type {
 	RulesInfoResponse,
 	UploadResponse,
 	CreateChatSessionRequest,
+	UpdateChatSessionRequest,
 	PaginatedResponse_for_GameSummary,
 	PaginatedResponse_for_HouseRule,
 	PaginatedResponse_for_ChatSessionSummary,

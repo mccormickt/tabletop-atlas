@@ -1,7 +1,7 @@
 use super::{Database, PaginationInfo, parse_datetime};
 use crate::models::{
     ChatHistory, ChatMessage, ChatSession, ChatSessionId, ChatSessionSummary,
-    CreateChatSessionRequest, GameId, PaginatedResponse,
+    CreateChatSessionRequest, GameId, PaginatedResponse, UpdateChatSessionRequest,
 };
 use chrono::Utc;
 use rusqlite::{Result as SqliteResult, params};
@@ -26,13 +26,13 @@ pub async fn list_chat_sessions(
         let mut stmt = conn.prepare(
             r#"
             SELECT
-                cs.id, cs.game_id, cs.title, cs.created_at,
+                cs.id, cs.game_id, cs.title, cs.include_house_rules, cs.created_at,
                 COUNT(cm.id) as message_count,
                 MAX(cm.created_at) as last_message_at
             FROM chat_sessions cs
             LEFT JOIN chat_messages cm ON cs.id = cm.session_id
             WHERE cs.game_id = ?
-            GROUP BY cs.id, cs.game_id, cs.title, cs.created_at
+            GROUP BY cs.id, cs.game_id, cs.title, cs.include_house_rules, cs.created_at
             ORDER BY COALESCE(MAX(cm.created_at), cs.created_at) DESC
             LIMIT ? OFFSET ?
             "#,
@@ -41,8 +41,9 @@ pub async fn list_chat_sessions(
         let session_iter = stmt.query_map(
             params![game_id, pagination.limit, pagination.offset],
             |row| {
-                let message_count: i32 = row.get(4)?;
-                let last_message_at: Option<String> = row.get(5)?;
+                let include_house_rules: bool = row.get(3)?;
+                let message_count: i32 = row.get(5)?;
+                let last_message_at: Option<String> = row.get(6)?;
                 let last_message_at = last_message_at.map(|s| {
                     chrono::DateTime::parse_from_rfc3339(&s)
                         .map(|dt| dt.with_timezone(&chrono::Utc))
@@ -57,6 +58,7 @@ pub async fn list_chat_sessions(
                     id: row.get(0)?,
                     game_id: row.get(1)?,
                     title: row.get(2)?,
+                    include_house_rules,
                     message_count,
                     last_message_at,
                     created_at: parse_datetime(row, "created_at")?,
@@ -78,7 +80,7 @@ pub async fn get_chat_history(
     db.with_connection(|conn| {
         // First get the session
         let mut session_stmt = conn.prepare(
-            "SELECT id, game_id, title, created_at, updated_at FROM chat_sessions WHERE id = ?",
+            "SELECT id, game_id, title, include_house_rules, created_at, updated_at FROM chat_sessions WHERE id = ?",
         )?;
 
         let session_result = session_stmt.query_row(params![session_id], |row| {
@@ -86,6 +88,7 @@ pub async fn get_chat_history(
                 id: row.get(0)?,
                 game_id: row.get(1)?,
                 title: row.get(2)?,
+                include_house_rules: row.get(3)?,
                 created_at: parse_datetime(row, "created_at")?,
                 updated_at: parse_datetime(row, "updated_at")?,
             })
@@ -157,17 +160,17 @@ pub async fn create_chat_session(
 
         conn.execute(
             r#"
-            INSERT INTO chat_sessions (game_id, title, created_at, updated_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO chat_sessions (game_id, title, include_house_rules, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
             "#,
-            params![request.game_id, request.title, now_str, now_str],
+            params![request.game_id, request.title, request.include_house_rules, now_str, now_str],
         )?;
 
         let session_id = conn.last_insert_rowid();
 
         // Fetch the created session
         let mut stmt = conn.prepare(
-            "SELECT id, game_id, title, created_at, updated_at FROM chat_sessions WHERE id = ?",
+            "SELECT id, game_id, title, include_house_rules, created_at, updated_at FROM chat_sessions WHERE id = ?",
         )?;
 
         stmt.query_row(params![session_id], |row| {
@@ -175,6 +178,7 @@ pub async fn create_chat_session(
                 id: row.get(0)?,
                 game_id: row.get(1)?,
                 title: row.get(2)?,
+                include_house_rules: row.get(3)?,
                 created_at: parse_datetime(row, "created_at")?,
                 updated_at: parse_datetime(row, "updated_at")?,
             })
@@ -241,6 +245,96 @@ pub async fn delete_chat_session(db: &Database, session_id: ChatSessionId) -> Sq
             params![session_id],
         )?;
         Ok(rows_affected > 0)
+    })
+}
+
+pub async fn update_chat_session(
+    db: &Database,
+    session_id: ChatSessionId,
+    request: UpdateChatSessionRequest,
+) -> SqliteResult<Option<ChatSession>> {
+    db.with_transaction(|conn| {
+        let now = Utc::now();
+        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        // Build dynamic update query based on provided fields
+        let mut updates = Vec::new();
+        let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        if let Some(title) = &request.title {
+            updates.push("title = ?");
+            params_vec.push(Box::new(title.clone()));
+        }
+        if let Some(include_house_rules) = request.include_house_rules {
+            updates.push("include_house_rules = ?");
+            params_vec.push(Box::new(include_house_rules));
+        }
+
+        if updates.is_empty() {
+            // Nothing to update, just return the existing session
+            let mut stmt = conn.prepare(
+                "SELECT id, game_id, title, include_house_rules, created_at, updated_at FROM chat_sessions WHERE id = ?",
+            )?;
+            let result = stmt.query_row(params![session_id], |row| {
+                Ok(ChatSession {
+                    id: row.get(0)?,
+                    game_id: row.get(1)?,
+                    title: row.get(2)?,
+                    include_house_rules: row.get(3)?,
+                    created_at: parse_datetime(row, "created_at")?,
+                    updated_at: parse_datetime(row, "updated_at")?,
+                })
+            });
+            return match result {
+                Ok(session) => Ok(Some(session)),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(e),
+            };
+        }
+
+        updates.push("updated_at = ?");
+        params_vec.push(Box::new(now_str));
+        params_vec.push(Box::new(session_id));
+
+        let query = format!(
+            "UPDATE chat_sessions SET {} WHERE id = ?",
+            updates.join(", ")
+        );
+
+        let rows_affected = conn.execute(
+            &query,
+            params_vec
+                .iter()
+                .map(|p| p.as_ref())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        )?;
+
+        if rows_affected == 0 {
+            return Ok(None);
+        }
+
+        // Fetch the updated session
+        let mut stmt = conn.prepare(
+            "SELECT id, game_id, title, include_house_rules, created_at, updated_at FROM chat_sessions WHERE id = ?",
+        )?;
+
+        let result = stmt.query_row(params![session_id], |row| {
+            Ok(ChatSession {
+                id: row.get(0)?,
+                game_id: row.get(1)?,
+                title: row.get(2)?,
+                include_house_rules: row.get(3)?,
+                created_at: parse_datetime(row, "created_at")?,
+                updated_at: parse_datetime(row, "updated_at")?,
+            })
+        });
+
+        match result {
+            Ok(session) => Ok(Some(session)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
     })
 }
 

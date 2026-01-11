@@ -28,6 +28,7 @@ export type ChatSession = {
 	createdAt: Date;
 	gameId: number;
 	id: number;
+	includeHouseRules: boolean;
 	title?: string | null;
 	updatedAt: Date;
 };
@@ -50,12 +51,22 @@ export type ChatSessionSummary = {
 	createdAt: Date;
 	gameId: number;
 	id: number;
+	includeHouseRules: boolean;
 	lastMessageAt?: Date | null;
 	messageCount: number;
 	title?: string | null;
 };
 
-export type CreateChatSessionRequest = { gameId: number; title?: string | null };
+export type CreateChatSessionRequest = {
+	gameId: number;
+	includeHouseRules?: boolean;
+	title?: string | null;
+};
+
+export type UpdateChatSessionRequest = {
+	includeHouseRules?: boolean | null;
+	title?: string | null;
+};
 
 export type CreateGameRequest = {
 	bggId?: number | null;
@@ -214,6 +225,10 @@ export interface GetChatSessionPathParams {
 	id: number;
 }
 
+export interface UpdateChatSessionPathParams {
+	id: number;
+}
+
 export interface ListGamesQueryParams {
 	limit?: number;
 	page?: number;
@@ -318,6 +333,20 @@ export class Api extends HttpClient {
 			return this.request<ChatHistory>({
 				path: `/api/chat/sessions/${path.id}`,
 				method: 'GET',
+				...params
+			});
+		},
+		/**
+		 * Update a chat session (e.g., toggle include_house_rules)
+		 */
+		updateChatSession: (
+			{ path, body }: { path: UpdateChatSessionPathParams; body: UpdateChatSessionRequest },
+			params: FetchParams = {}
+		) => {
+			return this.request<ChatSession>({
+				path: `/api/chat/sessions/${path.id}`,
+				method: 'PUT',
+				body,
 				...params
 			});
 		},

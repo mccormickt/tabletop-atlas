@@ -4,16 +4,106 @@ use serde::Deserialize;
 
 use crate::{
     AppState,
-    db::house_rules,
+    db::{embeddings, house_rules},
+    embeddings::Embedder,
     handlers::{
         HttpCreated, HttpDeleted, HttpError, HttpOk, bad_request_error, created_response,
         deleted_response, internal_error, not_found_error, success_response,
     },
     models::{
-        CreateHouseRuleRequest, GameId, HouseRule, HouseRuleId, PaginatedResponse,
-        PaginationParams, UpdateHouseRuleRequest,
+        CreateEmbeddingRequest, CreateHouseRuleRequest, EmbeddingSourceType, GameId, HouseRule,
+        HouseRuleId, PaginatedResponse, PaginationParams, UpdateHouseRuleRequest,
     },
 };
+
+/// Embed a house rule into the vector database
+async fn embed_house_rule(
+    embedder: &Embedder,
+    db: &crate::db::Database,
+    house_rule: &HouseRule,
+) -> Result<(), HttpError> {
+    // First, delete any existing embeddings for this house rule
+    embeddings::delete_embeddings_for_house_rule(db, house_rule.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                "Failed to delete existing embeddings for house rule {}: {}",
+                house_rule.id,
+                e
+            );
+            internal_error("Failed to update house rule embeddings".to_string())
+        })?;
+
+    // If the house rule is not active, we're done (don't embed inactive rules)
+    if !house_rule.is_active {
+        tracing::info!(
+            "House rule {} is inactive, skipping embedding",
+            house_rule.id
+        );
+        return Ok(());
+    }
+
+    // Create the embedding text from the house rule
+    let embedding_text = format!(
+        "House Rule: {}\n{}\n{}",
+        house_rule.title,
+        house_rule.description,
+        house_rule
+            .category
+            .as_ref()
+            .map(|c| format!("Category: {}", c))
+            .unwrap_or_default()
+    );
+
+    // Generate the embedding
+    let embedding = embedder
+        .generate_embedding(&embedding_text)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                "Failed to generate embedding for house rule {}: {}",
+                house_rule.id,
+                e
+            );
+            internal_error("Failed to generate embedding for house rule".to_string())
+        })?;
+
+    // Store the embedding
+    let create_request = CreateEmbeddingRequest {
+        game_id: house_rule.game_id,
+        chunk_text: embedding_text,
+        embedding,
+        chunk_index: 0, // House rules are single chunks
+        source_type: EmbeddingSourceType::HouseRule,
+        source_id: Some(house_rule.id),
+        metadata: Some(
+            serde_json::json!({
+                "title": house_rule.title,
+                "category": house_rule.category,
+            })
+            .to_string(),
+        ),
+    };
+
+    embeddings::create_embedding(db, create_request)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                "Failed to store embedding for house rule {}: {}",
+                house_rule.id,
+                e
+            );
+            internal_error("Failed to store house rule embedding".to_string())
+        })?;
+
+    tracing::info!(
+        "Successfully embedded house rule {} for game {}",
+        house_rule.id,
+        house_rule.game_id
+    );
+
+    Ok(())
+}
 
 #[derive(Deserialize, JsonSchema)]
 pub struct HouseRulePathParam {
@@ -94,6 +184,7 @@ pub async fn create_house_rule(
     let app_state = rqctx.context();
     let create_request = body.into_inner();
     let db = app_state.db();
+    let embedder = app_state.embedder();
 
     // Validate the request
     if create_request.title.trim().is_empty() {
@@ -108,7 +199,17 @@ pub async fn create_house_rule(
     }
 
     match house_rules::create_house_rule(&db, create_request).await {
-        Ok(house_rule) => created_response(house_rule),
+        Ok(house_rule) => {
+            // Embed the house rule asynchronously (don't block on embedding errors)
+            if let Err(e) = embed_house_rule(embedder, &db, &house_rule).await {
+                tracing::warn!(
+                    "Failed to embed house rule {}, continuing: {:?}",
+                    house_rule.id,
+                    e
+                );
+            }
+            created_response(house_rule)
+        }
         Err(e) => {
             tracing::error!("Failed to create house rule: {}", e);
             Err(internal_error("Failed to create house rule".to_string()))
@@ -130,6 +231,7 @@ pub async fn update_house_rule(
     let house_rule_id = path.into_inner().id;
     let update_request = body.into_inner();
     let db = app_state.db();
+    let embedder = app_state.embedder();
 
     // Validate the request
     if let Some(ref title) = update_request.title {
@@ -148,7 +250,17 @@ pub async fn update_house_rule(
     }
 
     match house_rules::update_house_rule(&db, house_rule_id, update_request).await {
-        Ok(Some(house_rule)) => success_response(house_rule),
+        Ok(Some(house_rule)) => {
+            // Re-embed the house rule (handles active state changes)
+            if let Err(e) = embed_house_rule(embedder, &db, &house_rule).await {
+                tracing::warn!(
+                    "Failed to re-embed house rule {}, continuing: {:?}",
+                    house_rule.id,
+                    e
+                );
+            }
+            success_response(house_rule)
+        }
         Ok(None) => Err(not_found_error(format!(
             "House rule with id {} not found",
             house_rule_id
@@ -172,6 +284,15 @@ pub async fn delete_house_rule(
     let app_state = rqctx.context();
     let house_rule_id = path.into_inner().id;
     let db = app_state.db();
+
+    // Delete embeddings for this house rule first
+    if let Err(e) = embeddings::delete_embeddings_for_house_rule(&db, house_rule_id).await {
+        tracing::warn!(
+            "Failed to delete embeddings for house rule {}, continuing: {}",
+            house_rule_id,
+            e
+        );
+    }
 
     match house_rules::delete_house_rule(&db, house_rule_id).await {
         Ok(true) => deleted_response(),
