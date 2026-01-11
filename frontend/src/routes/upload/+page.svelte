@@ -1,15 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import {
-		api,
-		type GameSummary,
-		type RulesInfoResponse,
-		type UploadResponse
-	} from '$lib';
-	import { Button, Badge, GameBox, LoadingSpinner } from '$lib/components/ui';
+	import { api, type GameSummary, type RulesInfoResponse, type UploadResponse } from '$lib';
+	import { Button, GameBox, LoadingSpinner } from '$lib/components/ui';
 	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
-	import { GameBoxIcon, Rulebook, Upload as UploadIcon, ChatBubble, SearchGlass } from '$lib/components/icons';
+	import {
+		GameBoxIcon,
+		Rulebook,
+		Upload as UploadIcon,
+		ChatBubble,
+		SearchGlass
+	} from '$lib/components/icons';
 	import PDFUpload from '$lib/components/PDFUpload.svelte';
 	import { useHeader } from '$lib/stores/header';
 
@@ -74,6 +75,7 @@
 		}
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	function handleUploadSuccess(event: CustomEvent<UploadResponse>) {
 		uploadSuccess = true;
 		if (selectedGameId) {
@@ -123,7 +125,7 @@
 		<div class="rulebook-header">
 			<h1 class="text-2xl md:text-3xl">Upload Rules</h1>
 		</div>
-		<p class="text-center text-muted-foreground font-body">
+		<p class="text-muted-foreground font-body text-center">
 			Upload PDF rule books to enable AI-powered search and chat
 		</p>
 	</div>
@@ -138,33 +140,37 @@
 					</ComponentTraySection>
 				{:else if error && games.length === 0}
 					<ComponentTraySection>
-						<p class="text-sm text-parchment/70 text-center mb-2">{error}</p>
-						<Button variant="game-primary" onclick={loadGames} size="sm" class="w-full">Try Again</Button>
+						<p class="text-parchment/70 mb-2 text-center text-sm">{error}</p>
+						<Button variant="game-primary" onclick={loadGames} size="sm" class="w-full"
+							>Try Again</Button
+						>
 					</ComponentTraySection>
 				{:else if games.length === 0}
 					<ComponentTraySection>
-						<p class="text-sm text-parchment/70 text-center mb-2">No games found</p>
-						<Button variant="game-primary" href="/games/add" size="sm" class="w-full">Add Game</Button>
+						<p class="text-parchment/70 mb-2 text-center text-sm">No games found</p>
+						<Button variant="game-primary" href="/games/add" size="sm" class="w-full"
+							>Add Game</Button
+						>
 					</ComponentTraySection>
 				{:else}
-					<div class="space-y-2 max-h-80 overflow-y-auto">
+					<div class="max-h-80 space-y-2 overflow-y-auto">
 						{#each games as game (game.id)}
 							<button
 								onclick={() => selectGame(game.id)}
-								class="w-full text-left p-3 rounded-lg transition-all
+								class="w-full rounded-lg p-3 text-left transition-all
 									{selectedGameId === game.id
-										? 'bg-game-blue text-white'
-										: 'bg-parchment hover:bg-parchment-dark text-foreground'}"
+									? 'bg-game-blue text-white'
+									: 'bg-parchment hover:bg-parchment-dark text-foreground'}"
 							>
 								<div class="flex items-start justify-between">
-									<div class="flex-1 min-w-0">
-										<div class="font-display font-medium text-sm truncate">{game.name}</div>
+									<div class="min-w-0 flex-1">
+										<div class="font-display truncate text-sm font-medium">{game.name}</div>
 										{#if game.publisher}
-											<div class="text-xs opacity-70 truncate">{game.publisher}</div>
+											<div class="truncate text-xs opacity-70">{game.publisher}</div>
 										{/if}
 									</div>
 									{#if game.hasRulesPdf}
-										<Rulebook size={16} class="flex-shrink-0 ml-2 opacity-70" />
+										<Rulebook size={16} class="ml-2 flex-shrink-0 opacity-70" />
 									{/if}
 								</div>
 							</button>
@@ -176,19 +182,21 @@
 			{#if selectedGame}
 				<ComponentTray title="Game Info" class="mt-4">
 					<ComponentTraySection>
-						<div class="flex items-center gap-3 mb-3">
-							<div class="w-12 h-12 rounded-lg bg-game-blue flex items-center justify-center flex-shrink-0">
+						<div class="mb-3 flex items-center gap-3">
+							<div
+								class="bg-game-blue flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg"
+							>
 								<GameBoxIcon size={24} class="text-white" />
 							</div>
-							<div class="flex-1 min-w-0">
-								<p class="font-display font-semibold truncate">{selectedGame.name}</p>
+							<div class="min-w-0 flex-1">
+								<p class="font-display truncate font-semibold">{selectedGame.name}</p>
 								{#if selectedGame.publisher}
 									<p class="text-xs opacity-70">{selectedGame.publisher}</p>
 								{/if}
 							</div>
 						</div>
 
-						<div class="grid grid-cols-2 gap-2 text-xs mb-3">
+						<div class="mb-3 grid grid-cols-2 gap-2 text-xs">
 							{#if selectedGame.yearPublished}
 								<div class="bg-parchment/30 rounded p-2 text-center">
 									<p class="opacity-70">Year</p>
@@ -197,11 +205,18 @@
 							{/if}
 							<div class="bg-parchment/30 rounded p-2 text-center">
 								<p class="opacity-70">Players</p>
-								<p class="font-semibold">{formatPlayerCount(selectedGame.minPlayers, selectedGame.maxPlayers)}</p>
+								<p class="font-semibold">
+									{formatPlayerCount(selectedGame.minPlayers, selectedGame.maxPlayers)}
+								</p>
 							</div>
 						</div>
 
-						<Button variant="ghost" size="sm" onclick={() => selectedGame && goToGame(selectedGame.id)} class="w-full">
+						<Button
+							variant="ghost"
+							size="sm"
+							onclick={() => selectedGame && goToGame(selectedGame.id)}
+							class="w-full"
+						>
 							View Details
 						</Button>
 					</ComponentTraySection>
@@ -223,14 +238,28 @@
 
 				{#if uploadSuccess}
 					<GameBox variant="featured" showCorners={true} class="mt-6">
-						<div class="text-center py-6">
-							<div class="mx-auto w-16 h-16 rounded-full bg-game-green/20 flex items-center justify-center mb-4">
-								<svg class="w-8 h-8 text-game-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+						<div class="py-6 text-center">
+							<div
+								class="bg-game-green/20 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full"
+							>
+								<svg
+									class="text-game-green h-8 w-8"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M5 13l4 4L19 7"
+									/>
 								</svg>
 							</div>
-							<h3 class="font-display font-semibold text-lg text-game-green mb-2">Upload Complete!</h3>
-							<p class="text-muted-foreground font-body text-sm mb-6">
+							<h3 class="font-display text-game-green mb-2 text-lg font-semibold">
+								Upload Complete!
+							</h3>
+							<p class="text-muted-foreground font-body mb-6 text-sm">
 								Your PDF has been processed and indexed. You can now search and chat about {selectedGame.name}.
 							</p>
 							<div class="flex flex-wrap justify-center gap-3">
@@ -238,7 +267,11 @@
 									<ChatBubble size={18} />
 									Start Chat
 								</Button>
-								<Button variant="game-secondary" href="/search?gameId={selectedGame.id}" class="gap-2">
+								<Button
+									variant="game-secondary"
+									href="/search?gameId={selectedGame.id}"
+									class="gap-2"
+								>
 									<SearchGlass size={18} />
 									Search Rules
 								</Button>
@@ -248,17 +281,23 @@
 				{/if}
 			{:else}
 				<!-- No Game Selected - Open Box Style -->
-				<GameBox variant="default" showCorners={true} class="min-h-96 flex items-center justify-center">
-					<div class="text-center py-12">
-						<div class="relative mx-auto w-24 h-24 mb-6">
+				<GameBox
+					variant="default"
+					showCorners={true}
+					class="flex min-h-96 items-center justify-center"
+				>
+					<div class="py-12 text-center">
+						<div class="relative mx-auto mb-6 h-24 w-24">
 							<!-- Open box illustration -->
-							<div class="absolute inset-0 bg-wood-light rounded-lg transform rotate-2"></div>
-							<div class="absolute inset-2 bg-parchment rounded-lg flex items-center justify-center transform -rotate-1">
+							<div class="bg-wood-light absolute inset-0 rotate-2 transform rounded-lg"></div>
+							<div
+								class="bg-parchment absolute inset-2 flex -rotate-1 transform items-center justify-center rounded-lg"
+							>
 								<UploadIcon size={40} class="text-game-blue" />
 							</div>
 						</div>
-						<h3 class="font-display font-semibold text-xl mb-2">Select a Game</h3>
-						<p class="text-muted-foreground font-body max-w-sm mx-auto">
+						<h3 class="font-display mb-2 text-xl font-semibold">Select a Game</h3>
+						<p class="text-muted-foreground font-body mx-auto max-w-sm">
 							Choose a game from the list to upload its rule book PDF
 						</p>
 					</div>
@@ -269,34 +308,40 @@
 
 	<!-- Features Section -->
 	<div class="mt-12">
-		<h2 class="font-display font-semibold text-xl text-center mb-6">What Happens After Upload?</h2>
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-			<GameBox variant="default" class="text-center p-6">
-				<div class="w-12 h-12 rounded-full bg-game-blue/10 flex items-center justify-center mx-auto mb-4">
+		<h2 class="font-display mb-6 text-center text-xl font-semibold">What Happens After Upload?</h2>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+			<GameBox variant="default" class="p-6 text-center">
+				<div
+					class="bg-game-blue/10 mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full"
+				>
 					<Rulebook size={24} class="text-game-blue" />
 				</div>
-				<h3 class="font-display font-semibold mb-2">Text Extraction</h3>
-				<p class="text-sm text-muted-foreground font-body">
+				<h3 class="font-display mb-2 font-semibold">Text Extraction</h3>
+				<p class="text-muted-foreground font-body text-sm">
 					We extract and index all text content from your PDF for searching
 				</p>
 			</GameBox>
 
-			<GameBox variant="default" class="text-center p-6">
-				<div class="w-12 h-12 rounded-full bg-game-green/10 flex items-center justify-center mx-auto mb-4">
+			<GameBox variant="default" class="p-6 text-center">
+				<div
+					class="bg-game-green/10 mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full"
+				>
 					<SearchGlass size={24} class="text-game-green" />
 				</div>
-				<h3 class="font-display font-semibold mb-2">AI Processing</h3>
-				<p class="text-sm text-muted-foreground font-body">
+				<h3 class="font-display mb-2 font-semibold">AI Processing</h3>
+				<p class="text-muted-foreground font-body text-sm">
 					Content is processed for semantic search and question answering
 				</p>
 			</GameBox>
 
-			<GameBox variant="default" class="text-center p-6">
-				<div class="w-12 h-12 rounded-full bg-game-purple/10 flex items-center justify-center mx-auto mb-4">
+			<GameBox variant="default" class="p-6 text-center">
+				<div
+					class="bg-game-purple/10 mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full"
+				>
 					<ChatBubble size={24} class="text-game-purple" />
 				</div>
-				<h3 class="font-display font-semibold mb-2">Chat Ready</h3>
-				<p class="text-sm text-muted-foreground font-body">
+				<h3 class="font-display mb-2 font-semibold">Chat Ready</h3>
+				<p class="text-muted-foreground font-body text-sm">
 					Ask questions about rules and get instant, accurate answers
 				</p>
 			</GameBox>

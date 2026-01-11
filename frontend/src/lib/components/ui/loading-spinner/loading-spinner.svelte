@@ -29,14 +29,14 @@
 </script>
 
 <script lang="ts">
+	import type { HTMLAttributes } from 'svelte/elements';
 	import { cn } from '$lib/utils.js';
 
-	interface Props {
+	interface Props extends HTMLAttributes<HTMLDivElement> {
 		size?: LoadingSpinnerSize;
 		variant?: LoadingSpinnerVariant;
 		text?: string;
 		class?: string;
-		[key: string]: any;
 	}
 
 	let {

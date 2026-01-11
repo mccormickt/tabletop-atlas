@@ -8,17 +8,14 @@
 </script>
 
 <script lang="ts">
-	let {
-		class: className,
-		title,
-		children,
-		...restProps
-	}: ComponentTrayProps = $props();
+	let { class: className, title, children, ...restProps }: ComponentTrayProps = $props();
 </script>
 
 <div class={cn('component-tray', className)} {...restProps}>
 	{#if title}
-		<h4 class="font-display text-parchment text-sm font-semibold uppercase tracking-wide mb-3">{title}</h4>
+		<h4 class="font-display text-parchment mb-3 text-sm font-semibold tracking-wide uppercase">
+			{title}
+		</h4>
 	{/if}
 	{@render children?.()}
 </div>

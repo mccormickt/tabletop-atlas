@@ -73,7 +73,7 @@ impl Processor {
             sentence_buffer.push(sentence.to_string());
 
             // If we've reached a good chunk size and have complete sentences, consider chunking
-            if current_chunk.len() >= CHUNK_SIZE && self.is_good_chunk_boundary(&sentence) {
+            if current_chunk.len() >= CHUNK_SIZE && self.is_good_chunk_boundary(sentence) {
                 chunks.push(current_chunk.trim().to_string());
 
                 // Start new chunk with overlap

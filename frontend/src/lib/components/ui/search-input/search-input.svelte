@@ -19,10 +19,11 @@
 </script>
 
 <script lang="ts">
+	import type { HTMLInputAttributes } from 'svelte/elements';
 	import { cn } from '$lib/utils.js';
 	import { createEventDispatcher } from 'svelte';
 
-	interface Props {
+	interface Props extends Omit<HTMLInputAttributes, 'size'> {
 		ref?: HTMLInputElement | null;
 		value?: string;
 		size?: SearchInputSize;
@@ -34,7 +35,6 @@
 		class?: string;
 		placeholder?: string;
 		disabled?: boolean;
-		[key: string]: any;
 	}
 
 	let {

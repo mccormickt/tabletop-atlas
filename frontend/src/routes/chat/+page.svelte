@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { api, type GameSummary, type ChatSessionSummary, type ChatHistory } from '$lib';
 	import {
-		api,
-		type GameSummary,
-		type ChatSessionSummary,
-		type ChatHistory
-	} from '$lib';
-	import { Button, Input, Badge, GameBox, CardSleeve, LoadingSpinner, EmptyState } from '$lib/components/ui';
+		Button,
+		Input,
+		Badge,
+		GameBox,
+		CardSleeve,
+		LoadingSpinner,
+		EmptyState
+	} from '$lib/components/ui';
 	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
 	import { Meeple, Dice, GameBoxIcon, Rulebook, ChatBubble } from '$lib/components/icons';
 	import { page } from '$app/state';
@@ -264,32 +267,42 @@
 	<title>Chat - Tabletop Atlas</title>
 </svelte:head>
 
-<div class="min-h-screen bg-background">
+<div class="bg-background min-h-screen">
 	<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 		<!-- Page Header -->
 		<div class="mb-6">
 			<div class="rulebook-header">
 				<h1 class="text-2xl md:text-3xl">Game Rules Chat</h1>
 			</div>
-			<p class="text-center text-muted-foreground font-body">
+			<p class="text-muted-foreground font-body text-center">
 				Ask questions about game rules and get AI-powered answers
 			</p>
 		</div>
 
 		{#if error}
-			<div class="mb-4 rounded-lg border-2 border-game-red bg-game-red/10 p-4">
-				<p class="text-sm text-game-red font-ui">{error}</p>
+			<div class="border-game-red bg-game-red/10 mb-4 rounded-lg border-2 p-4">
+				<p class="text-game-red font-ui text-sm">{error}</p>
 			</div>
 		{/if}
 
 		<!-- Mobile Action Buttons -->
-		<div class="flex gap-2 mb-4 lg:hidden">
-			<Button variant="game-secondary" size="sm" onclick={() => showGameDrawer = true} class="flex-1">
+		<div class="mb-4 flex gap-2 lg:hidden">
+			<Button
+				variant="game-secondary"
+				size="sm"
+				onclick={() => (showGameDrawer = true)}
+				class="flex-1"
+			>
 				<GameBoxIcon size={16} class="mr-2" />
 				{selectedGame ? selectedGame.name : 'Select Game'}
 			</Button>
 			{#if selectedGame}
-				<Button variant="game-secondary" size="sm" onclick={() => showSessionDrawer = true} class="flex-1">
+				<Button
+					variant="game-secondary"
+					size="sm"
+					onclick={() => (showSessionDrawer = true)}
+					class="flex-1"
+				>
 					<ChatBubble size={16} class="mr-2" />
 					Sessions
 				</Button>
@@ -298,7 +311,7 @@
 
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-4">
 			<!-- Game Selection Sidebar (Desktop) -->
-			<div class="hidden lg:block lg:col-span-1 space-y-4">
+			<div class="hidden space-y-4 lg:col-span-1 lg:block">
 				<ComponentTray title="Select Game">
 					{#if loadingGames && games.length === 0}
 						<ComponentTraySection>
@@ -315,15 +328,15 @@
 						</ComponentTraySection>
 					{:else}
 						<div class="space-y-2">
-							{#each games as game}
+							{#each games as game (game.id)}
 								<button
 									onclick={() => selectGame(game)}
-									class="w-full text-left p-3 rounded-lg transition-all
+									class="w-full rounded-lg p-3 text-left transition-all
 										{selectedGame?.id === game.id
-											? 'bg-game-blue text-white'
-											: 'bg-parchment hover:bg-parchment-dark text-foreground'}"
+										? 'bg-game-blue text-white'
+										: 'bg-parchment hover:bg-parchment-dark text-foreground'}"
 								>
-									<div class="font-display font-medium text-sm">{game.name}</div>
+									<div class="font-display text-sm font-medium">{game.name}</div>
 									{#if game.publisher}
 										<div class="text-xs opacity-70">{game.publisher}</div>
 									{/if}
@@ -341,7 +354,13 @@
 				{#if selectedGame}
 					<ComponentTray title="Chat Sessions">
 						<div class="mb-3">
-							<Button variant="game-primary" size="sm" onclick={createNewSession} disabled={loadingSessions} class="w-full">
+							<Button
+								variant="game-primary"
+								size="sm"
+								onclick={createNewSession}
+								disabled={loadingSessions}
+								class="w-full"
+							>
 								New Chat
 							</Button>
 						</div>
@@ -351,19 +370,19 @@
 							</ComponentTraySection>
 						{:else if chatSessions.length === 0}
 							<ComponentTraySection>
-								<p class="text-xs text-parchment/70 text-center">No chat sessions yet</p>
+								<p class="text-parchment/70 text-center text-xs">No chat sessions yet</p>
 							</ComponentTraySection>
 						{:else}
-							<div class="space-y-2 max-h-64 overflow-y-auto">
+							<div class="max-h-64 space-y-2 overflow-y-auto">
 								{#each chatSessions as session (session.id)}
 									<button
 										onclick={() => loadChatSession(session.id)}
-										class="w-full text-left p-2 rounded transition-all text-sm
+										class="w-full rounded p-2 text-left text-sm transition-all
 											{currentSession?.session.id === session.id
-												? 'bg-game-blue text-white'
-												: 'bg-parchment/20 hover:bg-parchment/40 text-parchment'}"
+											? 'bg-game-blue text-white'
+											: 'bg-parchment/20 hover:bg-parchment/40 text-parchment'}"
 									>
-										<div class="font-medium truncate">{session.title || `Chat ${session.id}`}</div>
+										<div class="truncate font-medium">{session.title || `Chat ${session.id}`}</div>
 										<div class="text-xs opacity-70">
 											{session.messageCount} msg{session.messageCount === 1 ? '' : 's'}
 										</div>
@@ -381,11 +400,13 @@
 					<GameBox variant="default" showCorners={true} class="h-[calc(100vh-16rem)]">
 						<div class="flex h-full items-center justify-center">
 							<div class="text-center">
-								<div class="mx-auto w-20 h-20 rounded-full bg-parchment-dark flex items-center justify-center mb-4">
+								<div
+									class="bg-parchment-dark mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full"
+								>
 									<GameBoxIcon size={40} class="text-game-blue" />
 								</div>
-								<h3 class="font-display font-semibold text-lg mb-2">Select a Game</h3>
-								<p class="text-muted-foreground font-body text-sm max-w-sm">
+								<h3 class="font-display mb-2 text-lg font-semibold">Select a Game</h3>
+								<p class="text-muted-foreground font-body max-w-sm text-sm">
 									Choose a game from the sidebar to start asking questions about its rules
 								</p>
 							</div>
@@ -395,42 +416,44 @@
 					<GameBox variant="default" showCorners={true} class="h-[calc(100vh-16rem)]">
 						<div class="flex h-full items-center justify-center">
 							<div class="text-center">
-								<div class="mx-auto w-20 h-20 rounded-full bg-parchment-dark flex items-center justify-center mb-4">
+								<div
+									class="bg-parchment-dark mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full"
+								>
 									<ChatBubble size={40} class="text-game-purple" />
 								</div>
-								<h3 class="font-display font-semibold text-lg mb-2">Start a Conversation</h3>
-								<p class="text-muted-foreground font-body text-sm max-w-sm mb-4">
+								<h3 class="font-display mb-2 text-lg font-semibold">Start a Conversation</h3>
+								<p class="text-muted-foreground font-body mb-4 max-w-sm text-sm">
 									Create a new chat session to ask questions about {selectedGame.name}
 								</p>
-								<Button variant="game-primary" onclick={createNewSession}>
-									New Chat
-								</Button>
+								<Button variant="game-primary" onclick={createNewSession}>New Chat</Button>
 							</div>
 						</div>
 					</GameBox>
 				{:else}
 					<div class="game-box-lid flex h-[calc(100vh-16rem)] flex-col">
 						<!-- Chat Header -->
-						<div class="flex-shrink-0 p-4 border-b-2 border-wood-dark bg-parchment-dark/50">
+						<div class="border-wood-dark bg-parchment-dark/50 flex-shrink-0 border-b-2 p-4">
 							<div class="flex items-center justify-between">
 								<div>
 									<h2 class="font-display font-semibold">
 										{currentSession.session.title || `Chat about ${selectedGame.name}`}
 									</h2>
-									<p class="text-sm text-muted-foreground font-ui">
+									<p class="text-muted-foreground font-ui text-sm">
 										{selectedGame.name}
 									</p>
 								</div>
 								<div class="flex items-center gap-3">
-									<label class="flex items-center gap-2 cursor-pointer">
-										<span class="text-sm font-ui text-muted-foreground hidden sm:inline">House Rules</span>
+									<label class="flex cursor-pointer items-center gap-2">
+										<span class="font-ui text-muted-foreground hidden text-sm sm:inline"
+											>House Rules</span
+										>
 										<button
 											type="button"
 											onclick={toggleHouseRules}
 											disabled={togglingHouseRules}
 											class="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors duration-200
 												{includeHouseRules ? 'bg-game-green border-game-green' : 'bg-muted border-border'}
-												disabled:opacity-50 disabled:cursor-not-allowed"
+												disabled:cursor-not-allowed disabled:opacity-50"
 											role="switch"
 											aria-checked={includeHouseRules}
 										>
@@ -445,7 +468,7 @@
 						</div>
 
 						<!-- Messages - Parchment Scroll Style -->
-						<div class="flex-1 overflow-y-auto p-4 space-y-4 paper-texture">
+						<div class="paper-texture flex-1 space-y-4 overflow-y-auto p-4">
 							{#if loadingCurrentSession}
 								<div class="flex items-center justify-center py-8">
 									<LoadingSpinner text="Loading conversation..." />
@@ -453,45 +476,59 @@
 							{:else if currentSession.messages.length === 0}
 								<div class="flex items-center justify-center py-8">
 									<div class="text-center">
-										<Dice size={32} value={6} class="mx-auto mb-2 text-muted-foreground" />
+										<Dice size={32} value={6} class="text-muted-foreground mx-auto mb-2" />
 										<p class="text-muted-foreground font-body text-sm">
 											Start by asking a question about the game rules
 										</p>
 									</div>
 								</div>
 							{:else}
-								{#each currentSession.messages as message}
-									<div class="flex items-start gap-3 {message.role === 'user' ? 'flex-row-reverse' : ''}">
+								{#each currentSession.messages as message (message.id)}
+									<div
+										class="flex items-start gap-3 {message.role === 'user'
+											? 'flex-row-reverse'
+											: ''}"
+									>
 										<!-- Avatar -->
 										<div class="flex-shrink-0">
 											{#if message.role === 'user'}
-												<div class="w-10 h-10 rounded-full bg-game-blue flex items-center justify-center shadow-md">
+												<div
+													class="bg-game-blue flex h-10 w-10 items-center justify-center rounded-full shadow-md"
+												>
 													<Meeple size={20} color="current" class="text-white" />
 												</div>
 											{:else}
-												<div class="w-10 h-10 rounded-full bg-game-purple flex items-center justify-center shadow-md">
+												<div
+													class="bg-game-purple flex h-10 w-10 items-center justify-center rounded-full shadow-md"
+												>
 													<Dice size={20} value={6} class="text-white" />
 												</div>
 											{/if}
 										</div>
 
 										<!-- Message Bubble -->
-										<div class="flex-1 min-w-0 max-w-[80%]">
-											<div class="flex items-center gap-2 mb-1 {message.role === 'user' ? 'flex-row-reverse' : ''}">
-												<Badge variant="outline" class="text-xs capitalize font-ui">
+										<div class="max-w-[80%] min-w-0 flex-1">
+											<div
+												class="mb-1 flex items-center gap-2 {message.role === 'user'
+													? 'flex-row-reverse'
+													: ''}"
+											>
+												<Badge variant="outline" class="font-ui text-xs capitalize">
 													{message.role === 'user' ? 'You' : 'Game Master'}
 												</Badge>
 												{#if message.createdAt}
-													<span class="text-xs text-muted-foreground font-ui">
+													<span class="text-muted-foreground font-ui text-xs">
 														{formatTime(message.createdAt)}
 													</span>
 												{/if}
 											</div>
-											<div class="rounded-lg p-3 shadow-sm
+											<div
+												class="rounded-lg p-3 shadow-sm
 												{message.role === 'user'
-													? 'bg-game-blue text-white rounded-tr-none'
-													: 'bg-card border-2 border-border rounded-tl-none'}">
-												<p class="whitespace-pre-wrap font-body text-sm">{message.content}</p>
+													? 'bg-game-blue rounded-tr-none text-white'
+													: 'bg-card border-border rounded-tl-none border-2'}"
+											>
+												<p class="font-body text-sm whitespace-pre-wrap">{message.content}</p>
 											</div>
 										</div>
 									</div>
@@ -500,14 +537,14 @@
 						</div>
 
 						<!-- Message Input -->
-						<div class="flex-shrink-0 p-4 border-t-2 border-wood-dark bg-parchment-dark/50">
+						<div class="border-wood-dark bg-parchment-dark/50 flex-shrink-0 border-t-2 p-4">
 							<div class="flex gap-2">
 								<Input
 									bind:value={newMessage}
 									placeholder="Ask about game rules..."
 									disabled={sendingMessage}
 									onkeydown={handleKeydown}
-									class="flex-1 bg-card"
+									class="bg-card flex-1"
 								/>
 								<Button
 									variant="game-primary"
@@ -517,8 +554,13 @@
 									{#if sendingMessage}
 										<LoadingSpinner size="sm" class="mr-2" />
 									{:else}
-										<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+										<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+											/>
 										</svg>
 									{/if}
 								</Button>
@@ -534,25 +576,30 @@
 <!-- Mobile Game Drawer -->
 {#if showGameDrawer}
 	<div class="fixed inset-0 z-50 lg:hidden">
-		<div class="absolute inset-0 bg-black/50" onclick={() => showGameDrawer = false}></div>
-		<div class="absolute left-0 top-0 bottom-0 w-80 bg-background shadow-xl overflow-y-auto">
-			<div class="p-4 border-b-2 border-wood-dark bg-parchment-dark sticky top-0">
+		<div class="absolute inset-0 bg-black/50" onclick={() => (showGameDrawer = false)}></div>
+		<div class="bg-background absolute top-0 bottom-0 left-0 w-80 overflow-y-auto shadow-xl">
+			<div class="border-wood-dark bg-parchment-dark sticky top-0 border-b-2 p-4">
 				<div class="flex items-center justify-between">
 					<h2 class="font-display font-semibold">Select Game</h2>
-					<button onclick={() => showGameDrawer = false} class="p-2 hover:bg-muted rounded">
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					<button onclick={() => (showGameDrawer = false)} class="hover:bg-muted rounded p-2">
+						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
 						</svg>
 					</button>
 				</div>
 			</div>
-			<div class="p-4 space-y-2">
-				{#each games as game}
+			<div class="space-y-2 p-4">
+				{#each games as game (game.id)}
 					<CardSleeve variant={selectedGame?.id === game.id ? 'highlighted' : 'default'}>
 						<button onclick={() => selectGame(game)} class="w-full text-left">
 							<div class="font-display font-medium">{game.name}</div>
 							{#if game.publisher}
-								<div class="text-sm text-muted-foreground">{game.publisher}</div>
+								<div class="text-muted-foreground text-sm">{game.publisher}</div>
 							{/if}
 						</button>
 					</CardSleeve>
@@ -565,28 +612,35 @@
 <!-- Mobile Session Drawer -->
 {#if showSessionDrawer}
 	<div class="fixed inset-0 z-50 lg:hidden">
-		<div class="absolute inset-0 bg-black/50" onclick={() => showSessionDrawer = false}></div>
-		<div class="absolute right-0 top-0 bottom-0 w-80 bg-background shadow-xl overflow-y-auto">
-			<div class="p-4 border-b-2 border-wood-dark bg-parchment-dark sticky top-0">
+		<div class="absolute inset-0 bg-black/50" onclick={() => (showSessionDrawer = false)}></div>
+		<div class="bg-background absolute top-0 right-0 bottom-0 w-80 overflow-y-auto shadow-xl">
+			<div class="border-wood-dark bg-parchment-dark sticky top-0 border-b-2 p-4">
 				<div class="flex items-center justify-between">
 					<h2 class="font-display font-semibold">Chat Sessions</h2>
-					<button onclick={() => showSessionDrawer = false} class="p-2 hover:bg-muted rounded">
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					<button onclick={() => (showSessionDrawer = false)} class="hover:bg-muted rounded p-2">
+						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
 						</svg>
 					</button>
 				</div>
 			</div>
 			<div class="p-4">
-				<Button variant="game-primary" onclick={createNewSession} class="w-full mb-4">
+				<Button variant="game-primary" onclick={createNewSession} class="mb-4 w-full">
 					New Chat
 				</Button>
 				<div class="space-y-2">
 					{#each chatSessions as session (session.id)}
-						<CardSleeve variant={currentSession?.session.id === session.id ? 'highlighted' : 'default'}>
+						<CardSleeve
+							variant={currentSession?.session.id === session.id ? 'highlighted' : 'default'}
+						>
 							<button onclick={() => loadChatSession(session.id)} class="w-full text-left">
 								<div class="font-display font-medium">{session.title || `Chat ${session.id}`}</div>
-								<div class="text-sm text-muted-foreground">
+								<div class="text-muted-foreground text-sm">
 									{session.messageCount} message{session.messageCount === 1 ? '' : 's'}
 								</div>
 							</button>

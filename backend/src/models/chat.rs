@@ -108,36 +108,3 @@ pub struct ChatHistory {
     pub messages: Vec<ChatMessage>,
 }
 
-impl ChatSession {
-    pub fn to_summary(
-        &self,
-        message_count: i32,
-        last_message_at: Option<DateTime<Utc>>,
-    ) -> ChatSessionSummary {
-        ChatSessionSummary {
-            id: self.id,
-            game_id: self.game_id,
-            title: self.title.clone(),
-            include_house_rules: self.include_house_rules,
-            message_count,
-            last_message_at,
-            created_at: self.created_at,
-        }
-    }
-}
-
-// Helper struct for LLM API integration
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LLMMessage {
-    pub role: String,
-    pub content: String,
-}
-
-impl From<&ChatMessage> for LLMMessage {
-    fn from(message: &ChatMessage) -> Self {
-        LLMMessage {
-            role: message.role.as_str().to_string(),
-            content: message.content.clone(),
-        }
-    }
-}

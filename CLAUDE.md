@@ -38,7 +38,56 @@ npm run build
 
 # Run tests
 npm run test
+
+# Lint all code (backend + frontend)
+npm run lint
+
+# Lint backend only (Rust clippy)
+npm run lint:backend
+
+# Lint frontend only (ESLint + Prettier)
+npm run lint:frontend
+
+# Format all code
+npm run format
+
+# Format backend only (cargo fmt)
+npm run format:backend
+
+# Format frontend only (Prettier)
+npm run format:frontend
+
+# Check formatting without making changes
+npm run format:check
 ```
+
+## Linting
+
+### Backend (Rust)
+
+- Uses **Clippy** for Rust linting with warnings treated as errors (`-D warnings`)
+- Uses **cargo fmt** for code formatting
+- Run `cargo clippy -- -D warnings` to check for issues (matches CI behavior)
+- Run `cargo fmt` to format code
+
+### Frontend (TypeScript/Svelte)
+
+- Uses **ESLint** with TypeScript and Svelte plugins
+- Uses **Prettier** for code formatting
+- Configuration in `frontend/eslint.config.js` and `frontend/.prettierrc`
+- The `src/api/` directory is excluded from linting (auto-generated code)
+- Run `pnpm run lint` from frontend directory to check
+- Run `pnpm run format` from frontend directory to fix formatting
+
+### Svelte-specific Linting Notes
+
+- All `{#each}` blocks should include a key: `{#each items as item (item.id)}`
+- Avoid `any` types - use proper TypeScript types or `unknown`
+- When using `{@html}`, add eslint-disable comment if the content is safe:
+  ```svelte
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+  {@html safeContent}
+  ```
 
 ## Backend Architecture
 

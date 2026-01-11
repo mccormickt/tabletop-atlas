@@ -68,7 +68,7 @@
 				searchResults = [];
 				showResults = false;
 			}
-		} catch (err) {
+		} catch {
 			searchResults = [];
 			showResults = false;
 		} finally {

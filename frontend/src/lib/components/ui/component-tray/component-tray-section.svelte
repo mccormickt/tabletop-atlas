@@ -6,11 +6,7 @@
 </script>
 
 <script lang="ts">
-	let {
-		class: className,
-		children,
-		...restProps
-	}: ComponentTraySectionProps = $props();
+	let { class: className, children, ...restProps }: ComponentTraySectionProps = $props();
 </script>
 
 <div class={cn('component-tray-section', className)} {...restProps}>

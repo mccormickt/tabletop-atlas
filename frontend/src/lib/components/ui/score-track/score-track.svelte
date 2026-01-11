@@ -21,8 +21,15 @@
 	const segments = $derived(Array.from({ length: total }, (_, i) => i + 1));
 </script>
 
-<div class={cn('score-track', className)} role="progressbar" aria-valuenow={current} aria-valuemin={1} aria-valuemax={total} {...restProps}>
-	{#each segments as segment}
+<div
+	class={cn('score-track', className)}
+	role="progressbar"
+	aria-valuenow={current}
+	aria-valuemin={1}
+	aria-valuemax={total}
+	{...restProps}
+>
+	{#each segments as segment (segment)}
 		<div
 			class={cn(
 				'score-track-segment',

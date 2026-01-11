@@ -7,6 +7,9 @@ use crate::models::{
     GameId, HouseRuleId, SimilaritySearchRequest,
 };
 
+/// Type alias for embedding metadata from database queries
+type EmbeddingMetadataRow = (i64, String, String, Option<i64>, Option<String>);
+
 use super::{Database, parse_datetime};
 
 pub async fn create_embedding(
@@ -80,63 +83,6 @@ pub async fn create_embedding(
     })
 }
 
-pub async fn get_embeddings_for_game(
-    db: &Database,
-    game_id: GameId,
-    source_type: Option<EmbeddingSourceType>,
-) -> SqliteResult<Vec<Embedding>> {
-    db.with_connection(|conn| {
-        let (query, params) = if let Some(source_type) = source_type {
-            (
-                r#"
-                SELECT e.id, e.game_id, e.chunk_text, v.embedding_vector, e.chunk_index, e.source_type, e.source_id, e.metadata, e.created_at
-                FROM embeddings e
-                JOIN vec_embeddings v ON e.id = v.rowid
-                WHERE e.game_id = ? AND e.source_type = ?
-                ORDER BY e.chunk_index ASC
-                "#,
-                params![game_id, source_type.as_str()]
-            )
-        } else {
-            (
-                r#"
-                SELECT e.id, e.game_id, e.chunk_text, v.embedding_vector, e.chunk_index, e.source_type, e.source_id, e.metadata, e.created_at
-                FROM embeddings e
-                JOIN vec_embeddings v ON e.id = v.rowid
-                WHERE e.game_id = ?
-                ORDER BY e.source_type ASC, e.chunk_index ASC
-                "#,
-                params![game_id]
-            )
-        };
-
-        let mut stmt = conn.prepare(query)?;
-
-        let embedding_iter = stmt.query_map(params, |row| {
-            let embedding_json: String = row.get(3)?;
-            let embedding: Vec<f32> = serde_json::from_str(&embedding_json)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "embedding_vector".to_string(), rusqlite::types::Type::Text))?;
-            let source_type_str: String = row.get(5)?;
-            let source_type = EmbeddingSourceType::from_str(&source_type_str)
-                .unwrap_or(EmbeddingSourceType::RulesPdf);
-
-            Ok(Embedding {
-                id: row.get(0)?,
-                game_id: row.get(1)?,
-                chunk_text: row.get(2)?,
-                embedding,
-                chunk_index: row.get(4)?,
-                source_type,
-                source_id: row.get(6)?,
-                metadata: row.get(7)?,
-                created_at: parse_datetime(row, "created_at")?,
-            })
-        })?;
-
-        embedding_iter.collect()
-    })
-}
-
 pub async fn similarity_search(
     db: &Database,
     request: SimilaritySearchRequest,
@@ -200,7 +146,7 @@ pub async fn similarity_search(
         params.push(Box::new(request.game_id));
 
         let mut meta_stmt = conn.prepare(&metadata_query)?;
-        let metadata_results: Vec<(i64, String, String, Option<i64>, Option<String>)> = meta_stmt
+        let metadata_results: Vec<EmbeddingMetadataRow> = meta_stmt
             .query_map(
                 params
                     .iter()
@@ -230,7 +176,7 @@ pub async fn similarity_search(
 
                 // Apply similarity threshold
                 if similarity_score >= request.similarity_threshold as f64 {
-                    let source_type = EmbeddingSourceType::from_str(&source_type_str)
+                    let source_type = EmbeddingSourceType::from_str(source_type_str)
                         .unwrap_or(EmbeddingSourceType::RulesPdf);
 
                     results.push(EmbeddingSearchResult {
@@ -326,7 +272,7 @@ pub async fn similarity_search_filtered(
         params.push(Box::new(request.game_id));
 
         let mut meta_stmt = conn.prepare(&metadata_query)?;
-        let metadata_results: Vec<(i64, String, String, Option<i64>, Option<String>)> = meta_stmt
+        let metadata_results: Vec<EmbeddingMetadataRow> = meta_stmt
             .query_map(
                 params
                     .iter()
@@ -356,7 +302,7 @@ pub async fn similarity_search_filtered(
 
                 // Apply similarity threshold
                 if similarity_score >= request.similarity_threshold as f64 {
-                    let source_type = EmbeddingSourceType::from_str(&source_type_str)
+                    let source_type = EmbeddingSourceType::from_str(source_type_str)
                         .unwrap_or(EmbeddingSourceType::RulesPdf);
 
                     results.push(EmbeddingSearchResult {
@@ -410,49 +356,6 @@ pub async fn delete_embeddings_for_house_rule(
             params![house_rule_id],
         )?;
         Ok(rows_affected as u32)
-    })
-}
-
-pub async fn get_embedding_by_id(
-    db: &Database,
-    embedding_id: EmbeddingId,
-) -> SqliteResult<Option<Embedding>> {
-    db.with_connection(|conn| {
-        let mut stmt = conn.prepare(
-            r#"
-            SELECT e.id, e.game_id, e.chunk_text, v.embedding_vector, e.chunk_index, e.source_type, e.source_id, e.metadata, e.created_at
-            FROM embeddings e
-            JOIN vec_embeddings v ON e.id = v.rowid
-            WHERE e.id = ?
-            "#
-        )?;
-
-        let result = stmt.query_row(params![embedding_id], |row| {
-            let embedding_json: String = row.get(3)?;
-            let embedding: Vec<f32> = serde_json::from_str(&embedding_json)
-                .map_err(|_| rusqlite::Error::InvalidColumnType(0, "embedding_vector".to_string(), rusqlite::types::Type::Text))?;
-            let source_type_str: String = row.get(5)?;
-            let source_type = EmbeddingSourceType::from_str(&source_type_str)
-                .unwrap_or(EmbeddingSourceType::RulesPdf);
-
-            Ok(Embedding {
-                id: row.get(0)?,
-                game_id: row.get(1)?,
-                chunk_text: row.get(2)?,
-                embedding,
-                chunk_index: row.get(4)?,
-                source_type,
-                source_id: row.get(6)?,
-                metadata: row.get(7)?,
-                created_at: parse_datetime(row, "created_at")?,
-            })
-        });
-
-        match result {
-            Ok(embedding) => Ok(Some(embedding)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e),
-        }
     })
 }
 

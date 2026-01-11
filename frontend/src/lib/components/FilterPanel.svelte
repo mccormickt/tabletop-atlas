@@ -35,7 +35,7 @@
 	<div class="space-y-4">
 		<!-- Player Count -->
 		<ComponentTraySection>
-			<Label class="text-sm font-semibold text-foreground mb-2 block">Player Count</Label>
+			<Label class="text-foreground mb-2 block text-sm font-semibold">Player Count</Label>
 			<div class="flex items-center gap-2">
 				<Input
 					type="number"
@@ -43,7 +43,7 @@
 					min="1"
 					max="99"
 					bind:value={filters.minPlayers}
-					class="w-16 text-center h-8 text-sm"
+					class="h-8 w-16 text-center text-sm"
 				/>
 				<span class="text-muted-foreground">to</span>
 				<Input
@@ -52,14 +52,14 @@
 					min="1"
 					max="99"
 					bind:value={filters.maxPlayers}
-					class="w-16 text-center h-8 text-sm"
+					class="h-8 w-16 text-center text-sm"
 				/>
 			</div>
 		</ComponentTraySection>
 
 		<!-- Complexity -->
 		<ComponentTraySection>
-			<Label class="text-sm font-semibold text-foreground mb-2 block">Complexity</Label>
+			<Label class="text-foreground mb-2 block text-sm font-semibold">Complexity</Label>
 			<div class="flex items-center gap-2">
 				<Input
 					type="number"
@@ -68,7 +68,7 @@
 					max="5"
 					step="0.5"
 					bind:value={filters.minComplexity}
-					class="w-16 text-center h-8 text-sm"
+					class="h-8 w-16 text-center text-sm"
 				/>
 				<span class="text-muted-foreground">to</span>
 				<Input
@@ -78,28 +78,28 @@
 					max="5"
 					step="0.5"
 					bind:value={filters.maxComplexity}
-					class="w-16 text-center h-8 text-sm"
+					class="h-8 w-16 text-center text-sm"
 				/>
 			</div>
 		</ComponentTraySection>
 
 		<!-- Toggles -->
 		<ComponentTraySection>
-			<Label class="text-sm font-semibold text-foreground mb-2 block">Content</Label>
+			<Label class="text-foreground mb-2 block text-sm font-semibold">Content</Label>
 			<div class="space-y-2">
-				<label class="flex items-center gap-2 cursor-pointer">
+				<label class="flex cursor-pointer items-center gap-2">
 					<input
 						type="checkbox"
 						bind:checked={filters.hasRules}
-						class="w-4 h-4 rounded border-border"
+						class="border-border h-4 w-4 rounded"
 					/>
 					<span class="text-sm">Has PDF Rules</span>
 				</label>
-				<label class="flex items-center gap-2 cursor-pointer">
+				<label class="flex cursor-pointer items-center gap-2">
 					<input
 						type="checkbox"
 						bind:checked={filters.hasHouseRules}
-						class="w-4 h-4 rounded border-border"
+						class="border-border h-4 w-4 rounded"
 					/>
 					<span class="text-sm">Has House Rules</span>
 				</label>
@@ -108,9 +108,7 @@
 
 		<!-- Actions -->
 		<div class="flex gap-2 pt-2">
-			<Button variant="game-primary" size="sm" class="flex-1" onclick={applyFilters}>
-				Apply
-			</Button>
+			<Button variant="game-primary" size="sm" class="flex-1" onclick={applyFilters}>Apply</Button>
 			<Button variant="game-secondary" size="sm" class="flex-1" onclick={clearFilters}>
 				Clear
 			</Button>

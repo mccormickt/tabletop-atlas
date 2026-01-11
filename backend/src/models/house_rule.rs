@@ -33,29 +33,6 @@ pub struct UpdateHouseRuleRequest {
     pub is_active: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-pub struct HouseRuleSummary {
-    pub id: HouseRuleId,
-    pub game_id: GameId,
-    pub title: String,
-    pub category: Option<String>,
-    pub is_active: bool,
-    pub created_at: DateTime<Utc>,
-}
-
-impl HouseRule {
-    pub fn to_summary(&self) -> HouseRuleSummary {
-        HouseRuleSummary {
-            id: self.id,
-            game_id: self.game_id,
-            title: self.title.clone(),
-            category: self.category.clone(),
-            is_active: self.is_active,
-            created_at: self.created_at,
-        }
-    }
-}
-
 fn default_true() -> bool {
     true
 }

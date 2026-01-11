@@ -104,7 +104,7 @@
 		<div class="rulebook-header">
 			<h1 class="text-3xl md:text-4xl">Game Library</h1>
 		</div>
-		<p class="text-center text-muted-foreground font-body">
+		<p class="text-muted-foreground font-body text-center">
 			{#if total > 0}
 				{total} game{total === 1 ? '' : 's'} in your collection
 			{:else}
@@ -114,20 +114,15 @@
 	</div>
 
 	<!-- Action Bar -->
-	<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+	<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 		<div class="flex items-center gap-2">
-			<Button
-				variant="game-secondary"
-				size="sm"
-				onclick={toggleFilters}
-				class="md:hidden"
-			>
+			<Button variant="game-secondary" size="sm" onclick={toggleFilters} class="md:hidden">
 				{showFilters ? 'Hide Filters' : 'Filters'}
 			</Button>
 		</div>
 
 		<!-- Desktop: Regular button -->
-		<Button variant="game-primary" onclick={navigateToAddGame} class="gap-2 hidden md:flex">
+		<Button variant="game-primary" onclick={navigateToAddGame} class="hidden gap-2 md:flex">
 			<GameBoxIcon size={18} />
 			Add New Game
 		</Button>
@@ -136,7 +131,7 @@
 	<!-- Mobile: Floating Action Button -->
 	<button
 		onclick={navigateToAddGame}
-		class="md:hidden fixed right-4 bottom-24 z-40 w-14 h-14 rounded-full bg-game-blue text-white shadow-lg hover:bg-game-blue/90 active:scale-95 transition-all flex items-center justify-center"
+		class="bg-game-blue hover:bg-game-blue/90 fixed right-4 bottom-24 z-40 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-all active:scale-95 md:hidden"
 		aria-label="Add new game"
 	>
 		<GameBoxIcon size={24} />
@@ -144,38 +139,47 @@
 
 	<div class="flex gap-6">
 		<!-- Filter Sidebar (Desktop) -->
-		<aside class="hidden md:block w-64 flex-shrink-0">
-			<FilterPanel
-				bind:filters
-				onApply={() => loadGames(1)}
-				onClear={() => loadGames(1)}
-			/>
+		<aside class="hidden w-64 flex-shrink-0 md:block">
+			<FilterPanel bind:filters onApply={() => loadGames(1)} onClear={() => loadGames(1)} />
 		</aside>
 
 		<!-- Mobile Filter Drawer -->
 		{#if showFilters}
 			<div class="fixed inset-0 z-40 md:hidden">
 				<div class="absolute inset-0 bg-black/50" onclick={toggleFilters}></div>
-				<div class="absolute left-0 top-0 bottom-0 w-72 bg-background p-4 shadow-lg overflow-y-auto">
-					<div class="flex items-center justify-between mb-4">
-						<h2 class="font-display font-semibold text-lg">Filters</h2>
+				<div
+					class="bg-background absolute top-0 bottom-0 left-0 w-72 overflow-y-auto p-4 shadow-lg"
+				>
+					<div class="mb-4 flex items-center justify-between">
+						<h2 class="font-display text-lg font-semibold">Filters</h2>
 						<button onclick={toggleFilters} class="text-muted-foreground hover:text-foreground">
-							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								/>
 							</svg>
 						</button>
 					</div>
 					<FilterPanel
 						bind:filters
-						onApply={() => { loadGames(1); showFilters = false; }}
-						onClear={() => { loadGames(1); showFilters = false; }}
+						onApply={() => {
+							loadGames(1);
+							showFilters = false;
+						}}
+						onClear={() => {
+							loadGames(1);
+							showFilters = false;
+						}}
 					/>
 				</div>
 			</div>
 		{/if}
 
 		<!-- Main Content -->
-		<div class="flex-1 min-w-0">
+		<div class="min-w-0 flex-1">
 			<!-- Loading State -->
 			{#if loading}
 				<div class="game-box-lid p-12 text-center">
@@ -188,7 +192,7 @@
 			{#if error && !loading}
 				<GameBox variant="default" class="text-center">
 					<div class="py-8">
-						<div class="mb-4 text-destructive">
+						<div class="text-destructive mb-4">
 							<svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
 									stroke-linecap="round"
@@ -198,8 +202,8 @@
 								></path>
 							</svg>
 						</div>
-						<h3 class="mb-2 text-lg font-display font-semibold">Unable to Load Games</h3>
-						<p class="mb-4 text-muted-foreground font-body">{error}</p>
+						<h3 class="font-display mb-2 text-lg font-semibold">Unable to Load Games</h3>
+						<p class="text-muted-foreground font-body mb-4">{error}</p>
 						<Button variant="game-primary" onclick={() => loadGames(currentPage)}>Try Again</Button>
 					</div>
 				</GameBox>
@@ -210,13 +214,16 @@
 				<GameBox variant="featured" showCorners={true} class="text-center">
 					<div class="py-12">
 						<div class="mb-6">
-							<div class="mx-auto w-24 h-24 rounded-full bg-parchment-dark flex items-center justify-center">
+							<div
+								class="bg-parchment-dark mx-auto flex h-24 w-24 items-center justify-center rounded-full"
+							>
 								<Rulebook size={48} class="text-game-blue" />
 							</div>
 						</div>
-						<h3 class="mb-3 text-xl font-display font-semibold">No Games Yet</h3>
-						<p class="mb-6 text-muted-foreground font-body max-w-md mx-auto">
-							Your game library is empty. Start building your collection by adding your first board game.
+						<h3 class="font-display mb-3 text-xl font-semibold">No Games Yet</h3>
+						<p class="text-muted-foreground font-body mx-auto mb-6 max-w-md">
+							Your game library is empty. Start building your collection by adding your first board
+							game.
 						</p>
 						<Button variant="game-accent" onclick={navigateToAddGame} class="gap-2">
 							<GameBoxIcon size={18} />

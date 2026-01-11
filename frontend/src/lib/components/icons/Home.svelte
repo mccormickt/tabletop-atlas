@@ -6,11 +6,7 @@
 		size?: number | string;
 	};
 
-	let {
-		size = 24,
-		class: className,
-		...restProps
-	}: Props = $props();
+	let { size = 24, class: className, ...restProps }: Props = $props();
 </script>
 
 <svg

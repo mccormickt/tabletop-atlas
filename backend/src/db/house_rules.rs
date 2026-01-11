@@ -223,6 +223,7 @@ pub async fn delete_house_rule(db: &Database, house_rule_id: HouseRuleId) -> Sql
     })
 }
 
+#[allow(dead_code)]
 pub async fn list_house_rules_by_game(
     db: &Database,
     game_id: GameId,

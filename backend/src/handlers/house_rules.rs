@@ -234,19 +234,19 @@ pub async fn update_house_rule(
     let embedder = app_state.embedder();
 
     // Validate the request
-    if let Some(ref title) = update_request.title {
-        if title.trim().is_empty() {
-            return Err(bad_request_error(
-                "House rule title cannot be empty".to_string(),
-            ));
-        }
+    if let Some(ref title) = update_request.title
+        && title.trim().is_empty()
+    {
+        return Err(bad_request_error(
+            "House rule title cannot be empty".to_string(),
+        ));
     }
-    if let Some(ref description) = update_request.description {
-        if description.trim().is_empty() {
-            return Err(bad_request_error(
-                "House rule description cannot be empty".to_string(),
-            ));
-        }
+    if let Some(ref description) = update_request.description
+        && description.trim().is_empty()
+    {
+        return Err(bad_request_error(
+            "House rule description cannot be empty".to_string(),
+        ));
     }
 
     match house_rules::update_house_rule(&db, house_rule_id, update_request).await {

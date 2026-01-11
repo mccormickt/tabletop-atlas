@@ -30,7 +30,7 @@
 	});
 </script>
 
-<div class="bg-background min-h-screen flex flex-col">
+<div class="bg-background flex min-h-screen flex-col">
 	<!-- Global Header -->
 	<Header currentGame={headerConfig.currentGame} showSearch={headerConfig.showSearch} />
 

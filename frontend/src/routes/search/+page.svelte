@@ -3,7 +3,15 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, type GameSummary, type SearchResult } from '$lib';
-	import { Button, Input, Label, Badge, GameBox, CardSleeve, LoadingSpinner } from '$lib/components/ui';
+	import {
+		Button,
+		Input,
+		Label,
+		Badge,
+		GameBox,
+		CardSleeve,
+		LoadingSpinner
+	} from '$lib/components/ui';
 	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
 	import { Dice, GameBoxIcon, Rulebook, SearchGlass, ChatBubble } from '$lib/components/icons';
 	import { useHeader } from '$lib/stores/header';
@@ -33,7 +41,8 @@
 	});
 
 	$effect(() => {
-		searchQuery;
+		// Track searchQuery changes to reset hasSearched
+		void searchQuery;
 		hasSearched = false;
 	});
 
@@ -197,7 +206,10 @@
 
 <svelte:head>
 	<title>Search Rules - Tabletop Atlas</title>
-	<meta name="description" content="Search for keywords and concepts in your uploaded game rules." />
+	<meta
+		name="description"
+		content="Search for keywords and concepts in your uploaded game rules."
+	/>
 </svelte:head>
 
 <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -206,14 +218,14 @@
 		<div class="rulebook-header">
 			<h1 class="text-2xl md:text-3xl">Rule Search</h1>
 		</div>
-		<p class="text-center text-muted-foreground font-body">
+		<p class="text-muted-foreground font-body text-center">
 			Search for keywords in your uploaded game rules
 		</p>
 	</div>
 
-	<div class="flex flex-col lg:flex-row gap-8">
+	<div class="flex flex-col gap-8 lg:flex-row">
 		<!-- Game Selection Sidebar -->
-		<div class="lg:w-80 flex-shrink-0">
+		<div class="flex-shrink-0 lg:w-80">
 			<ComponentTray title="Select Game">
 				{#if loading}
 					<ComponentTraySection>
@@ -221,22 +233,24 @@
 					</ComponentTraySection>
 				{:else if games.length === 0}
 					<ComponentTraySection>
-						<p class="text-sm text-parchment/70 text-center mb-2">No games found</p>
-						<Button variant="game-primary" href="/games/add" size="sm" class="w-full">Add Game</Button>
+						<p class="text-parchment/70 mb-2 text-center text-sm">No games found</p>
+						<Button variant="game-primary" href="/games/add" size="sm" class="w-full"
+							>Add Game</Button
+						>
 					</ComponentTraySection>
 				{:else}
-					<div class="space-y-2 max-h-96 overflow-y-auto">
+					<div class="max-h-96 space-y-2 overflow-y-auto">
 						{#each games as game (game.id)}
 							<button
 								onclick={() => selectGame(game.id)}
-								class="w-full text-left p-3 rounded-lg transition-all
+								class="w-full rounded-lg p-3 text-left transition-all
 									{selectedGameId === game.id
-										? 'bg-game-blue text-white'
-										: 'bg-parchment hover:bg-parchment-dark text-foreground'}
+									? 'bg-game-blue text-white'
+									: 'bg-parchment hover:bg-parchment-dark text-foreground'}
 									{!game.hasRulesPdf ? 'opacity-60' : ''}"
 							>
-								<div class="font-display font-medium text-sm">{game.name}</div>
-								<div class="flex items-center gap-1 mt-1">
+								<div class="font-display text-sm font-medium">{game.name}</div>
+								<div class="mt-1 flex items-center gap-1">
 									{#if game.hasRulesPdf}
 										<Rulebook size={12} class="opacity-60" />
 									{:else}
@@ -253,17 +267,22 @@
 				<ComponentTray title="Selected Game" class="mt-4">
 					<ComponentTraySection>
 						<div class="flex items-center gap-3">
-							<div class="w-10 h-10 rounded-lg bg-game-blue flex items-center justify-center">
+							<div class="bg-game-blue flex h-10 w-10 items-center justify-center rounded-lg">
 								<GameBoxIcon size={20} class="text-white" />
 							</div>
-							<div class="flex-1 min-w-0">
-								<p class="font-display font-medium text-sm truncate">{selectedGame.name}</p>
+							<div class="min-w-0 flex-1">
+								<p class="font-display truncate text-sm font-medium">{selectedGame.name}</p>
 								{#if selectedGame.publisher}
 									<p class="text-xs opacity-70">{selectedGame.publisher}</p>
 								{/if}
 							</div>
 						</div>
-						<Button variant="ghost" size="sm" onclick={() => selectedGame && goToGame(selectedGame.id)} class="w-full mt-3">
+						<Button
+							variant="ghost"
+							size="sm"
+							onclick={() => selectedGame && goToGame(selectedGame.id)}
+							class="mt-3 w-full"
+						>
 							View Details
 						</Button>
 					</ComponentTraySection>
@@ -272,28 +291,36 @@
 		</div>
 
 		<!-- Search Interface and Results -->
-		<div class="flex-1 min-w-0 space-y-6">
+		<div class="min-w-0 flex-1 space-y-6">
 			<!-- Search Form - Index Card Style -->
 			<GameBox variant="default" class="relative p-6">
-				<div class="absolute -top-3 left-6 bg-game-green text-white px-4 py-1 rounded-t-lg font-display text-sm font-semibold">
+				<div
+					class="bg-game-green font-display absolute -top-3 left-6 rounded-t-lg px-4 py-1 text-sm font-semibold text-white"
+				>
 					Search
 				</div>
 				<div class="pt-2">
 					<form onsubmit={handleSearchSubmit} class="space-y-4">
 						<div class="flex gap-2">
 							<div class="relative flex-1">
-								<SearchGlass size={18} class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+								<SearchGlass
+									size={18}
+									class="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2"
+								/>
 								<Input
 									bind:value={searchQuery}
 									placeholder="e.g. win conditions, combat, movement..."
 									disabled={!selectedGameId || !selectedGame?.hasRulesPdf || searching}
-									class="pl-10 bg-card"
+									class="bg-card pl-10"
 								/>
 							</div>
 							<Button
 								type="submit"
 								variant="game-primary"
-								disabled={!selectedGameId || !selectedGame?.hasRulesPdf || !searchQuery.trim() || searching}
+								disabled={!selectedGameId ||
+									!selectedGame?.hasRulesPdf ||
+									!searchQuery.trim() ||
+									searching}
 							>
 								{#if searching}
 									<LoadingSpinner size="sm" />
@@ -304,13 +331,16 @@
 						</div>
 
 						<div class="flex items-center justify-between">
-							<p class="text-xs text-muted-foreground font-ui">
-								For Q&A, try our <a href="/chat" class="text-game-blue hover:underline inline-flex items-center gap-1">
+							<p class="text-muted-foreground font-ui text-xs">
+								For Q&A, try our <a
+									href="/chat"
+									class="text-game-blue inline-flex items-center gap-1 hover:underline"
+								>
 									<ChatBubble size={12} /> Chat
 								</a>
 							</p>
 							<div class="flex items-center gap-2">
-								<Label for="searchLimit" class="text-xs text-muted-foreground">Results:</Label>
+								<Label for="searchLimit" class="text-muted-foreground text-xs">Results:</Label>
 								<Input
 									id="searchLimit"
 									type="number"
@@ -318,15 +348,15 @@
 									min="1"
 									max="20"
 									disabled={searching}
-									class="w-16 h-8 text-center text-sm"
+									class="h-8 w-16 text-center text-sm"
 								/>
 							</div>
 						</div>
 					</form>
 
 					{#if error}
-						<div class="mt-4 rounded-lg border-2 border-game-red bg-game-red/10 p-3">
-							<p class="text-sm text-game-red font-ui">{error}</p>
+						<div class="border-game-red bg-game-red/10 mt-4 rounded-lg border-2 p-3">
+							<p class="text-game-red font-ui text-sm">{error}</p>
 						</div>
 					{/if}
 				</div>
@@ -335,8 +365,8 @@
 			<!-- Search Results - Card Sleeves -->
 			{#if searchResults.length > 0}
 				<div>
-					<div class="flex items-center justify-between mb-4">
-						<h2 class="font-display font-semibold text-lg">Results</h2>
+					<div class="mb-4 flex items-center justify-between">
+						<h2 class="font-display text-lg font-semibold">Results</h2>
 						<Badge variant="secondary" class="font-ui">
 							{totalResults} match{totalResults === 1 ? '' : 'es'}
 						</Badge>
@@ -347,22 +377,26 @@
 							<CardSleeve variant="default" class="p-4">
 								<div class="flex items-start gap-4">
 									<!-- Dice Score -->
-									<div class="flex-shrink-0 flex flex-col items-center">
-										<Dice size={32} value={getDiceValue(result.similarityScore)} class="text-foreground" />
-										<span class="text-xs font-ui text-muted-foreground mt-1">
+									<div class="flex flex-shrink-0 flex-col items-center">
+										<Dice
+											size={32}
+											value={getDiceValue(result.similarityScore)}
+											class="text-foreground"
+										/>
+										<span class="font-ui text-muted-foreground mt-1 text-xs">
 											{formatSimilarityScore(result.similarityScore)}
 										</span>
 									</div>
 
 									<!-- Result Content -->
-									<div class="flex-1 min-w-0">
-										<div class="flex items-center gap-2 mb-2">
-											<Badge variant="outline" class="text-xs font-ui">#{index + 1}</Badge>
+									<div class="min-w-0 flex-1">
+										<div class="mb-2 flex items-center gap-2">
+											<Badge variant="outline" class="font-ui text-xs">#{index + 1}</Badge>
 											{#if result.metadata}
-												<span class="text-xs text-muted-foreground">{result.metadata}</span>
+												<span class="text-muted-foreground text-xs">{result.metadata}</span>
 											{/if}
 										</div>
-										<p class="text-sm font-body leading-relaxed">{result.chunkText}</p>
+										<p class="font-body text-sm leading-relaxed">{result.chunkText}</p>
 									</div>
 								</div>
 							</CardSleeve>
@@ -370,19 +404,24 @@
 					</div>
 				</div>
 			{:else if hasSearched && searchQuery && selectedGameId && !searching}
-				<GameBox variant="default" class="text-center py-12">
+				<GameBox variant="default" class="py-12 text-center">
 					<div class="mb-4">
-						<Dice size={48} value={1} class="mx-auto text-muted-foreground" />
+						<Dice size={48} value={1} class="text-muted-foreground mx-auto" />
 					</div>
-					<h3 class="font-display font-semibold text-lg mb-2">No Matches Found</h3>
-					<p class="text-muted-foreground font-body text-sm mb-4">
-						Try different keywords or check our <a href="/chat" class="text-game-blue hover:underline">Chat</a> for Q&A
+					<h3 class="font-display mb-2 text-lg font-semibold">No Matches Found</h3>
+					<p class="text-muted-foreground font-body mb-4 text-sm">
+						Try different keywords or check our <a
+							href="/chat"
+							class="text-game-blue hover:underline">Chat</a
+						> for Q&A
 					</p>
 					<div class="flex flex-wrap justify-center gap-2">
-						{#each ['victory', 'combat', 'movement', 'setup', 'turn', 'scoring'] as term}
+						{#each ['victory', 'combat', 'movement', 'setup', 'turn', 'scoring'] as term (term)}
 							<button
-								onclick={() => { searchQuery = term; }}
-								class="px-3 py-1 rounded-full bg-parchment-dark text-sm font-ui hover:bg-primary hover:text-primary-foreground transition-colors"
+								onclick={() => {
+									searchQuery = term;
+								}}
+								class="bg-parchment-dark font-ui hover:bg-primary hover:text-primary-foreground rounded-full px-3 py-1 text-sm transition-colors"
 							>
 								{term}
 							</button>
@@ -390,11 +429,11 @@
 					</div>
 				</GameBox>
 			{:else if !selectedGameId}
-				<GameBox variant="default" showCorners={true} class="text-center py-16 lg:py-24">
+				<GameBox variant="default" showCorners={true} class="py-16 text-center lg:py-24">
 					<div class="mb-6">
-						<SearchGlass size={56} class="mx-auto text-muted-foreground" />
+						<SearchGlass size={56} class="text-muted-foreground mx-auto" />
 					</div>
-					<h3 class="font-display font-semibold text-xl mb-3">Select a Game</h3>
+					<h3 class="font-display mb-3 text-xl font-semibold">Select a Game</h3>
 					<p class="text-muted-foreground font-body">
 						Choose a game from the sidebar to search its rules
 					</p>

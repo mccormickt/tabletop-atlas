@@ -7,7 +7,14 @@
     "build": "cargo build --release",
     "test": "cargo test && pnpm test --prefix frontend",
     "backend": "cargo run -p backend",
-    "frontend": "pnpm run dev --prefix frontend"
+    "frontend": "pnpm run dev --prefix frontend",
+    "lint": "cargo clippy -- -D warnings && pnpm --prefix frontend run lint",
+    "lint:backend": "cargo clippy -- -D warnings",
+    "lint:frontend": "pnpm --prefix frontend run lint",
+    "format": "cargo fmt && pnpm --prefix frontend run format",
+    "format:backend": "cargo fmt",
+    "format:frontend": "pnpm --prefix frontend run format",
+    "format:check": "cargo fmt --check && pnpm --prefix frontend run lint"
   },
   "devDependencies": {
     "@oxide/openapi-gen-ts": "^0.7.0",

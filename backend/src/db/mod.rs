@@ -26,7 +26,7 @@ impl Database {
         F: FnOnce(&Connection) -> SqliteResult<R>,
     {
         let conn = self.conn.lock().unwrap();
-        f(&*conn)
+        f(&conn)
     }
 
     pub fn with_transaction<F, R>(&self, f: F) -> SqliteResult<R>
@@ -58,11 +58,6 @@ pub fn parse_datetime(row: &Row, column: &str) -> SqliteResult<chrono::DateTime<
                 rusqlite::types::Type::Text,
             )
         })
-}
-
-/// Helper function to format datetime for SQLite
-pub fn format_datetime(dt: chrono::DateTime<chrono::Utc>) -> String {
-    dt.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
 /// Common pagination helper

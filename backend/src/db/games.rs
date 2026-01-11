@@ -276,7 +276,7 @@ pub async fn get_game_rules_info(
 
         let result = stmt.query_row(params![game_id], |row| {
             Ok(RulesInfoResponse {
-                game_id: game_id as i64,
+                game_id,
                 game_name: row.get(0)?,
                 has_rules_pdf: row.get::<_, Option<String>>(1)?.is_some(),
                 rules_pdf_path: row.get(1)?,

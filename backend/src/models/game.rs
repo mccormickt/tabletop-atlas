@@ -71,18 +71,3 @@ pub struct RulesInfoResponse {
     pub last_processed: Option<String>,
 }
 
-impl Game {
-    pub fn to_summary(&self, house_rules_count: i32) -> GameSummary {
-        GameSummary {
-            id: self.id,
-            name: self.name.clone(),
-            publisher: self.publisher.clone(),
-            year_published: self.year_published,
-            min_players: self.min_players,
-            max_players: self.max_players,
-            complexity_rating: self.complexity_rating,
-            has_rules_pdf: self.rules_pdf_path.is_some(),
-            house_rules_count,
-        }
-    }
-}
