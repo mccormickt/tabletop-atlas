@@ -12,3 +12,9 @@ export { SearchInput } from './search-input';
 export { SearchResult } from './search-result';
 export { EmptyState } from './empty-state';
 export { LoadingSpinner } from './loading-spinner';
+
+// Export boardgame-themed container components
+export { GameBox } from './game-box';
+export { CardSleeve } from './card-sleeve';
+export { ComponentTray, ComponentTraySection } from './component-tray';
+export { ScoreTrack } from './score-track';
