@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { api, type Game, type RulesInfoResponse, type UploadResponse, formatDate } from '$lib';
+	import { api, type Game, type RulesInfoResponse, type UploadResponse, type HouseRule, formatDate } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Badge } from '$lib/components/ui';
@@ -20,7 +19,7 @@
 	// Configure header for this page
 	const header = useHeader();
 
-	// State management
+	// Game state
 	let game = $state<Game | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -29,12 +28,28 @@
 	let showUpload = $state(false);
 	let activeTab = $state<TabType>('details');
 
-	onMount(() => {
+	// House rules state (managed here, passed to presentational component)
+	let houseRules = $state<HouseRule[]>([]);
+	let houseRulesLoading = $state(false);
+	let houseRulesError = $state<string | null>(null);
+	let houseRulesPage = $state(1);
+	let houseRulesTotalPages = $state(1);
+	let houseRulesTotal = $state(0);
+	const houseRulesLimit = 10;
+
+	$effect(() => {
 		if (gameId && !isNaN(gameId)) {
 			loadGame();
 		} else {
 			error = 'Invalid game ID';
 			loading = false;
+		}
+	});
+
+	// Load house rules when tab is activated
+	$effect(() => {
+		if (activeTab === 'house-rules' && game) {
+			loadHouseRules();
 		}
 	});
 
@@ -51,23 +66,29 @@
 		error = null;
 
 		try {
-			const result = await api.methods.getGame({
-				path: { id: gameId }
-			});
+			// Fetch game and rules info in parallel
+			const [gameResult, rulesResult] = await Promise.all([
+				api.methods.getGame({ path: { id: gameId } }),
+				api.methods.getRulesInfo({ path: { id: gameId } })
+			]);
 
-			if (result.type === 'success') {
-				game = result.data;
+			if (gameResult.type === 'success') {
+				game = gameResult.data;
 				// Update header with current game
 				header.configure({
-					currentGame: result.data,
-					showSearch: result.data.rulesPdfPath ? true : false
+					currentGame: gameResult.data,
+					showSearch: gameResult.data.rulesPdfPath ? true : false
 				});
-				// Also load rules info
-				await loadRulesInfo();
-			} else if (result.type === 'error') {
-				error = result.data.message || 'Failed to load game';
-			} else if (result.type === 'client_error') {
-				error = result.error.message || 'Failed to load game';
+			} else if (gameResult.type === 'error') {
+				error = gameResult.data.message || 'Failed to load game';
+			} else if (gameResult.type === 'client_error') {
+				error = gameResult.error.message || 'Failed to load game';
+			}
+
+			if (rulesResult.type === 'success') {
+				rulesInfo = rulesResult.data;
+			} else {
+				rulesInfo = null;
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
@@ -76,22 +97,52 @@
 		}
 	}
 
-	async function loadRulesInfo() {
-		if (!gameId) return;
+	async function loadHouseRules() {
+		houseRulesLoading = true;
+		houseRulesError = null;
 
 		try {
-			const result = await api.methods.getRulesInfo({
-				path: { id: gameId }
+			const result = await api.methods.listHouseRules({
+				query: { gameId, page: houseRulesPage, limit: houseRulesLimit }
 			});
 
 			if (result.type === 'success') {
-				rulesInfo = result.data;
-			} else {
-				rulesInfo = null;
+				houseRules = result.data.items;
+				houseRulesTotalPages = result.data.totalPages;
+				houseRulesTotal = result.data.total;
+			} else if (result.type === 'error') {
+				houseRulesError = result.data.message || 'Failed to load house rules';
+			} else if (result.type === 'client_error') {
+				houseRulesError = result.error.message || 'Failed to load house rules';
 			}
-		} catch {
-			rulesInfo = null;
+		} catch (err) {
+			houseRulesError = err instanceof Error ? err.message : 'An unexpected error occurred';
+		} finally {
+			houseRulesLoading = false;
 		}
+	}
+
+	function handleHouseRulePageChange(page: number) {
+		houseRulesPage = page;
+		loadHouseRules();
+	}
+
+	async function handleHouseRuleDelete(rule: HouseRule) {
+		const result = await api.methods.deleteHouseRule({
+			path: { id: rule.id }
+		});
+
+		if (result.type === 'success') {
+			await loadHouseRules();
+		} else if (result.type === 'error') {
+			throw new Error(result.data.message || 'Failed to delete house rule');
+		} else if (result.type === 'client_error') {
+			throw new Error(result.error.message || 'Failed to delete house rule');
+		}
+	}
+
+	function handleHouseRuleSaved(_rule: HouseRule) {
+		loadHouseRules();
 	}
 
 	async function handleDelete() {
@@ -133,7 +184,7 @@
 		goto('/games');
 	}
 
-	function handleUploadSuccess(event: CustomEvent<UploadResponse>) {
+	function handleUploadSuccess(response: UploadResponse) {
 		// Refresh game and rules info
 		loadGame();
 		showUpload = false;
@@ -142,6 +193,10 @@
 	function handleUploadDeleted() {
 		// Refresh game and rules info
 		loadGame();
+	}
+
+	function handleUploadError(errorMsg: string) {
+		error = errorMsg;
 	}
 
 	function toggleUpload() {
@@ -268,7 +323,18 @@
 
 			<!-- Tab Content -->
 			{#if activeTab === 'house-rules'}
-				<HouseRulesList gameId={game.id} />
+				<HouseRulesList
+					gameId={game.id}
+					{houseRules}
+					isLoading={houseRulesLoading}
+					error={houseRulesError}
+					currentPage={houseRulesPage}
+					totalPages={houseRulesTotalPages}
+					total={houseRulesTotal}
+					onPageChange={handleHouseRulePageChange}
+					onDelete={handleHouseRuleDelete}
+					onSaved={handleHouseRuleSaved}
+				/>
 			{:else}
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 					<!-- Main Information -->
@@ -411,9 +477,9 @@
 										gameId={game.id}
 										gameName={game.name}
 										existingRulesInfo={rulesInfo}
-										on:uploaded={handleUploadSuccess}
-										on:deleted={handleUploadDeleted}
-										on:error={(e) => (error = e.detail)}
+										onUploaded={handleUploadSuccess}
+										onDeleted={handleUploadDeleted}
+										onError={handleUploadError}
 									/>
 								</div>
 							{/if}

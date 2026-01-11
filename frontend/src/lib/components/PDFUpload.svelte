@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { api } from '$lib';
-	import { createEventDispatcher } from 'svelte';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Progress } from '$lib/components/ui';
@@ -11,11 +10,17 @@
 	let {
 		gameId,
 		gameName = '',
-		existingRulesInfo = null
+		existingRulesInfo = null,
+		onUploaded,
+		onDeleted,
+		onError
 	}: {
 		gameId: number;
 		gameName?: string;
 		existingRulesInfo?: RulesInfoResponse | null;
+		onUploaded?: (response: UploadResponse) => void;
+		onDeleted?: () => void;
+		onError?: (error: string) => void;
 	} = $props();
 
 	// State
@@ -26,13 +31,6 @@
 	let error = $state<string | null>(null);
 	let uploadResult: UploadResponse | null = $state(null);
 	let fileInputRef: HTMLInputElement | null = $state(null);
-
-	// Event dispatcher
-	const dispatch = createEventDispatcher<{
-		uploaded: UploadResponse;
-		deleted: void;
-		error: string;
-	}>();
 
 	// File validation
 	function validateFile(file: File): string | null {
@@ -129,17 +127,17 @@
 			if (result.type === 'success') {
 				uploadResult = result.data;
 				selectedFile = null;
-				dispatch('uploaded', result.data);
+				onUploaded?.(result.data);
 			} else if (result.type === 'error') {
 				error = result.data.message || 'Upload failed';
-				dispatch('error', error);
+				onError?.(error);
 			} else if (result.type === 'client_error') {
 				error = result.error.message || 'Upload failed';
-				dispatch('error', error);
+				onError?.(error);
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
-			dispatch('error', error);
+			onError?.(error);
 		} finally {
 			isUploading = false;
 			uploadProgress = 0;
@@ -160,17 +158,17 @@
 			});
 
 			if (result.type === 'success') {
-				dispatch('deleted');
+				onDeleted?.();
 			} else if (result.type === 'error') {
 				error = result.data.message || 'Failed to delete rules';
-				dispatch('error', error);
+				onError?.(error);
 			} else if (result.type === 'client_error') {
 				error = result.error.message || 'Failed to delete rules';
-				dispatch('error', error);
+				onError?.(error);
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
-			dispatch('error', error);
+			onError?.(error);
 		}
 	}
 

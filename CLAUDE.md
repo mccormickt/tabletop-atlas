@@ -56,9 +56,100 @@ npm run test
 - **Framework**: Svelte 5 using sveltekit
 - **Components**: huntabyte/shadcn-svelte design system with Tailwind CSS
 - **Key files**:
-  - `app/routes/`: Route component implementations
-  - `app/components/`: Shared Svelte components
-  - `app/lib/`: Utilities and API client
+  - `frontend/src/routes/`: Route component implementations
+  - `frontend/src/lib/components/`: Shared Svelte components
+  - `frontend/src/lib/`: Utilities, API client, and stores
+
+### Svelte 5 Component Patterns
+
+#### Presentational vs Container Components
+
+**Reusable components in `lib/components/` should be presentational:**
+- Receive data via props, not fetch their own data
+- Use callback props (`onSaved`, `onDelete`, `onPageChange`) instead of `createEventDispatcher`
+- Keep only UI-related state local (form visibility, editing state, etc.)
+- Let parent pages/components manage data fetching and state
+
+**Good example (presentational):**
+```typescript
+let {
+  items,
+  isLoading,
+  error,
+  onDelete,
+  onSaved
+}: {
+  items: Item[];
+  isLoading?: boolean;
+  error?: string | null;
+  onDelete?: (item: Item) => Promise<void>;
+  onSaved?: (item: Item) => void;
+} = $props();
+
+// Only UI state is local
+let showForm = $state(false);
+let editingItem = $state<Item | null>(null);
+```
+
+**Avoid (container component anti-pattern):**
+```typescript
+let { itemId }: { itemId: number } = $props();
+
+// Don't fetch data internally in reusable components
+let items = $state<Item[]>([]);
+let isLoading = $state(true);
+let error = $state<string | null>(null);
+
+$effect(() => {
+  fetchItems(); // Anti-pattern for lib/components
+});
+```
+
+**Page components (`routes/`) are expected to:**
+- Manage data fetching and state
+- Pass data down to presentational components
+- Handle callbacks from child components
+
+#### Svelte 5 Runes Best Practices
+
+1. **Use `$effect` instead of `onMount`** for initialization:
+   ```typescript
+   let initialized = $state(false);
+
+   $effect(() => {
+     if (!initialized) {
+       initialized = true;
+       initialize();
+     }
+   });
+   ```
+
+2. **Use callback props instead of `createEventDispatcher`:**
+   ```typescript
+   // Good
+   let { onSaved }: { onSaved?: (item: Item) => void } = $props();
+   onSaved?.(item);
+
+   // Avoid
+   const dispatch = createEventDispatcher();
+   dispatch('saved', item);
+   ```
+
+3. **Use `$effect` with cleanup for subscriptions:**
+   ```typescript
+   $effect(() => {
+     const unsubscribe = store.subscribe((value) => {
+       // handle value
+     });
+     return unsubscribe;
+   });
+   ```
+
+4. **Use `$lib` utilities instead of local functions:**
+   - Import `formatDate`, `formatDateTime` from `$lib`
+   - Avoid duplicating utility functions in components
+
+5. **Consolidate related `$effect` blocks** when they have the same dependencies
 
 ## Database
 

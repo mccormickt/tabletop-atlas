@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { api } from '$lib';
-	import { createEventDispatcher } from 'svelte';
 	import { Button, Input, Textarea, Label } from '$lib/components/ui';
 	import type { HouseRule, CreateHouseRuleRequest, UpdateHouseRuleRequest } from '$lib';
 
@@ -30,12 +29,6 @@
 
 	const isEditMode = $derived(!!existingRule);
 
-	// Event dispatcher for legacy event handling
-	const dispatch = createEventDispatcher<{
-		saved: HouseRule;
-		cancel: void;
-	}>();
-
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
 		if (!title.trim() || !description.trim()) {
@@ -63,7 +56,6 @@
 
 				if (result.type === 'success') {
 					onSaved?.(result.data);
-					dispatch('saved', result.data);
 				} else if (result.type === 'error') {
 					error = result.data.message || 'Failed to update house rule';
 				} else if (result.type === 'client_error') {
@@ -85,7 +77,6 @@
 
 				if (result.type === 'success') {
 					onSaved?.(result.data);
-					dispatch('saved', result.data);
 					// Reset form for next entry
 					title = '';
 					description = '';
@@ -106,7 +97,6 @@
 
 	function handleCancel() {
 		onCancel?.();
-		dispatch('cancel');
 	}
 </script>
 
