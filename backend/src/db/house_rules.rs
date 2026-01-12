@@ -1,10 +1,23 @@
-use super::{Database, PaginationInfo, parse_datetime};
+use super::{format_now_for_db, parse_datetime, query_row_optional, Database, PaginationInfo};
 use crate::models::{
     CreateHouseRuleRequest, GameId, HouseRule, HouseRuleId, PaginatedResponse,
     UpdateHouseRuleRequest,
 };
-use chrono::Utc;
-use rusqlite::{Result as SqliteResult, params};
+use rusqlite::{params, Result as SqliteResult, Row};
+
+/// Map a database row to a HouseRule struct
+fn row_to_house_rule(row: &Row) -> SqliteResult<HouseRule> {
+    Ok(HouseRule {
+        id: row.get(0)?,
+        game_id: row.get(1)?,
+        title: row.get(2)?,
+        description: row.get(3)?,
+        category: row.get(4)?,
+        is_active: row.get(5)?,
+        created_at: parse_datetime(row, "created_at")?,
+        updated_at: parse_datetime(row, "updated_at")?,
+    })
+}
 
 pub async fn list_house_rules(
     db: &Database,
@@ -35,18 +48,7 @@ pub async fn list_house_rules(
 
         let house_rule_iter = stmt.query_map(
             params![game_id, pagination.limit, pagination.offset],
-            |row| {
-                Ok(HouseRule {
-                    id: row.get(0)?,
-                    game_id: row.get(1)?,
-                    title: row.get(2)?,
-                    description: row.get(3)?,
-                    category: row.get(4)?,
-                    is_active: row.get(5)?,
-                    created_at: parse_datetime(row, "created_at")?,
-                    updated_at: parse_datetime(row, "updated_at")?,
-                })
-            },
+            row_to_house_rule,
         )?;
 
         let house_rules: Result<Vec<HouseRule>, _> = house_rule_iter.collect();
@@ -68,24 +70,7 @@ pub async fn get_house_rule(
             "#,
         )?;
 
-        let result = stmt.query_row(params![house_rule_id], |row| {
-            Ok(HouseRule {
-                id: row.get(0)?,
-                game_id: row.get(1)?,
-                title: row.get(2)?,
-                description: row.get(3)?,
-                category: row.get(4)?,
-                is_active: row.get(5)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        });
-
-        match result {
-            Ok(house_rule) => Ok(Some(house_rule)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e),
-        }
+        query_row_optional(stmt.query_row(params![house_rule_id], row_to_house_rule))
     })
 }
 
@@ -94,8 +79,7 @@ pub async fn create_house_rule(
     request: CreateHouseRuleRequest,
 ) -> SqliteResult<HouseRule> {
     db.with_transaction(|conn| {
-        let now = Utc::now();
-        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         // First verify the game exists
         let game_exists: bool = conn.query_row(
@@ -138,18 +122,7 @@ pub async fn create_house_rule(
             "#,
         )?;
 
-        stmt.query_row(params![house_rule_id], |row| {
-            Ok(HouseRule {
-                id: row.get(0)?,
-                game_id: row.get(1)?,
-                title: row.get(2)?,
-                description: row.get(3)?,
-                category: row.get(4)?,
-                is_active: row.get(5)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        })
+        stmt.query_row(params![house_rule_id], row_to_house_rule)
     })
 }
 
@@ -170,7 +143,7 @@ pub async fn update_house_rule(
             return Ok(None);
         }
 
-        let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         // Build dynamic update query
         let mut update_parts = Vec::new();
@@ -248,18 +221,7 @@ pub async fn list_house_rules_by_game(
 
         let mut stmt = conn.prepare(query)?;
 
-        let house_rule_iter = stmt.query_map(params![game_id], |row| {
-            Ok(HouseRule {
-                id: row.get(0)?,
-                game_id: row.get(1)?,
-                title: row.get(2)?,
-                description: row.get(3)?,
-                category: row.get(4)?,
-                is_active: row.get(5)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        })?;
+        let house_rule_iter = stmt.query_map(params![game_id], row_to_house_rule)?;
 
         let house_rules: Result<Vec<HouseRule>, _> = house_rule_iter.collect();
         house_rules
@@ -278,16 +240,5 @@ fn get_house_rule_by_id_sync(
         "#,
     )?;
 
-    stmt.query_row(params![house_rule_id], |row| {
-        Ok(HouseRule {
-            id: row.get(0)?,
-            game_id: row.get(1)?,
-            title: row.get(2)?,
-            description: row.get(3)?,
-            category: row.get(4)?,
-            is_active: row.get(5)?,
-            created_at: parse_datetime(row, "created_at")?,
-            updated_at: parse_datetime(row, "updated_at")?,
-        })
-    })
+    stmt.query_row(params![house_rule_id], row_to_house_rule)
 }

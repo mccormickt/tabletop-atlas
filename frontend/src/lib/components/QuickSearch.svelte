@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { api, type SearchResult } from '$lib';
 	import { SearchInput, SearchResult as SearchResultComponent } from '$lib/components/ui';
-	import { createEventDispatcher } from 'svelte';
 
 	// Props
 	let {
@@ -9,13 +8,19 @@
 		gameName = '',
 		placeholder = 'Quick search...',
 		maxResults = 3,
-		autoFocus = false
+		autoFocus = false,
+		onSearch = () => {},
+		onResultSelect = () => {},
+		onClear = () => {}
 	}: {
 		gameId: number;
 		gameName?: string;
 		placeholder?: string;
 		maxResults?: number;
 		autoFocus?: boolean;
+		onSearch?: (data: { query: string; results: SearchResult[] }) => void;
+		onResultSelect?: (result: SearchResult) => void;
+		onClear?: () => void;
 	} = $props();
 
 	// State
@@ -24,13 +29,6 @@
 	let searchResults = $state<SearchResult[]>([]);
 	let showResults = $state(false);
 	let inputRef: HTMLInputElement | null = $state(null);
-
-	// Event dispatcher
-	const dispatch = createEventDispatcher<{
-		search: { query: string; results: SearchResult[] };
-		resultSelect: SearchResult;
-		clear: void;
-	}>();
 
 	// Auto-focus input if requested
 	$effect(() => {
@@ -60,7 +58,7 @@
 			if (result.type === 'success') {
 				searchResults = result.data.results;
 				showResults = searchResults.length > 0;
-				dispatch('search', {
+				onSearch({
 					query: searchQuery.trim(),
 					results: searchResults
 				});
@@ -86,7 +84,7 @@
 	}
 
 	function handleResultClick(result: SearchResult) {
-		dispatch('resultSelect', result);
+		onResultSelect(result);
 		clearSearch();
 	}
 
@@ -94,7 +92,7 @@
 		searchQuery = '';
 		searchResults = [];
 		showResults = false;
-		dispatch('clear');
+		onClear();
 	}
 
 	// Close results when clicking outside
@@ -158,7 +156,7 @@
 								maxTextLength={120}
 								showIndex={false}
 								class="rounded-none border-0 hover:bg-gray-50"
-								on:click={() => handleResultClick(result)}
+								onClick={() => handleResultClick(result)}
 							/>
 						</div>
 					{/each}

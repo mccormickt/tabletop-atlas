@@ -1,6 +1,8 @@
+use chrono::Utc;
 use rusqlite::{Connection, Result as SqliteResult, Row};
 use std::sync::{Arc, Mutex};
 
+pub mod challenges;
 pub mod chat;
 pub mod collections;
 pub mod custom_games;
@@ -78,5 +80,25 @@ impl PaginationInfo {
             offset,
             limit: limit as i64,
         }
+    }
+}
+
+/// Format the current UTC time for SQLite storage
+/// Returns a string in "%Y-%m-%d %H:%M:%S" format
+pub fn format_now_for_db() -> String {
+    Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
+}
+
+/// Format a specific DateTime for SQLite storage
+pub fn format_datetime_for_db(dt: chrono::DateTime<Utc>) -> String {
+    dt.format("%Y-%m-%d %H:%M:%S").to_string()
+}
+
+/// Convert a query result to Option, treating QueryReturnedNoRows as None
+pub fn query_row_optional<T>(result: SqliteResult<T>) -> SqliteResult<Option<T>> {
+    match result {
+        Ok(item) => Ok(Some(item)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e),
     }
 }

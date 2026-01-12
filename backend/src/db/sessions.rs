@@ -1,4 +1,4 @@
-use super::{parse_datetime, Database};
+use super::{format_datetime_for_db, format_now_for_db, parse_datetime, query_row_optional, Database};
 use crate::models::{Session, SessionId, UserId};
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Result as SqliteResult};
@@ -25,8 +25,8 @@ pub async fn create_session(
     db.with_transaction(|conn| {
         let token_hash = hash_token(refresh_token);
         let now = Utc::now();
-        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
-        let expires_str = expires_at.format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_datetime_for_db(now);
+        let expires_str = format_datetime_for_db(expires_at);
 
         conn.execute(
             r#"
@@ -53,7 +53,7 @@ pub async fn find_valid_session(
 ) -> SqliteResult<Option<Session>> {
     db.with_connection(|conn| {
         let token_hash = hash_token(refresh_token);
-        let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         let mut stmt = conn.prepare(
             r#"
@@ -63,7 +63,7 @@ pub async fn find_valid_session(
             "#,
         )?;
 
-        let result = stmt.query_row(params![session_id, token_hash, now_str], |row| {
+        query_row_optional(stmt.query_row(params![session_id, token_hash, now_str], |row| {
             Ok(Session {
                 id: row.get(0)?,
                 user_id: row.get(1)?,
@@ -71,20 +71,15 @@ pub async fn find_valid_session(
                 expires_at: parse_datetime(row, "expires_at")?,
                 created_at: parse_datetime(row, "created_at")?,
             })
-        });
-
-        match result {
-            Ok(session) => Ok(Some(session)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e),
-        }
+        }))
     })
 }
 
 #[allow(dead_code)]
 pub async fn delete_session(db: &Database, session_id: &SessionId) -> SqliteResult<bool> {
     db.with_connection(|conn| {
-        let rows_affected = conn.execute("DELETE FROM sessions WHERE id = ?", params![session_id])?;
+        let rows_affected =
+            conn.execute("DELETE FROM sessions WHERE id = ?", params![session_id])?;
         Ok(rows_affected > 0)
     })
 }
@@ -100,9 +95,11 @@ pub async fn delete_user_sessions(db: &Database, user_id: UserId) -> SqliteResul
 #[allow(dead_code)]
 pub async fn cleanup_expired_sessions(db: &Database) -> SqliteResult<u64> {
     db.with_connection(|conn| {
-        let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
-        let rows_affected =
-            conn.execute("DELETE FROM sessions WHERE expires_at <= ?", params![now_str])?;
+        let now_str = format_now_for_db();
+        let rows_affected = conn.execute(
+            "DELETE FROM sessions WHERE expires_at <= ?",
+            params![now_str],
+        )?;
         Ok(rows_affected as u64)
     })
 }

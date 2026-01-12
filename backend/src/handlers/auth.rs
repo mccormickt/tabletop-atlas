@@ -1,16 +1,15 @@
-use dropshot::{
-    endpoint, HttpError, HttpResponseHeaders, HttpResponseOk, Query, RequestContext,
-};
+use cookie::{Cookie, SameSite};
+use dropshot::{HttpError, HttpResponseHeaders, HttpResponseOk, Query, RequestContext, endpoint};
 use http::header::{HeaderName, HeaderValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::auth::{extract_auth, require_auth, AuthConfig, OidcClient};
+use crate::AppState;
+use crate::auth::{AuthConfig, OidcClient, extract_auth, require_auth};
 use crate::db::{sessions, users};
 use crate::models::{CreateUserRequest, UserInfo};
-use crate::AppState;
 
-use super::{internal_error, not_found_error, success_response, unauthorized_error, CorsHeaders};
+use super::{CorsHeaders, internal_error, not_found_error, success_response, unauthorized_error};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CallbackQuery {
@@ -24,18 +23,27 @@ pub struct AuthResponse {
 }
 
 fn build_cookie(name: &str, value: &str, path: &str, max_age: i64, secure: bool) -> String {
-    let secure_str = if secure { "; Secure" } else { "" };
-    format!(
-        "{}={}; HttpOnly; SameSite=Lax; Path={}; Max-Age={}{}",
-        name, value, path, max_age, secure_str
-    )
+    let mut cookie = Cookie::build((name, value))
+        .path(path)
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .max_age(cookie::time::Duration::seconds(max_age));
+
+    if secure {
+        cookie = cookie.secure(true);
+    }
+
+    cookie.build().to_string()
 }
 
 fn build_clear_cookie(name: &str, path: &str) -> String {
-    format!(
-        "{}=; HttpOnly; SameSite=Lax; Path={}; Max-Age=0",
-        name, path
-    )
+    Cookie::build((name, ""))
+        .path(path)
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .max_age(cookie::time::Duration::ZERO)
+        .build()
+        .to_string()
 }
 
 /// Initiate Google OAuth login - redirects to Google
@@ -47,8 +55,8 @@ fn build_clear_cookie(name: &str, path: &str) -> String {
 pub async fn login(
     _rqctx: RequestContext<AppState>,
 ) -> Result<http::Response<dropshot::Body>, HttpError> {
-    let config = AuthConfig::try_get()
-        .ok_or_else(|| internal_error("Auth not configured".to_string()))?;
+    let config =
+        AuthConfig::try_get().ok_or_else(|| internal_error("Auth not configured".to_string()))?;
     let oidc = OidcClient::try_get()
         .ok_or_else(|| internal_error("OIDC client not configured".to_string()))?;
     let (auth_url, state, _nonce) = oidc.generate_auth_url();
@@ -92,8 +100,8 @@ pub async fn callback(
     rqctx: RequestContext<AppState>,
     query: Query<CallbackQuery>,
 ) -> Result<http::Response<dropshot::Body>, HttpError> {
-    let config = AuthConfig::try_get()
-        .ok_or_else(|| internal_error("Auth not configured".to_string()))?;
+    let config =
+        AuthConfig::try_get().ok_or_else(|| internal_error("Auth not configured".to_string()))?;
     let oidc = OidcClient::try_get()
         .ok_or_else(|| internal_error("OIDC client not configured".to_string()))?;
     let db = rqctx.context().db();
@@ -127,10 +135,15 @@ pub async fn callback(
     let user = match users::find_by_google_sub(&db, &user_info.sub).await {
         Ok(Some(user)) => {
             // Update user info if changed
-            users::update_user(&db, user.id, user_info.name.clone(), user_info.picture.clone())
-                .await
-                .map_err(|e| internal_error(format!("Failed to update user: {}", e)))?
-                .unwrap_or(user)
+            users::update_user(
+                &db,
+                user.id,
+                user_info.name.clone(),
+                user_info.picture.clone(),
+            )
+            .await
+            .map_err(|e| internal_error(format!("Failed to update user: {}", e)))?
+            .unwrap_or(user)
         }
         Ok(None) => {
             // Create new user
@@ -154,11 +167,10 @@ pub async fn callback(
         .map_err(internal_error)?;
 
     let session_id = sessions::generate_session_id();
-    let refresh_token = crate::auth::create_refresh_token(user.id, &session_id)
-        .map_err(internal_error)?;
+    let refresh_token =
+        crate::auth::create_refresh_token(user.id, &session_id).map_err(internal_error)?;
 
-    let refresh_expiry = chrono::Utc::now()
-        + chrono::Duration::seconds(config.jwt_refresh_expiry);
+    let refresh_expiry = chrono::Utc::now() + chrono::Duration::seconds(config.jwt_refresh_expiry);
 
     // Create session in DB with the refresh token hash
     sessions::create_session(&db, &session_id, user.id, &refresh_token, refresh_expiry)
@@ -270,8 +282,8 @@ pub async fn logout(
 pub async fn refresh(
     rqctx: RequestContext<AppState>,
 ) -> Result<http::Response<dropshot::Body>, HttpError> {
-    let config = AuthConfig::try_get()
-        .ok_or_else(|| internal_error("Auth not configured".to_string()))?;
+    let config =
+        AuthConfig::try_get().ok_or_else(|| internal_error("Auth not configured".to_string()))?;
     let db = rqctx.context().db();
 
     // Get refresh token from cookie
@@ -295,14 +307,12 @@ pub async fn refresh(
             .next()
     };
 
-    let refresh_token = refresh_token.ok_or_else(|| {
-        unauthorized_error("No refresh token".to_string())
-    })?;
+    let refresh_token =
+        refresh_token.ok_or_else(|| unauthorized_error("No refresh token".to_string()))?;
 
     // Verify refresh token
-    let claims = crate::auth::verify_refresh_token(&refresh_token).map_err(|_| {
-        unauthorized_error("Invalid refresh token".to_string())
-    })?;
+    let claims = crate::auth::verify_refresh_token(&refresh_token)
+        .map_err(|_| unauthorized_error("Invalid refresh token".to_string()))?;
 
     // Find valid session
     let session = sessions::find_valid_session(&db, &claims.session_id, &refresh_token)

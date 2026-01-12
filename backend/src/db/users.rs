@@ -1,7 +1,20 @@
-use super::{parse_datetime, Database};
+use super::{format_now_for_db, parse_datetime, query_row_optional, Database};
 use crate::models::{CreateUserRequest, User, UserId};
-use chrono::Utc;
-use rusqlite::{params, Result as SqliteResult};
+use rusqlite::{params, Result as SqliteResult, Row};
+
+/// Map a database row to a User struct
+fn row_to_user(row: &Row) -> SqliteResult<User> {
+    Ok(User {
+        id: row.get(0)?,
+        google_sub: row.get(1)?,
+        email: row.get(2)?,
+        display_name: row.get(3)?,
+        picture_url: row.get(4)?,
+        role: row.get(5)?,
+        created_at: parse_datetime(row, "created_at")?,
+        updated_at: parse_datetime(row, "updated_at")?,
+    })
+}
 
 pub async fn find_by_google_sub(db: &Database, google_sub: &str) -> SqliteResult<Option<User>> {
     db.with_connection(|conn| {
@@ -12,31 +25,13 @@ pub async fn find_by_google_sub(db: &Database, google_sub: &str) -> SqliteResult
             "#,
         )?;
 
-        let result = stmt.query_row(params![google_sub], |row| {
-            Ok(User {
-                id: row.get(0)?,
-                google_sub: row.get(1)?,
-                email: row.get(2)?,
-                display_name: row.get(3)?,
-                picture_url: row.get(4)?,
-                role: row.get(5)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        });
-
-        match result {
-            Ok(user) => Ok(Some(user)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e),
-        }
+        query_row_optional(stmt.query_row(params![google_sub], row_to_user))
     })
 }
 
 pub async fn create_user(db: &Database, request: CreateUserRequest) -> SqliteResult<User> {
     db.with_transaction(|conn| {
-        let now = Utc::now();
-        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         conn.execute(
             r#"
@@ -62,18 +57,7 @@ pub async fn create_user(db: &Database, request: CreateUserRequest) -> SqliteRes
             "#,
         )?;
 
-        stmt.query_row(params![user_id], |row| {
-            Ok(User {
-                id: row.get(0)?,
-                google_sub: row.get(1)?,
-                email: row.get(2)?,
-                display_name: row.get(3)?,
-                picture_url: row.get(4)?,
-                role: row.get(5)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        })
+        stmt.query_row(params![user_id], row_to_user)
     })
 }
 
@@ -86,24 +70,7 @@ pub async fn get_user_by_id(db: &Database, user_id: UserId) -> SqliteResult<Opti
             "#,
         )?;
 
-        let result = stmt.query_row(params![user_id], |row| {
-            Ok(User {
-                id: row.get(0)?,
-                google_sub: row.get(1)?,
-                email: row.get(2)?,
-                display_name: row.get(3)?,
-                picture_url: row.get(4)?,
-                role: row.get(5)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        });
-
-        match result {
-            Ok(user) => Ok(Some(user)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e),
-        }
+        query_row_optional(stmt.query_row(params![user_id], row_to_user))
     })
 }
 
@@ -124,7 +91,7 @@ pub async fn update_user(
             return Ok(None);
         }
 
-        let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         let mut update_parts = Vec::new();
         let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
@@ -144,7 +111,8 @@ pub async fn update_user(
             params_vec.push(Box::new(user_id));
 
             let query = format!("UPDATE users SET {} WHERE id = ?", update_parts.join(", "));
-            let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
+            let params_refs: Vec<&dyn rusqlite::ToSql> =
+                params_vec.iter().map(|p| p.as_ref()).collect();
             conn.execute(&query, params_refs.as_slice())?;
         }
 
@@ -155,19 +123,6 @@ pub async fn update_user(
             "#,
         )?;
 
-        let user = stmt.query_row(params![user_id], |row| {
-            Ok(User {
-                id: row.get(0)?,
-                google_sub: row.get(1)?,
-                email: row.get(2)?,
-                display_name: row.get(3)?,
-                picture_url: row.get(4)?,
-                role: row.get(5)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        })?;
-
-        Ok(Some(user))
+        Ok(Some(stmt.query_row(params![user_id], row_to_user)?))
     })
 }

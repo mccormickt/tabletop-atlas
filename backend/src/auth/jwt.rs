@@ -1,11 +1,11 @@
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 
 use super::config::AuthConfig;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: i64,        // user_id
+    pub sub: i64, // user_id
     pub email: String,
     pub role: String,
     pub exp: i64,
@@ -14,7 +14,7 @@ pub struct Claims {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RefreshClaims {
-    pub sub: i64,        // user_id
+    pub sub: i64, // user_id
     pub session_id: String,
     pub exp: i64,
     pub iat: i64,

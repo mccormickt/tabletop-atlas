@@ -1,10 +1,40 @@
-use super::{Database, PaginationInfo, parse_datetime};
+use super::{format_now_for_db, parse_datetime, query_row_optional, Database, PaginationInfo};
 use crate::models::{
     ChatHistory, ChatMessage, ChatSession, ChatSessionId, ChatSessionSummary,
     CreateChatSessionRequest, GameId, PaginatedResponse, UpdateChatSessionRequest,
 };
-use chrono::Utc;
-use rusqlite::{Result as SqliteResult, params};
+use rusqlite::{params, Result as SqliteResult, Row};
+
+/// Map a database row to a ChatSession struct
+fn row_to_chat_session(row: &Row) -> SqliteResult<ChatSession> {
+    Ok(ChatSession {
+        id: row.get(0)?,
+        game_id: row.get(1)?,
+        title: row.get(2)?,
+        include_house_rules: row.get(3)?,
+        created_at: parse_datetime(row, "created_at")?,
+        updated_at: parse_datetime(row, "updated_at")?,
+    })
+}
+
+/// Map a database row to a ChatMessage struct
+fn row_to_chat_message(row: &Row) -> SqliteResult<ChatMessage> {
+    let role_str: String = row.get(2)?;
+    let role =
+        crate::models::MessageRole::from_str(&role_str).unwrap_or(crate::models::MessageRole::User);
+
+    let context_chunks: Option<String> = row.get(4)?;
+    let context_chunks = context_chunks.and_then(|s| serde_json::from_str::<Vec<i64>>(&s).ok());
+
+    Ok(ChatMessage {
+        id: row.get(0)?,
+        session_id: row.get(1)?,
+        role,
+        content: row.get(3)?,
+        context_chunks,
+        created_at: parse_datetime(row, "created_at")?,
+    })
+}
 
 pub async fn list_chat_sessions(
     db: &Database,
@@ -83,21 +113,9 @@ pub async fn get_chat_history(
             "SELECT id, game_id, title, include_house_rules, created_at, updated_at FROM chat_sessions WHERE id = ?",
         )?;
 
-        let session_result = session_stmt.query_row(params![session_id], |row| {
-            Ok(ChatSession {
-                id: row.get(0)?,
-                game_id: row.get(1)?,
-                title: row.get(2)?,
-                include_house_rules: row.get(3)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        });
-
-        let session = match session_result {
-            Ok(session) => session,
-            Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
-            Err(e) => return Err(e),
+        let session = match query_row_optional(session_stmt.query_row(params![session_id], row_to_chat_session))? {
+            Some(session) => session,
+            None => return Ok(None),
         };
 
         // Get messages for the session
@@ -110,24 +128,7 @@ pub async fn get_chat_history(
             "#,
         )?;
 
-        let message_iter = messages_stmt.query_map(params![session_id], |row| {
-            let role_str: String = row.get(2)?;
-            let role = crate::models::MessageRole::from_str(&role_str)
-                .unwrap_or(crate::models::MessageRole::User);
-
-            let context_chunks: Option<String> = row.get(4)?;
-            let context_chunks =
-                context_chunks.and_then(|s| serde_json::from_str::<Vec<i64>>(&s).ok());
-
-            Ok(ChatMessage {
-                id: row.get(0)?,
-                session_id: row.get(1)?,
-                role,
-                content: row.get(3)?,
-                context_chunks,
-                created_at: parse_datetime(row, "created_at")?,
-            })
-        })?;
+        let message_iter = messages_stmt.query_map(params![session_id], row_to_chat_message)?;
 
         let messages: Result<Vec<ChatMessage>, _> = message_iter.collect();
         let messages = messages?;
@@ -141,8 +142,7 @@ pub async fn create_chat_session(
     request: CreateChatSessionRequest,
 ) -> SqliteResult<ChatSession> {
     db.with_transaction(|conn| {
-        let now = Utc::now();
-        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         // First verify the game exists
         let game_exists: bool = conn.query_row(
@@ -173,16 +173,7 @@ pub async fn create_chat_session(
             "SELECT id, game_id, title, include_house_rules, created_at, updated_at FROM chat_sessions WHERE id = ?",
         )?;
 
-        stmt.query_row(params![session_id], |row| {
-            Ok(ChatSession {
-                id: row.get(0)?,
-                game_id: row.get(1)?,
-                title: row.get(2)?,
-                include_house_rules: row.get(3)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        })
+        stmt.query_row(params![session_id], row_to_chat_session)
     })
 }
 
@@ -194,8 +185,7 @@ pub async fn add_message_to_session(
     context_chunks: Option<Vec<i64>>,
 ) -> SqliteResult<ChatMessage> {
     db.with_transaction(|conn| {
-        let now = Utc::now();
-        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         let context_chunks_json = context_chunks.map(|chunks| {
             serde_json::to_string(&chunks).unwrap_or_else(|_| "[]".to_string())
@@ -216,25 +206,7 @@ pub async fn add_message_to_session(
             "SELECT id, session_id, role, content, context_chunks, created_at FROM chat_messages WHERE id = ?"
         )?;
 
-        stmt.query_row(params![message_id], |row| {
-            let role_str: String = row.get(2)?;
-            let role = crate::models::MessageRole::from_str(&role_str)
-                .unwrap_or(crate::models::MessageRole::User);
-
-            let context_chunks: Option<String> = row.get(4)?;
-            let context_chunks = context_chunks.and_then(|s| {
-                serde_json::from_str::<Vec<i64>>(&s).ok()
-            });
-
-            Ok(ChatMessage {
-                id: row.get(0)?,
-                session_id: row.get(1)?,
-                role,
-                content: row.get(3)?,
-                context_chunks,
-                created_at: parse_datetime(row, "created_at")?,
-            })
-        })
+        stmt.query_row(params![message_id], row_to_chat_message)
     })
 }
 
@@ -244,8 +216,7 @@ pub async fn update_chat_session(
     request: UpdateChatSessionRequest,
 ) -> SqliteResult<Option<ChatSession>> {
     db.with_transaction(|conn| {
-        let now = Utc::now();
-        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         // Build dynamic update query based on provided fields
         let mut updates = Vec::new();
@@ -265,21 +236,7 @@ pub async fn update_chat_session(
             let mut stmt = conn.prepare(
                 "SELECT id, game_id, title, include_house_rules, created_at, updated_at FROM chat_sessions WHERE id = ?",
             )?;
-            let result = stmt.query_row(params![session_id], |row| {
-                Ok(ChatSession {
-                    id: row.get(0)?,
-                    game_id: row.get(1)?,
-                    title: row.get(2)?,
-                    include_house_rules: row.get(3)?,
-                    created_at: parse_datetime(row, "created_at")?,
-                    updated_at: parse_datetime(row, "updated_at")?,
-                })
-            });
-            return match result {
-                Ok(session) => Ok(Some(session)),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(e),
-            };
+            return query_row_optional(stmt.query_row(params![session_id], row_to_chat_session));
         }
 
         updates.push("updated_at = ?");
@@ -309,21 +266,6 @@ pub async fn update_chat_session(
             "SELECT id, game_id, title, include_house_rules, created_at, updated_at FROM chat_sessions WHERE id = ?",
         )?;
 
-        let result = stmt.query_row(params![session_id], |row| {
-            Ok(ChatSession {
-                id: row.get(0)?,
-                game_id: row.get(1)?,
-                title: row.get(2)?,
-                include_house_rules: row.get(3)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        });
-
-        match result {
-            Ok(session) => Ok(Some(session)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e),
-        }
+        query_row_optional(stmt.query_row(params![session_id], row_to_chat_session))
     })
 }
