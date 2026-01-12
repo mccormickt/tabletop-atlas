@@ -47,16 +47,39 @@ fn build_clear_cookie(name: &str, path: &str) -> String {
 pub async fn login(
     _rqctx: RequestContext<AppState>,
 ) -> Result<http::Response<dropshot::Body>, HttpError> {
-    let oidc = OidcClient::get();
-    let (auth_url, _state, _nonce) = oidc.generate_auth_url();
+    let config = AuthConfig::try_get()
+        .ok_or_else(|| internal_error("Auth not configured".to_string()))?;
+    let oidc = OidcClient::try_get()
+        .ok_or_else(|| internal_error("OIDC client not configured".to_string()))?;
+    let (auth_url, state, _nonce) = oidc.generate_auth_url();
+
+    // Store state in a secure cookie for CSRF validation
+    let is_secure = config.frontend_url.starts_with("https");
+    let state_cookie = build_cookie("oauth_state", &state, "/api/auth", 600, is_secure);
 
     let response = http::Response::builder()
         .status(http::StatusCode::FOUND)
         .header(http::header::LOCATION, auth_url)
+        .header(http::header::SET_COOKIE, state_cookie)
         .body(dropshot::Body::empty())
         .map_err(|e| internal_error(format!("Failed to build response: {}", e)))?;
 
     Ok(response)
+}
+
+fn extract_cookie(rqctx: &RequestContext<AppState>, name: &str) -> Option<String> {
+    let request = &rqctx.request;
+    let cookie_header = request.headers().get("cookie")?.to_str().ok()?;
+    cookie_header
+        .split(';')
+        .filter_map(|c| {
+            let mut parts = c.trim().splitn(2, '=');
+            match (parts.next(), parts.next()) {
+                (Some(n), Some(v)) if n == name => Some(v.to_string()),
+                _ => None,
+            }
+        })
+        .next()
 }
 
 /// Handle Google OAuth callback
@@ -69,10 +92,24 @@ pub async fn callback(
     rqctx: RequestContext<AppState>,
     query: Query<CallbackQuery>,
 ) -> Result<http::Response<dropshot::Body>, HttpError> {
-    let config = AuthConfig::get();
-    let oidc = OidcClient::get();
+    let config = AuthConfig::try_get()
+        .ok_or_else(|| internal_error("Auth not configured".to_string()))?;
+    let oidc = OidcClient::try_get()
+        .ok_or_else(|| internal_error("OIDC client not configured".to_string()))?;
     let db = rqctx.context().db();
     let query = query.into_inner();
+
+    // Validate OAuth state to prevent CSRF attacks
+    let stored_state = extract_cookie(&rqctx, "oauth_state")
+        .ok_or_else(|| unauthorized_error("Missing OAuth state cookie".to_string()))?;
+    let query_state = query
+        .state
+        .as_ref()
+        .ok_or_else(|| unauthorized_error("Missing state parameter".to_string()))?;
+
+    if stored_state != *query_state {
+        return Err(unauthorized_error("OAuth state mismatch".to_string()));
+    }
 
     // Exchange code for tokens
     let token_response = oidc
@@ -112,20 +149,21 @@ pub async fn callback(
         Err(e) => return Err(internal_error(format!("Database error: {}", e))),
     };
 
-    // Create tokens
+    // Create tokens - generate session_id first, then refresh token, then session
     let access_token = crate::auth::create_access_token(user.id, &user.email, &user.role)
+        .map_err(internal_error)?;
+
+    let session_id = sessions::generate_session_id();
+    let refresh_token = crate::auth::create_refresh_token(user.id, &session_id)
         .map_err(internal_error)?;
 
     let refresh_expiry = chrono::Utc::now()
         + chrono::Duration::seconds(config.jwt_refresh_expiry);
 
-    // Create session in DB
-    let session = sessions::create_session(&db, user.id, &access_token, refresh_expiry)
+    // Create session in DB with the refresh token hash
+    sessions::create_session(&db, &session_id, user.id, &refresh_token, refresh_expiry)
         .await
         .map_err(|e| internal_error(format!("Failed to create session: {}", e)))?;
-
-    let refresh_token = crate::auth::create_refresh_token(user.id, &session.id)
-        .map_err(internal_error)?;
 
     // Build redirect response with cookies
     let is_secure = config.frontend_url.starts_with("https");
@@ -143,17 +181,22 @@ pub async fn callback(
         config.jwt_refresh_expiry,
         is_secure,
     );
+    // Clear oauth_state cookie after successful validation
+    let clear_state_cookie = build_clear_cookie("oauth_state", "/api/auth");
 
     let redirect_url = format!("{}/", config.frontend_url);
+
+    let refresh_cookie_header = HeaderValue::from_str(&refresh_cookie)
+        .map_err(|e| internal_error(format!("Invalid refresh cookie value: {}", e)))?;
+    let clear_state_header = HeaderValue::from_str(&clear_state_cookie)
+        .map_err(|e| internal_error(format!("Invalid clear state cookie value: {}", e)))?;
 
     let response = http::Response::builder()
         .status(http::StatusCode::FOUND)
         .header(http::header::LOCATION, redirect_url)
         .header(http::header::SET_COOKIE, access_cookie)
-        .header(
-            HeaderName::from_static("set-cookie"),
-            HeaderValue::from_str(&refresh_cookie).unwrap(),
-        )
+        .header(HeaderName::from_static("set-cookie"), refresh_cookie_header)
+        .header(HeaderName::from_static("set-cookie"), clear_state_header)
         .header("Access-Control-Allow-Origin", "*")
         .body(dropshot::Body::empty())
         .map_err(|e| internal_error(format!("Failed to build response: {}", e)))?;
@@ -195,19 +238,21 @@ pub async fn logout(
     // If user is authenticated, delete their session
     if let Some(user) = extract_auth(&rqctx) {
         let db = rqctx.context().db();
-        let _ = sessions::delete_user_sessions(&db, user.user_id).await;
+        if let Err(e) = sessions::delete_user_sessions(&db, user.user_id).await {
+            tracing::error!(user_id = user.user_id, error = %e, "Failed to delete user sessions during logout");
+        }
     }
 
     let access_cookie = build_clear_cookie("access_token", "/");
     let refresh_cookie = build_clear_cookie("refresh_token", "/api/auth");
 
+    let refresh_cookie_header = HeaderValue::from_str(&refresh_cookie)
+        .map_err(|e| internal_error(format!("Invalid refresh cookie value: {}", e)))?;
+
     let response = http::Response::builder()
         .status(http::StatusCode::OK)
         .header(http::header::SET_COOKIE, access_cookie)
-        .header(
-            HeaderName::from_static("set-cookie"),
-            HeaderValue::from_str(&refresh_cookie).unwrap(),
-        )
+        .header(HeaderName::from_static("set-cookie"), refresh_cookie_header)
         .header("Access-Control-Allow-Origin", "*")
         .header("Content-Type", "application/json")
         .body(dropshot::Body::from("{\"success\": true}"))
@@ -225,7 +270,8 @@ pub async fn logout(
 pub async fn refresh(
     rqctx: RequestContext<AppState>,
 ) -> Result<http::Response<dropshot::Body>, HttpError> {
-    let config = AuthConfig::get();
+    let config = AuthConfig::try_get()
+        .ok_or_else(|| internal_error("Auth not configured".to_string()))?;
     let db = rqctx.context().db();
 
     // Get refresh token from cookie

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import '../app.css';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import Header from '$lib/components/Header.svelte';
 	import MobileNav from '$lib/components/MobileNav.svelte';
 	import { createHeaderStore, setHeaderContext } from '$lib/stores/header';
@@ -7,6 +9,13 @@
 	import type { Game } from '$lib';
 
 	let { children } = $props();
+
+	// Public routes that don't require authentication
+	const PUBLIC_ROUTES = ['/auth/login', '/auth/callback'];
+
+	function isPublicRoute(pathname: string): boolean {
+		return PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
+	}
 
 	// Create and provide header context
 	const headerStore = createHeaderStore();
@@ -39,6 +48,14 @@
 		}
 	});
 
+	// Redirect to login if not authenticated and not on a public route
+	$effect(() => {
+		const pathname = page.url.pathname;
+		if (!authState.isLoading && !authState.user && !isPublicRoute(pathname)) {
+			goto('/auth/login');
+		}
+	});
+
 	$effect(() => {
 		const unsubscribe = headerStore.subscribe((config) => {
 			headerConfig = {
@@ -61,20 +78,32 @@
 	});
 </script>
 
-<div class="bg-background flex min-h-screen flex-col">
-	<!-- Global Header -->
-	<Header
-		currentGame={headerConfig.currentGame}
-		showSearch={headerConfig.showSearch}
-		user={authState.user}
-		isAuthLoading={authState.isLoading}
-	/>
+{#if authState.isLoading && !isPublicRoute(page.url.pathname)}
+	<!-- Show loading state while checking auth for protected routes -->
+	<div class="bg-background flex min-h-screen items-center justify-center">
+		<div class="text-center">
+			<div
+				class="border-game-blue mx-auto h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"
+			></div>
+			<p class="text-muted-foreground mt-4">Loading...</p>
+		</div>
+	</div>
+{:else}
+	<div class="bg-background flex min-h-screen flex-col">
+		<!-- Global Header -->
+		<Header
+			currentGame={headerConfig.currentGame}
+			showSearch={headerConfig.showSearch}
+			user={authState.user}
+			isAuthLoading={authState.isLoading}
+		/>
 
-	<!-- Page Content with bottom padding for mobile nav -->
-	<main class="flex-1 pb-20 md:pb-0">
-		{@render children()}
-	</main>
+		<!-- Page Content with bottom padding for mobile nav -->
+		<main class="flex-1 pb-20 md:pb-0">
+			{@render children()}
+		</main>
 
-	<!-- Mobile Bottom Navigation -->
-	<MobileNav />
-</div>
+		<!-- Mobile Bottom Navigation -->
+		<MobileNav />
+	</div>
+{/if}

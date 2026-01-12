@@ -69,7 +69,17 @@ impl AuthConfig {
         Ok(AUTH_CONFIG.get().unwrap())
     }
 
+    /// Get the auth config. Panics if not initialized.
+    /// Use this for internal code that runs after initialization.
     pub fn get() -> &'static Self {
-        AUTH_CONFIG.get().expect("AuthConfig not initialized")
+        AUTH_CONFIG
+            .get()
+            .expect("AuthConfig not initialized - ensure AuthConfig::init() is called at startup")
+    }
+
+    /// Get the auth config if initialized, returning None otherwise.
+    /// Use this in HTTP handlers to return proper errors instead of panicking.
+    pub fn try_get() -> Option<&'static Self> {
+        AUTH_CONFIG.get()
     }
 }

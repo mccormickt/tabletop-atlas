@@ -46,8 +46,19 @@ impl OidcClient {
         Ok(OIDC_CLIENT.get().unwrap())
     }
 
+    /// Get the OIDC client. Panics if not initialized.
+    /// Use this for internal code that runs after initialization.
+    #[allow(dead_code)]
     pub fn get() -> &'static Self {
-        OIDC_CLIENT.get().expect("OidcClient not initialized")
+        OIDC_CLIENT
+            .get()
+            .expect("OidcClient not initialized - ensure OidcClient::init() is called at startup")
+    }
+
+    /// Get the OIDC client if initialized, returning None otherwise.
+    /// Use this in HTTP handlers to return proper errors instead of panicking.
+    pub fn try_get() -> Option<&'static Self> {
+        OIDC_CLIENT.get()
     }
 
     pub fn generate_auth_url(&self) -> (String, String, String) {

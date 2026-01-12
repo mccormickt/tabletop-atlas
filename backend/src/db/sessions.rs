@@ -10,14 +10,19 @@ fn hash_token(token: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
+/// Generate a new session ID
+pub fn generate_session_id() -> String {
+    uuid::Uuid::new_v4().to_string()
+}
+
 pub async fn create_session(
     db: &Database,
+    session_id: &str,
     user_id: UserId,
     refresh_token: &str,
     expires_at: DateTime<Utc>,
 ) -> SqliteResult<Session> {
     db.with_transaction(|conn| {
-        let session_id = uuid::Uuid::new_v4().to_string();
         let token_hash = hash_token(refresh_token);
         let now = Utc::now();
         let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
@@ -32,7 +37,7 @@ pub async fn create_session(
         )?;
 
         Ok(Session {
-            id: session_id,
+            id: session_id.to_string(),
             user_id,
             refresh_token_hash: token_hash,
             expires_at,
