@@ -3,4 +3,5 @@
 /uploads
 atlas.db
 /.playwright
+/.playwright-mcp
 .env

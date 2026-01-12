@@ -2,9 +2,13 @@ use rusqlite::{Connection, Result as SqliteResult, Row};
 use std::sync::{Arc, Mutex};
 
 pub mod chat;
+pub mod collections;
+pub mod custom_games;
 pub mod embeddings;
 pub mod games;
 pub mod house_rules;
+pub mod sessions;
+pub mod users;
 
 // Re-exports are available but not used globally to avoid namespace pollution
 

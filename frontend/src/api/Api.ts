@@ -13,6 +13,22 @@ import { HttpClient, toQueryString } from './http-client';
 
 export type { ApiConfig, ApiResult, ErrorBody, ErrorResult } from './http-client';
 
+export type AddToCollectionRequest = {
+	masterGameId: number;
+	notes?: string | null;
+	rating?: number | null;
+};
+
+export type UserInfo = {
+	displayName?: string | null;
+	email: string;
+	id: number;
+	pictureUrl?: string | null;
+	role: string;
+};
+
+export type AuthResponse = { user: UserInfo };
+
 export type MessageRole = 'user' | 'assistant' | 'system';
 
 export type ChatMessage = {
@@ -57,10 +73,42 @@ export type ChatSessionSummary = {
 	title?: string | null;
 };
 
+export type CollectionEntry = {
+	addedAt: Date;
+	id: number;
+	masterGameId: number;
+	notes?: string | null;
+	playCount: number;
+	rating?: number | null;
+	userId: number;
+};
+
+export type CollectionEntryWithGame = {
+	addedAt: Date;
+	gameName: string;
+	id: number;
+	masterGameId: number;
+	notes?: string | null;
+	playCount: number;
+	rating?: number | null;
+};
+
 export type CreateChatSessionRequest = {
 	gameId: number;
 	includeHouseRules?: boolean;
 	title?: string | null;
+};
+
+export type CreateCustomGameRequest = {
+	complexityRating?: number | null;
+	description?: string | null;
+	isPublic?: boolean | null;
+	maxPlayers?: number | null;
+	minPlayers?: number | null;
+	name: string;
+	playTimeMinutes?: number | null;
+	publisher?: string | null;
+	yearPublished?: number | null;
 };
 
 export type CreateGameRequest = {
@@ -81,6 +129,37 @@ export type CreateHouseRuleRequest = {
 	gameId: number;
 	isActive?: boolean;
 	title: string;
+};
+
+export type CustomGame = {
+	complexityRating?: number | null;
+	createdAt: Date;
+	description?: string | null;
+	id: number;
+	isPublic: boolean;
+	maxPlayers?: number | null;
+	minPlayers?: number | null;
+	name: string;
+	playTimeMinutes?: number | null;
+	publisher?: string | null;
+	rulesPdfPath?: string | null;
+	rulesText?: string | null;
+	updatedAt: Date;
+	userId: number;
+	yearPublished?: number | null;
+};
+
+export type CustomGameSummary = {
+	complexityRating?: number | null;
+	hasRulesPdf: boolean;
+	id: number;
+	isPublic: boolean;
+	maxPlayers?: number | null;
+	minPlayers?: number | null;
+	name: string;
+	publisher?: string | null;
+	userId: number;
+	yearPublished?: number | null;
 };
 
 export type DeleteRulesResponse = {
@@ -137,6 +216,22 @@ export type PaginatedResponse_for_ChatSessionSummary = {
 	totalPages: number;
 };
 
+export type PaginatedResponse_for_CollectionEntryWithGame = {
+	items: CollectionEntryWithGame[];
+	limit: number;
+	page: number;
+	total: number;
+	totalPages: number;
+};
+
+export type PaginatedResponse_for_CustomGameSummary = {
+	items: CustomGameSummary[];
+	limit: number;
+	page: number;
+	total: number;
+	totalPages: number;
+};
+
 export type PaginatedResponse_for_GameSummary = {
 	items: GameSummary[];
 	limit: number;
@@ -183,6 +278,24 @@ export type UpdateChatSessionRequest = {
 	title?: string | null;
 };
 
+export type UpdateCollectionRequest = {
+	notes?: string | null;
+	playCount?: number | null;
+	rating?: number | null;
+};
+
+export type UpdateCustomGameRequest = {
+	complexityRating?: number | null;
+	description?: string | null;
+	isPublic?: boolean | null;
+	maxPlayers?: number | null;
+	minPlayers?: number | null;
+	name?: string | null;
+	playTimeMinutes?: number | null;
+	publisher?: string | null;
+	yearPublished?: number | null;
+};
+
 export type UpdateGameRequest = {
 	bggId?: number | null;
 	complexityRating?: number | null;
@@ -209,6 +322,11 @@ export type UploadResponse = {
 	textLength?: number | null;
 };
 
+export interface CallbackQueryParams {
+	code: string;
+	state?: string | null;
+}
+
 export interface SearchRulesQueryParams {
 	gameId: string;
 	limit?: number | null;
@@ -226,6 +344,36 @@ export interface GetChatSessionPathParams {
 }
 
 export interface UpdateChatSessionPathParams {
+	id: number;
+}
+
+export interface ListCollectionQueryParams {
+	limit?: number;
+	page?: number;
+}
+
+export interface UpdateCollectionEntryPathParams {
+	id: number;
+}
+
+export interface RemoveFromCollectionPathParams {
+	id: number;
+}
+
+export interface ListCustomGamesQueryParams {
+	limit?: number;
+	page?: number;
+}
+
+export interface GetCustomGamePathParams {
+	id: number;
+}
+
+export interface UpdateCustomGamePathParams {
+	id: number;
+}
+
+export interface DeleteCustomGamePathParams {
 	id: number;
 }
 
@@ -276,9 +424,65 @@ export interface DeleteHouseRulePathParams {
 	id: number;
 }
 
+export interface ListPublicCustomGamesQueryParams {
+	limit?: number;
+	page?: number;
+}
+
 type EmptyObj = Record<string, never>;
 export class Api extends HttpClient {
 	methods = {
+		/**
+		 * Handle Google OAuth callback
+		 */
+		callback: ({ query }: { query: CallbackQueryParams }, params: FetchParams = {}) => {
+			return this.request<void>({
+				path: `/api/auth/callback`,
+				method: 'GET',
+				query,
+				...params
+			});
+		},
+		/**
+		 * Initiate Google OAuth login - redirects to Google
+		 */
+		login: (_: EmptyObj, params: FetchParams = {}) => {
+			return this.request<void>({
+				path: `/api/auth/login`,
+				method: 'GET',
+				...params
+			});
+		},
+		/**
+		 * Logout and clear cookies
+		 */
+		logout: (_: EmptyObj, params: FetchParams = {}) => {
+			return this.request<void>({
+				path: `/api/auth/logout`,
+				method: 'POST',
+				...params
+			});
+		},
+		/**
+		 * Get current user info
+		 */
+		getMe: (_: EmptyObj, params: FetchParams = {}) => {
+			return this.request<AuthResponse>({
+				path: `/api/auth/me`,
+				method: 'GET',
+				...params
+			});
+		},
+		/**
+		 * Refresh access token
+		 */
+		refresh: (_: EmptyObj, params: FetchParams = {}) => {
+			return this.request<void>({
+				path: `/api/auth/refresh`,
+				method: 'POST',
+				...params
+			});
+		},
 		/**
 		 * Send a message and get AI response
 		 */
@@ -347,6 +551,120 @@ export class Api extends HttpClient {
 				path: `/api/chat/sessions/${path.id}`,
 				method: 'PUT',
 				body,
+				...params
+			});
+		},
+		/**
+		 * List current user's game collection
+		 */
+		listCollection: (
+			{ query = {} }: { query?: ListCollectionQueryParams },
+			params: FetchParams = {}
+		) => {
+			return this.request<PaginatedResponse_for_CollectionEntryWithGame>({
+				path: `/api/collection`,
+				method: 'GET',
+				query,
+				...params
+			});
+		},
+		/**
+		 * Add a game to current user's collection
+		 */
+		addToCollection: ({ body }: { body: AddToCollectionRequest }, params: FetchParams = {}) => {
+			return this.request<CollectionEntry>({
+				path: `/api/collection`,
+				method: 'POST',
+				body,
+				...params
+			});
+		},
+		/**
+		 * Update a collection entry
+		 */
+		updateCollectionEntry: (
+			{ path, body }: { path: UpdateCollectionEntryPathParams; body: UpdateCollectionRequest },
+			params: FetchParams = {}
+		) => {
+			return this.request<CollectionEntry>({
+				path: `/api/collection/${path.id}`,
+				method: 'PUT',
+				body,
+				...params
+			});
+		},
+		/**
+		 * Remove a game from collection
+		 */
+		removeFromCollection: (
+			{ path }: { path: RemoveFromCollectionPathParams },
+			params: FetchParams = {}
+		) => {
+			return this.request<void>({
+				path: `/api/collection/${path.id}`,
+				method: 'DELETE',
+				...params
+			});
+		},
+		/**
+		 * List current user's custom games
+		 */
+		listCustomGames: (
+			{ query = {} }: { query?: ListCustomGamesQueryParams },
+			params: FetchParams = {}
+		) => {
+			return this.request<PaginatedResponse_for_CustomGameSummary>({
+				path: `/api/custom-games`,
+				method: 'GET',
+				query,
+				...params
+			});
+		},
+		/**
+		 * Create a custom game
+		 */
+		createCustomGame: ({ body }: { body: CreateCustomGameRequest }, params: FetchParams = {}) => {
+			return this.request<CustomGame>({
+				path: `/api/custom-games`,
+				method: 'POST',
+				body,
+				...params
+			});
+		},
+		/**
+		 * Get a custom game (public games visible to all, private only to owner)
+		 */
+		getCustomGame: ({ path }: { path: GetCustomGamePathParams }, params: FetchParams = {}) => {
+			return this.request<CustomGame>({
+				path: `/api/custom-games/${path.id}`,
+				method: 'GET',
+				...params
+			});
+		},
+		/**
+		 * Update a custom game (owner only)
+		 */
+		updateCustomGame: (
+			{ path, body }: { path: UpdateCustomGamePathParams; body: UpdateCustomGameRequest },
+			params: FetchParams = {}
+		) => {
+			return this.request<CustomGame>({
+				path: `/api/custom-games/${path.id}`,
+				method: 'PUT',
+				body,
+				...params
+			});
+		},
+		/**
+		 * Delete a custom game (owner only)
+		 */
+		deleteCustomGame: (
+			{ path }: { path: DeleteCustomGamePathParams },
+			params: FetchParams = {}
+		) => {
+			return this.request<void>({
+				path: `/api/custom-games/${path.id}`,
+				method: 'DELETE',
 				...params
 			});
 		},
@@ -489,6 +807,20 @@ export class Api extends HttpClient {
 			return this.request<void>({
 				path: `/api/house-rules/${path.id}`,
 				method: 'DELETE',
+				...params
+			});
+		},
+		/**
+		 * List public custom games (browsable by anyone)
+		 */
+		listPublicCustomGames: (
+			{ query = {} }: { query?: ListPublicCustomGamesQueryParams },
+			params: FetchParams = {}
+		) => {
+			return this.request<PaginatedResponse_for_CustomGameSummary>({
+				path: `/api/public-games`,
+				method: 'GET',
+				query,
 				...params
 			});
 		},

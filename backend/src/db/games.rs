@@ -15,7 +15,7 @@ pub async fn list_games(
 
     db.with_connection(|conn| {
         // Get total count
-        let total: u32 = conn.query_row("SELECT COUNT(*) FROM games", [], |row| row.get(0))?;
+        let total: u32 = conn.query_row("SELECT COUNT(*) FROM master_games", [], |row| row.get(0))?;
 
         // Get games with house rules count
         let mut stmt = conn.prepare(
@@ -25,7 +25,7 @@ pub async fn list_games(
                 g.min_players, g.max_players, g.complexity_rating,
                 g.rules_pdf_path,
                 COUNT(hr.id) as house_rules_count
-            FROM games g
+            FROM master_games g
             LEFT JOIN house_rules hr ON g.id = hr.game_id AND hr.is_active = TRUE
             GROUP BY g.id, g.name, g.publisher, g.year_published,
                      g.min_players, g.max_players, g.complexity_rating, g.rules_pdf_path
@@ -62,7 +62,7 @@ pub async fn get_game(db: &Database, game_id: GameId) -> SqliteResult<Option<Gam
             SELECT id, name, description, publisher, year_published,
                    min_players, max_players, play_time_minutes, complexity_rating,
                    bgg_id, rules_pdf_path, rules_text, created_at, updated_at
-            FROM games WHERE id = ?
+            FROM master_games WHERE id = ?
             "#,
         )?;
 
@@ -100,7 +100,7 @@ pub async fn create_game(db: &Database, request: CreateGameRequest) -> SqliteRes
 
         conn.execute(
             r#"
-            INSERT INTO games (
+            INSERT INTO master_games (
                 name, description, publisher, year_published,
                 min_players, max_players, play_time_minutes, complexity_rating,
                 bgg_id, created_at, updated_at
@@ -129,7 +129,7 @@ pub async fn create_game(db: &Database, request: CreateGameRequest) -> SqliteRes
             SELECT id, name, description, publisher, year_published,
                    min_players, max_players, play_time_minutes, complexity_rating,
                    bgg_id, rules_pdf_path, rules_text, created_at, updated_at
-            FROM games WHERE id = ?
+            FROM master_games WHERE id = ?
             "#,
         )?;
 
@@ -162,7 +162,7 @@ pub async fn update_game(
     db.with_transaction(|conn| {
         // Check if game exists
         let exists: bool = conn.query_row(
-            "SELECT EXISTS(SELECT 1 FROM games WHERE id = ?)",
+            "SELECT EXISTS(SELECT 1 FROM master_games WHERE id = ?)",
             params![game_id],
             |row| row.get(0),
         )?;
@@ -223,7 +223,7 @@ pub async fn update_game(
         params_vec.push(&now_str as &dyn rusqlite::ToSql);
         params_vec.push(&game_id as &dyn rusqlite::ToSql);
 
-        let query = format!("UPDATE games SET {} WHERE id = ?", update_parts.join(", "));
+        let query = format!("UPDATE master_games SET {} WHERE id = ?", update_parts.join(", "));
 
         conn.execute(&query, params_vec.as_slice())?;
 
@@ -233,7 +233,7 @@ pub async fn update_game(
 
 pub async fn delete_game(db: &Database, game_id: GameId) -> SqliteResult<bool> {
     db.with_connection(|conn| {
-        let rows_affected = conn.execute("DELETE FROM games WHERE id = ?", params![game_id])?;
+        let rows_affected = conn.execute("DELETE FROM master_games WHERE id = ?", params![game_id])?;
         Ok(rows_affected > 0)
     })
 }
@@ -247,7 +247,7 @@ pub async fn update_game_rules_text(
     db.with_connection(|conn| {
         let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
         let rows_affected = conn.execute(
-            "UPDATE games SET rules_text = ?, rules_pdf_path = ?, updated_at = ? WHERE id = ?",
+            "UPDATE master_games SET rules_text = ?, rules_pdf_path = ?, updated_at = ? WHERE id = ?",
             params![rules_text, pdf_path, now_str, game_id],
         )?;
         Ok(rows_affected > 0)
@@ -267,7 +267,7 @@ pub async fn get_game_rules_info(
                 g.rules_text,
                 COUNT(e.id) as chunk_count,
                 MAX(e.created_at) as last_processed
-            FROM games g
+            FROM master_games g
             LEFT JOIN embeddings e ON g.id = e.game_id AND e.source_type = 'rules_pdf'
             WHERE g.id = ?
             GROUP BY g.id
@@ -301,7 +301,7 @@ fn get_game_by_id_sync(conn: &rusqlite::Connection, game_id: GameId) -> SqliteRe
         SELECT id, name, description, publisher, year_published,
                min_players, max_players, play_time_minutes, complexity_rating,
                bgg_id, rules_pdf_path, rules_text, created_at, updated_at
-        FROM games WHERE id = ?
+        FROM master_games WHERE id = ?
         "#,
     )?;
 
