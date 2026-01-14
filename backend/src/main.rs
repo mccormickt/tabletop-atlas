@@ -16,6 +16,7 @@ mod handlers;
 mod llm;
 mod models;
 mod pdf;
+mod tools;
 
 use db::Database;
 use embeddings::Embedder;
@@ -253,6 +254,11 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(challenges::delete_play)?;
     api.register(challenges::get_challenge_stats)?;
 
+    // Register tools endpoints
+    api.register(handlers::tools::list_tools)?;
+    api.register(handlers::tools::get_tool)?;
+    api.register(handlers::tools::calculate_scores)?;
+
     // Register health check
     api.register(static_files::health_check)?;
 
@@ -268,6 +274,7 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(static_files::serve_collection_view)?; // /collection
     api.register(static_files::serve_auth_views)?; // /auth/{path:.*}
     api.register(static_files::serve_challenges_views)?; // /challenges/{path:.*}
+    api.register(static_files::serve_tools_views)?; // /tools/{path:.*}
     api.register(static_files::serve_index)?; // /
 
     Ok(api)
