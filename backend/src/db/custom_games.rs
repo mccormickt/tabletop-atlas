@@ -1,0 +1,276 @@
+use super::{parse_datetime, Database, PaginationInfo};
+use crate::models::{
+    CreateCustomGameRequest, CustomGame, CustomGameId, CustomGameSummary, PaginatedResponse,
+    UpdateCustomGameRequest, UserId,
+};
+use chrono::Utc;
+use rusqlite::{params, Result as SqliteResult};
+
+pub async fn list_user_custom_games(
+    db: &Database,
+    user_id: UserId,
+    page: u32,
+    limit: u32,
+) -> SqliteResult<PaginatedResponse<CustomGameSummary>> {
+    let pagination = PaginationInfo::new(page, limit);
+
+    db.with_connection(|conn| {
+        let total: u32 = conn.query_row(
+            "SELECT COUNT(*) FROM custom_games WHERE user_id = ?",
+            params![user_id],
+            |row| row.get(0),
+        )?;
+
+        let mut stmt = conn.prepare(
+            r#"
+            SELECT id, user_id, name, publisher, year_published, min_players, max_players,
+                   complexity_rating, is_public, rules_pdf_path
+            FROM custom_games
+            WHERE user_id = ?
+            ORDER BY name ASC
+            LIMIT ? OFFSET ?
+            "#,
+        )?;
+
+        let games = stmt
+            .query_map(params![user_id, pagination.limit, pagination.offset], |row| {
+                Ok(CustomGameSummary {
+                    id: row.get(0)?,
+                    user_id: row.get(1)?,
+                    name: row.get(2)?,
+                    publisher: row.get(3)?,
+                    year_published: row.get(4)?,
+                    min_players: row.get(5)?,
+                    max_players: row.get(6)?,
+                    complexity_rating: row.get(7)?,
+                    is_public: row.get::<_, i32>(8)? != 0,
+                    has_rules_pdf: row.get::<_, Option<String>>(9)?.is_some(),
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(PaginatedResponse::new(games, total, page, limit))
+    })
+}
+
+pub async fn list_public_custom_games(
+    db: &Database,
+    page: u32,
+    limit: u32,
+) -> SqliteResult<PaginatedResponse<CustomGameSummary>> {
+    let pagination = PaginationInfo::new(page, limit);
+
+    db.with_connection(|conn| {
+        let total: u32 = conn.query_row(
+            "SELECT COUNT(*) FROM custom_games WHERE is_public = 1",
+            [],
+            |row| row.get(0),
+        )?;
+
+        let mut stmt = conn.prepare(
+            r#"
+            SELECT id, user_id, name, publisher, year_published, min_players, max_players,
+                   complexity_rating, is_public, rules_pdf_path
+            FROM custom_games
+            WHERE is_public = 1
+            ORDER BY name ASC
+            LIMIT ? OFFSET ?
+            "#,
+        )?;
+
+        let games = stmt
+            .query_map(params![pagination.limit, pagination.offset], |row| {
+                Ok(CustomGameSummary {
+                    id: row.get(0)?,
+                    user_id: row.get(1)?,
+                    name: row.get(2)?,
+                    publisher: row.get(3)?,
+                    year_published: row.get(4)?,
+                    min_players: row.get(5)?,
+                    max_players: row.get(6)?,
+                    complexity_rating: row.get(7)?,
+                    is_public: row.get::<_, i32>(8)? != 0,
+                    has_rules_pdf: row.get::<_, Option<String>>(9)?.is_some(),
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(PaginatedResponse::new(games, total, page, limit))
+    })
+}
+
+pub async fn create_custom_game(
+    db: &Database,
+    user_id: UserId,
+    request: CreateCustomGameRequest,
+) -> SqliteResult<CustomGame> {
+    db.with_transaction(|conn| {
+        let now = Utc::now();
+        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        let is_public = if request.is_public.unwrap_or(false) {
+            1
+        } else {
+            0
+        };
+
+        conn.execute(
+            r#"
+            INSERT INTO custom_games (
+                user_id, name, description, publisher, year_published,
+                min_players, max_players, play_time_minutes, complexity_rating,
+                is_public, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+            params![
+                user_id,
+                request.name,
+                request.description,
+                request.publisher,
+                request.year_published,
+                request.min_players,
+                request.max_players,
+                request.play_time_minutes,
+                request.complexity_rating,
+                is_public,
+                now_str,
+                now_str
+            ],
+        )?;
+
+        let game_id = conn.last_insert_rowid();
+        get_custom_game_by_id_sync(conn, game_id)
+    })
+}
+
+pub async fn get_custom_game(db: &Database, game_id: CustomGameId) -> SqliteResult<Option<CustomGame>> {
+    db.with_connection(|conn| {
+        let result = get_custom_game_by_id_sync(conn, game_id);
+        match result {
+            Ok(game) => Ok(Some(game)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
+    })
+}
+
+pub async fn update_custom_game(
+    db: &Database,
+    user_id: UserId,
+    game_id: CustomGameId,
+    request: UpdateCustomGameRequest,
+) -> SqliteResult<Option<CustomGame>> {
+    db.with_transaction(|conn| {
+        let exists: bool = conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM custom_games WHERE id = ? AND user_id = ?)",
+            params![game_id, user_id],
+            |row| row.get(0),
+        )?;
+
+        if !exists {
+            return Ok(None);
+        }
+
+        let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+
+        let mut update_parts = Vec::new();
+        let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        if let Some(name) = request.name {
+            update_parts.push("name = ?");
+            params_vec.push(Box::new(name));
+        }
+        if let Some(description) = request.description {
+            update_parts.push("description = ?");
+            params_vec.push(Box::new(description));
+        }
+        if let Some(publisher) = request.publisher {
+            update_parts.push("publisher = ?");
+            params_vec.push(Box::new(publisher));
+        }
+        if let Some(year_published) = request.year_published {
+            update_parts.push("year_published = ?");
+            params_vec.push(Box::new(year_published));
+        }
+        if let Some(min_players) = request.min_players {
+            update_parts.push("min_players = ?");
+            params_vec.push(Box::new(min_players));
+        }
+        if let Some(max_players) = request.max_players {
+            update_parts.push("max_players = ?");
+            params_vec.push(Box::new(max_players));
+        }
+        if let Some(play_time_minutes) = request.play_time_minutes {
+            update_parts.push("play_time_minutes = ?");
+            params_vec.push(Box::new(play_time_minutes));
+        }
+        if let Some(complexity_rating) = request.complexity_rating {
+            update_parts.push("complexity_rating = ?");
+            params_vec.push(Box::new(complexity_rating));
+        }
+        if let Some(is_public) = request.is_public {
+            update_parts.push("is_public = ?");
+            params_vec.push(Box::new(if is_public { 1 } else { 0 }));
+        }
+
+        if !update_parts.is_empty() {
+            update_parts.push("updated_at = ?");
+            params_vec.push(Box::new(now_str));
+            params_vec.push(Box::new(game_id));
+
+            let query = format!(
+                "UPDATE custom_games SET {} WHERE id = ?",
+                update_parts.join(", ")
+            );
+            let params_refs: Vec<&dyn rusqlite::ToSql> =
+                params_vec.iter().map(|p| p.as_ref()).collect();
+            conn.execute(&query, params_refs.as_slice())?;
+        }
+
+        Ok(Some(get_custom_game_by_id_sync(conn, game_id)?))
+    })
+}
+
+pub async fn delete_custom_game(
+    db: &Database,
+    user_id: UserId,
+    game_id: CustomGameId,
+) -> SqliteResult<bool> {
+    db.with_connection(|conn| {
+        let rows_affected = conn.execute(
+            "DELETE FROM custom_games WHERE id = ? AND user_id = ?",
+            params![game_id, user_id],
+        )?;
+        Ok(rows_affected > 0)
+    })
+}
+
+fn get_custom_game_by_id_sync(conn: &rusqlite::Connection, game_id: CustomGameId) -> SqliteResult<CustomGame> {
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT id, user_id, name, description, publisher, year_published,
+               min_players, max_players, play_time_minutes, complexity_rating,
+               rules_pdf_path, rules_text, is_public, created_at, updated_at
+        FROM custom_games WHERE id = ?
+        "#,
+    )?;
+
+    stmt.query_row(params![game_id], |row| {
+        Ok(CustomGame {
+            id: row.get(0)?,
+            user_id: row.get(1)?,
+            name: row.get(2)?,
+            description: row.get(3)?,
+            publisher: row.get(4)?,
+            year_published: row.get(5)?,
+            min_players: row.get(6)?,
+            max_players: row.get(7)?,
+            play_time_minutes: row.get(8)?,
+            complexity_rating: row.get(9)?,
+            rules_pdf_path: row.get(10)?,
+            rules_text: row.get(11)?,
+            is_public: row.get::<_, i32>(12)? != 0,
+            created_at: parse_datetime(row, "created_at")?,
+            updated_at: parse_datetime(row, "updated_at")?,
+        })
+    })
+}

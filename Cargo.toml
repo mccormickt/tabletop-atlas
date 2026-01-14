@@ -39,3 +39,11 @@ pdf-extract = "0.7"
 sqlite-vec = "0.1"
 # Zero-copy byte operations for vectors
 zerocopy = "0.8"
+# Auth dependencies
+jsonwebtoken = "9.3"
+rand = "0.8"
+sha2 = "0.10"
+hex = "0.4"
+cookie = { version = "0.18", features = ["secure"] }
+dotenvy = "0.15"
+urlencoding = "2.1"

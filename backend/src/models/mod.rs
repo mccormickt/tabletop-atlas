@@ -3,14 +3,20 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub mod chat;
+pub mod collection;
+pub mod custom_game;
 pub mod embedding;
 pub mod game;
 pub mod house_rule;
+pub mod user;
 
 pub use chat::*;
+pub use collection::*;
+pub use custom_game::*;
 pub use embedding::*;
 pub use game::*;
 pub use house_rule::*;
+pub use user::*;
 
 // Common types used across models
 pub type GameId = i64;

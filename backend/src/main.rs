@@ -9,6 +9,7 @@ use rusqlite::{Connection, ffi::sqlite3_auto_extension};
 use rusqlite_migration::{M, Migrations};
 use sqlite_vec::sqlite3_vec_init;
 
+mod auth;
 mod db;
 mod embeddings;
 mod handlers;
@@ -58,6 +59,30 @@ impl AppState {
             M::up(include_str!("../../migrations/V004__seed_games_data.sql")),
             M::up(include_str!(
                 "../../migrations/V005__add_house_rules_toggle_to_chat_sessions.sql"
+            )),
+            M::up(include_str!(
+                "../../migrations/V006__create_users_table.sql"
+            )),
+            M::up(include_str!(
+                "../../migrations/V007__create_sessions_table.sql"
+            )),
+            M::up(include_str!(
+                "../../migrations/V008__rename_games_to_master_games.sql"
+            )),
+            M::up(include_str!(
+                "../../migrations/V009__create_user_collections_table.sql"
+            )),
+            M::up(include_str!(
+                "../../migrations/V010__create_custom_games_table.sql"
+            )),
+            M::up(include_str!(
+                "../../migrations/V011__update_house_rules_for_multitenancy.sql"
+            )),
+            M::up(include_str!(
+                "../../migrations/V012__update_embeddings_for_multitenancy.sql"
+            )),
+            M::up(include_str!(
+                "../../migrations/V013__update_chat_sessions_for_multitenancy.sql"
             )),
         ]);
 
@@ -117,6 +142,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         generate_openapi().await?;
         return Ok(());
     }
+
+    // Initialize auth configuration
+    auth::AuthConfig::init().map_err(|e| format!("Failed to init auth config: {}", e))?;
+    auth::OidcClient::init().map_err(|e| format!("Failed to init OIDC client: {}", e))?;
 
     // Determine bind address with priority: --bind-address > --port > PORT env var > default
     let bind_address = if let Some(addr) = matches.get_one::<String>("bind-address") {
@@ -184,6 +213,27 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(chat::update_chat_session)?;
     api.register(chat::search_rules)?;
 
+    // Register auth endpoints
+    api.register(handlers::auth::login)?;
+    api.register(handlers::auth::callback)?;
+    api.register(handlers::auth::get_me)?;
+    api.register(handlers::auth::logout)?;
+    api.register(handlers::auth::refresh)?;
+
+    // Register collection endpoints
+    api.register(collections::list_collection)?;
+    api.register(collections::add_to_collection)?;
+    api.register(collections::update_collection_entry)?;
+    api.register(collections::remove_from_collection)?;
+
+    // Register custom games endpoints
+    api.register(custom_games::list_custom_games)?;
+    api.register(custom_games::list_public_custom_games)?;
+    api.register(custom_games::create_custom_game)?;
+    api.register(custom_games::get_custom_game)?;
+    api.register(custom_games::update_custom_game)?;
+    api.register(custom_games::delete_custom_game)?;
+
     // Register health check
     api.register(static_files::health_check)?;
 
@@ -196,6 +246,8 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(static_files::serve_search_view)?; // /search
     api.register(static_files::serve_upload_view)?; // /upload
     api.register(static_files::serve_chat_view)?; // /chat
+    api.register(static_files::serve_collection_view)?; // /collection
+    api.register(static_files::serve_auth_views)?; // /auth/{path:.*}
     api.register(static_files::serve_index)?; // /
 
     Ok(api)

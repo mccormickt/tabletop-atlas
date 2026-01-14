@@ -30,6 +30,13 @@ pdf-extract.workspace = true
 sqlite-vec.workspace = true
 zerocopy.workspace = true
 async-openai = "0.23"
+jsonwebtoken.workspace = true
+rand.workspace = true
+sha2.workspace = true
+hex.workspace = true
+cookie.workspace = true
+dotenvy.workspace = true
+urlencoding.workspace = true
 
 [build-dependencies]
 # No build dependencies needed for now

@@ -7,7 +7,10 @@ use dropshot::{
 use schemars::JsonSchema;
 use serde::Serialize;
 
+pub mod auth;
 pub mod chat;
+pub mod collections;
+pub mod custom_games;
 pub mod games;
 pub mod house_rules;
 pub mod static_files;
@@ -53,6 +56,38 @@ pub fn bad_request_error(message: String) -> HttpError {
         .expect("Failed to add CORS headers")
         .with_header("Access-Control-Allow-Headers", &cors_headers.headers)
         .expect("Failed to add CORS headers")
+}
+
+/// Helper function for unauthorized errors
+pub fn unauthorized_error(message: String) -> HttpError {
+    let cors_headers = default_cors_headers();
+    HttpError::for_client_error(
+        None,
+        dropshot::ClientErrorStatusCode::UNAUTHORIZED,
+        message,
+    )
+    .with_header("Access-Control-Allow-Origin", &cors_headers.origin)
+    .expect("Failed to add CORS headers")
+    .with_header("Access-Control-Allow-Methods", &cors_headers.methods)
+    .expect("Failed to add CORS headers")
+    .with_header("Access-Control-Allow-Headers", &cors_headers.headers)
+    .expect("Failed to add CORS headers")
+}
+
+/// Helper function for forbidden errors
+pub fn forbidden_error(message: String) -> HttpError {
+    let cors_headers = default_cors_headers();
+    HttpError::for_client_error(
+        None,
+        dropshot::ClientErrorStatusCode::FORBIDDEN,
+        message,
+    )
+    .with_header("Access-Control-Allow-Origin", &cors_headers.origin)
+    .expect("Failed to add CORS headers")
+    .with_header("Access-Control-Allow-Methods", &cors_headers.methods)
+    .expect("Failed to add CORS headers")
+    .with_header("Access-Control-Allow-Headers", &cors_headers.headers)
+    .expect("Failed to add CORS headers")
 }
 
 /// Constant CORS headers configuration
