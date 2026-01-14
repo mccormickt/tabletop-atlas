@@ -18,6 +18,20 @@
 	const hasWinner = $derived(winners.length > 0);
 	const participantCount = $derived(play?.participants.length || 0);
 
+	// Compute cell styling based on state
+	const cellClass = $derived(() => {
+		if (disabled) {
+			return 'bg-muted/30 border-muted cursor-not-allowed';
+		}
+		if (!play) {
+			return 'bg-card border-border hover:border-primary cursor-pointer';
+		}
+		if (hasWinner) {
+			return 'cursor-pointer border-green-200 bg-green-50 hover:border-green-400 dark:border-green-800 dark:bg-green-900/20 dark:hover:border-green-600';
+		}
+		return 'cursor-pointer border-blue-200 bg-blue-50 hover:border-blue-400 dark:border-blue-800 dark:bg-blue-900/20 dark:hover:border-blue-600';
+	});
+
 	function getParticipantInfo(userId: number): ChallengeParticipant | undefined {
 		return participants.find((p) => p.userId === userId);
 	}
@@ -25,14 +39,7 @@
 
 <button
 	type="button"
-	class="flex h-12 flex-1 items-center justify-center rounded-md border transition-colors
-		{disabled
-		? 'bg-muted/30 border-muted cursor-not-allowed'
-		: play
-			? hasWinner
-				? 'cursor-pointer border-green-200 bg-green-50 hover:border-green-400 dark:border-green-800 dark:bg-green-900/20 dark:hover:border-green-600'
-				: 'cursor-pointer border-blue-200 bg-blue-50 hover:border-blue-400 dark:border-blue-800 dark:bg-blue-900/20 dark:hover:border-blue-600'
-			: 'bg-card border-border hover:border-primary cursor-pointer'}"
+	class="flex h-12 flex-1 items-center justify-center rounded-md border transition-colors {cellClass()}"
 	onclick={onClick}
 	{disabled}
 >

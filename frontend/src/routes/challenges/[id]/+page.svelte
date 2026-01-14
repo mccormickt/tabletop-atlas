@@ -104,13 +104,7 @@
 		selectedRowIndex = null;
 	}
 
-	async function handlePlaySaved() {
-		showCellEditModal = false;
-		editingCell = null;
-		await loadGrid();
-	}
-
-	async function handlePlayDeleted() {
+	async function closeModalAndRefresh() {
 		showCellEditModal = false;
 		editingCell = null;
 		await loadGrid();
@@ -241,8 +235,8 @@
 		colIndex={editingCell.colIndex}
 		existingPlay={editingCell.play}
 		participants={gridData.participants}
-		onSave={handlePlaySaved}
-		onDelete={handlePlayDeleted}
+		onSave={closeModalAndRefresh}
+		onDelete={closeModalAndRefresh}
 		onClose={() => {
 			showCellEditModal = false;
 			editingCell = null;

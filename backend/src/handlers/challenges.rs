@@ -16,6 +16,44 @@ use super::{
     HttpCreated, HttpDeleted, HttpOk, bad_request_error, created_response, deleted_response,
     forbidden_error, internal_error, not_found_error, success_response,
 };
+use crate::db::Database;
+use crate::models::{ChallengeId, UserId};
+
+/// Helper to verify user is a participant in a challenge
+async fn require_participant(
+    db: &Database,
+    challenge_id: ChallengeId,
+    user_id: UserId,
+) -> Result<(), HttpError> {
+    let is_participant = challenges::is_participant(db, challenge_id, user_id)
+        .await
+        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+
+    if !is_participant {
+        return Err(forbidden_error(
+            "You are not a participant in this challenge".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+/// Helper to verify user is the owner of a challenge
+async fn require_owner(
+    db: &Database,
+    challenge_id: ChallengeId,
+    user_id: UserId,
+) -> Result<(), HttpError> {
+    let is_owner = challenges::is_owner(db, challenge_id, user_id)
+        .await
+        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+
+    if !is_owner {
+        return Err(forbidden_error(
+            "Only the owner can perform this action".to_string(),
+        ));
+    }
+    Ok(())
+}
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ChallengePath {
@@ -114,16 +152,7 @@ pub async fn get_challenge(
     let db = rqctx.context().db();
     let challenge_id = path.into_inner().id;
 
-    // Check if user is a participant
-    let is_participant = challenges::is_participant(&db, challenge_id, user.user_id)
-        .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
-
-    if !is_participant {
-        return Err(forbidden_error(
-            "You are not a participant in this challenge".to_string(),
-        ));
-    }
+    require_participant(&db, challenge_id, user.user_id).await?;
 
     let challenge = challenges::get_challenge(&db, challenge_id)
         .await
@@ -149,16 +178,7 @@ pub async fn update_challenge(
     let challenge_id = path.into_inner().id;
     let request = body.into_inner();
 
-    // Check if user is the owner
-    let is_owner = challenges::is_owner(&db, challenge_id, user.user_id)
-        .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
-
-    if !is_owner {
-        return Err(forbidden_error(
-            "Only the owner can update this challenge".to_string(),
-        ));
-    }
+    require_owner(&db, challenge_id, user.user_id).await?;
 
     let challenge = challenges::update_challenge(&db, challenge_id, request)
         .await
@@ -182,16 +202,7 @@ pub async fn delete_challenge(
     let db = rqctx.context().db();
     let challenge_id = path.into_inner().id;
 
-    // Check if user is the owner
-    let is_owner = challenges::is_owner(&db, challenge_id, user.user_id)
-        .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
-
-    if !is_owner {
-        return Err(forbidden_error(
-            "Only the owner can delete this challenge".to_string(),
-        ));
-    }
+    require_owner(&db, challenge_id, user.user_id).await?;
 
     let deleted = challenges::delete_challenge(&db, challenge_id)
         .await
@@ -218,16 +229,7 @@ pub async fn get_challenge_grid(
     let db = rqctx.context().db();
     let challenge_id = path.into_inner().id;
 
-    // Check if user is a participant
-    let is_participant = challenges::is_participant(&db, challenge_id, user.user_id)
-        .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
-
-    if !is_participant {
-        return Err(forbidden_error(
-            "You are not a participant in this challenge".to_string(),
-        ));
-    }
+    require_participant(&db, challenge_id, user.user_id).await?;
 
     let challenge = challenges::get_challenge(&db, challenge_id)
         .await
@@ -275,16 +277,7 @@ pub async fn add_participant(
     let challenge_id = path.into_inner().id;
     let request = body.into_inner();
 
-    // Check if user is the owner
-    let is_owner = challenges::is_owner(&db, challenge_id, user.user_id)
-        .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
-
-    if !is_owner {
-        return Err(forbidden_error(
-            "Only the owner can add participants".to_string(),
-        ));
-    }
+    require_owner(&db, challenge_id, user.user_id).await?;
 
     let participant = challenges::add_participant(&db, challenge_id, request)
         .await
@@ -307,16 +300,7 @@ pub async fn remove_participant(
     let db = rqctx.context().db();
     let path = path.into_inner();
 
-    // Check if user is the owner
-    let is_owner = challenges::is_owner(&db, path.id, user.user_id)
-        .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
-
-    if !is_owner {
-        return Err(forbidden_error(
-            "Only the owner can remove participants".to_string(),
-        ));
-    }
+    require_owner(&db, path.id, user.user_id).await?;
 
     let removed = challenges::remove_participant(&db, path.id, path.user_id)
         .await
@@ -347,16 +331,7 @@ pub async fn assign_game(
     let challenge_id = path.into_inner().id;
     let request = body.into_inner();
 
-    // Check if user is a participant
-    let is_participant = challenges::is_participant(&db, challenge_id, user.user_id)
-        .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
-
-    if !is_participant {
-        return Err(forbidden_error(
-            "You are not a participant in this challenge".to_string(),
-        ));
-    }
+    require_participant(&db, challenge_id, user.user_id).await?;
 
     // Validate row_index is within grid bounds
     let challenge = challenges::get_challenge(&db, challenge_id)
@@ -392,16 +367,7 @@ pub async fn remove_game(
     let db = rqctx.context().db();
     let path = path.into_inner();
 
-    // Check if user is a participant
-    let is_participant = challenges::is_participant(&db, path.id, user.user_id)
-        .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
-
-    if !is_participant {
-        return Err(forbidden_error(
-            "You are not a participant in this challenge".to_string(),
-        ));
-    }
+    require_participant(&db, path.id, user.user_id).await?;
 
     let removed = challenges::remove_game(&db, path.id, path.game_id)
         .await
@@ -431,15 +397,7 @@ pub async fn record_play(
     let request = body.into_inner();
 
     // Check if user is a participant
-    let is_participant = challenges::is_participant(&db, challenge_id, user.user_id)
-        .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
-
-    if !is_participant {
-        return Err(forbidden_error(
-            "You are not a participant in this challenge".to_string(),
-        ));
-    }
+    require_participant(&db, challenge_id, user.user_id).await?;
 
     // Validate col_index is within grid bounds
     let challenge = challenges::get_challenge(&db, challenge_id)
@@ -452,6 +410,31 @@ pub async fn record_play(
             "col_index must be between 0 and {}",
             challenge.grid_cols - 1
         )));
+    }
+
+    // Validate challenge_game_id belongs to this challenge
+    let game_valid =
+        challenges::game_belongs_to_challenge(&db, challenge_id, request.challenge_game_id)
+            .await
+            .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+
+    if !game_valid {
+        return Err(bad_request_error(
+            "Invalid game for this challenge".to_string(),
+        ));
+    }
+
+    // Validate all play participants are challenge participants
+    let participant_user_ids: Vec<i64> = request.participants.iter().map(|p| p.user_id).collect();
+    let participants_valid =
+        challenges::validate_play_participants(&db, challenge_id, &participant_user_ids)
+            .await
+            .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+
+    if !participants_valid {
+        return Err(bad_request_error(
+            "All play participants must be challenge participants".to_string(),
+        ));
     }
 
     let play = challenges::record_play(&db, challenge_id, request)
@@ -478,14 +461,30 @@ pub async fn update_play(
     let request = body.into_inner();
 
     // Check if user is a participant
-    let is_participant = challenges::is_participant(&db, path.id, user.user_id)
+    require_participant(&db, path.id, user.user_id).await?;
+
+    // Verify the play belongs to this challenge
+    let play_valid = challenges::play_belongs_to_challenge(&db, path.id, path.play_id)
         .await
         .map_err(|e| internal_error(format!("Database error: {}", e)))?;
 
-    if !is_participant {
-        return Err(forbidden_error(
-            "You are not a participant in this challenge".to_string(),
-        ));
+    if !play_valid {
+        return Err(not_found_error("Play not found in this challenge".to_string()));
+    }
+
+    // Validate all play participants are challenge participants if provided
+    if let Some(ref participants) = request.participants {
+        let participant_user_ids: Vec<i64> = participants.iter().map(|p| p.user_id).collect();
+        let participants_valid =
+            challenges::validate_play_participants(&db, path.id, &participant_user_ids)
+                .await
+                .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+
+        if !participants_valid {
+            return Err(bad_request_error(
+                "All play participants must be challenge participants".to_string(),
+            ));
+        }
     }
 
     let play = challenges::update_play(&db, path.play_id, request)
@@ -511,14 +510,15 @@ pub async fn delete_play(
     let path = path.into_inner();
 
     // Check if user is a participant
-    let is_participant = challenges::is_participant(&db, path.id, user.user_id)
+    require_participant(&db, path.id, user.user_id).await?;
+
+    // Verify the play belongs to this challenge
+    let play_valid = challenges::play_belongs_to_challenge(&db, path.id, path.play_id)
         .await
         .map_err(|e| internal_error(format!("Database error: {}", e)))?;
 
-    if !is_participant {
-        return Err(forbidden_error(
-            "You are not a participant in this challenge".to_string(),
-        ));
+    if !play_valid {
+        return Err(not_found_error("Play not found in this challenge".to_string()));
     }
 
     let deleted = challenges::delete_play(&db, path.play_id)
@@ -546,16 +546,7 @@ pub async fn get_challenge_stats(
     let db = rqctx.context().db();
     let challenge_id = path.into_inner().id;
 
-    // Check if user is a participant
-    let is_participant = challenges::is_participant(&db, challenge_id, user.user_id)
-        .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
-
-    if !is_participant {
-        return Err(forbidden_error(
-            "You are not a participant in this challenge".to_string(),
-        ));
-    }
+    require_participant(&db, challenge_id, user.user_id).await?;
 
     let stats = challenges::get_stats(&db, challenge_id)
         .await

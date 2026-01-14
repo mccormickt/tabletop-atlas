@@ -413,6 +413,61 @@ pub async fn remove_game(
     })
 }
 
+/// Check if a game belongs to a challenge
+pub async fn game_belongs_to_challenge(
+    db: &Database,
+    challenge_id: ChallengeId,
+    game_id: ChallengeGameId,
+) -> SqliteResult<bool> {
+    db.with_connection(|conn| {
+        conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM challenge_games WHERE challenge_id = ? AND id = ?)",
+            params![challenge_id, game_id],
+            |row| row.get(0),
+        )
+    })
+}
+
+/// Check if a play belongs to a challenge
+pub async fn play_belongs_to_challenge(
+    db: &Database,
+    challenge_id: ChallengeId,
+    play_id: ChallengePlayId,
+) -> SqliteResult<bool> {
+    db.with_connection(|conn| {
+        conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM challenge_plays WHERE challenge_id = ? AND id = ?)",
+            params![challenge_id, play_id],
+            |row| row.get(0),
+        )
+    })
+}
+
+/// Check if all user IDs are participants in the challenge
+pub async fn validate_play_participants(
+    db: &Database,
+    challenge_id: ChallengeId,
+    user_ids: &[UserId],
+) -> SqliteResult<bool> {
+    if user_ids.is_empty() {
+        return Ok(true);
+    }
+
+    db.with_connection(|conn| {
+        for user_id in user_ids {
+            let is_participant: bool = conn.query_row(
+                "SELECT EXISTS(SELECT 1 FROM challenge_participants WHERE challenge_id = ? AND user_id = ?)",
+                params![challenge_id, user_id],
+                |row| row.get(0),
+            )?;
+            if !is_participant {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    })
+}
+
 // Play operations
 
 pub async fn record_play(
