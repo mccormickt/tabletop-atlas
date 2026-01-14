@@ -1,6 +1,8 @@
+use cookie::Cookie;
 use dropshot::{ClientErrorStatusCode, HttpError, RequestContext};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use super::jwt;
 use crate::AppState;
@@ -12,16 +14,11 @@ pub struct AuthenticatedUser {
     pub role: String,
 }
 
-fn parse_cookies(cookie_header: &str) -> std::collections::HashMap<String, String> {
+fn parse_cookies(cookie_header: &str) -> HashMap<String, String> {
     cookie_header
         .split(';')
-        .filter_map(|cookie| {
-            let mut parts = cookie.trim().splitn(2, '=');
-            match (parts.next(), parts.next()) {
-                (Some(name), Some(value)) => Some((name.to_string(), value.to_string())),
-                _ => None,
-            }
-        })
+        .filter_map(|c| Cookie::parse(c.trim()).ok())
+        .map(|c| (c.name().to_string(), c.value().to_string()))
         .collect()
 }
 

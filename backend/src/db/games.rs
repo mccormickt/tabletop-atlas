@@ -1,10 +1,29 @@
-use super::{Database, PaginationInfo, parse_datetime};
+use super::{format_now_for_db, parse_datetime, query_row_optional, Database, PaginationInfo};
 use crate::models::{
     CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, RulesInfoResponse,
     UpdateGameRequest,
 };
-use chrono::Utc;
-use rusqlite::{Result as SqliteResult, params};
+use rusqlite::{params, Result as SqliteResult, Row};
+
+/// Map a database row to a Game struct
+fn row_to_game(row: &Row) -> SqliteResult<Game> {
+    Ok(Game {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        description: row.get(2)?,
+        publisher: row.get(3)?,
+        year_published: row.get(4)?,
+        min_players: row.get(5)?,
+        max_players: row.get(6)?,
+        play_time_minutes: row.get(7)?,
+        complexity_rating: row.get(8)?,
+        bgg_id: row.get(9)?,
+        rules_pdf_path: row.get(10)?,
+        rules_text: row.get(11)?,
+        created_at: parse_datetime(row, "created_at")?,
+        updated_at: parse_datetime(row, "updated_at")?,
+    })
+}
 
 pub async fn list_games(
     db: &Database,
@@ -15,7 +34,8 @@ pub async fn list_games(
 
     db.with_connection(|conn| {
         // Get total count
-        let total: u32 = conn.query_row("SELECT COUNT(*) FROM master_games", [], |row| row.get(0))?;
+        let total: u32 =
+            conn.query_row("SELECT COUNT(*) FROM master_games", [], |row| row.get(0))?;
 
         // Get games with house rules count
         let mut stmt = conn.prepare(
@@ -66,37 +86,13 @@ pub async fn get_game(db: &Database, game_id: GameId) -> SqliteResult<Option<Gam
             "#,
         )?;
 
-        let result = stmt.query_row(params![game_id], |row| {
-            Ok(Game {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                description: row.get(2)?,
-                publisher: row.get(3)?,
-                year_published: row.get(4)?,
-                min_players: row.get(5)?,
-                max_players: row.get(6)?,
-                play_time_minutes: row.get(7)?,
-                complexity_rating: row.get(8)?,
-                bgg_id: row.get(9)?,
-                rules_pdf_path: row.get(10)?,
-                rules_text: row.get(11)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        });
-
-        match result {
-            Ok(game) => Ok(Some(game)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e),
-        }
+        query_row_optional(stmt.query_row(params![game_id], row_to_game))
     })
 }
 
 pub async fn create_game(db: &Database, request: CreateGameRequest) -> SqliteResult<Game> {
     db.with_transaction(|conn| {
-        let now = Utc::now();
-        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         conn.execute(
             r#"
@@ -133,24 +129,7 @@ pub async fn create_game(db: &Database, request: CreateGameRequest) -> SqliteRes
             "#,
         )?;
 
-        stmt.query_row(params![game_id], |row| {
-            Ok(Game {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                description: row.get(2)?,
-                publisher: row.get(3)?,
-                year_published: row.get(4)?,
-                min_players: row.get(5)?,
-                max_players: row.get(6)?,
-                play_time_minutes: row.get(7)?,
-                complexity_rating: row.get(8)?,
-                bgg_id: row.get(9)?,
-                rules_pdf_path: row.get(10)?,
-                rules_text: row.get(11)?,
-                created_at: parse_datetime(row, "created_at")?,
-                updated_at: parse_datetime(row, "updated_at")?,
-            })
-        })
+        stmt.query_row(params![game_id], row_to_game)
     })
 }
 
@@ -171,7 +150,7 @@ pub async fn update_game(
             return Ok(None);
         }
 
-        let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         // Build dynamic update query
         let mut update_parts = Vec::new();
@@ -223,7 +202,10 @@ pub async fn update_game(
         params_vec.push(&now_str as &dyn rusqlite::ToSql);
         params_vec.push(&game_id as &dyn rusqlite::ToSql);
 
-        let query = format!("UPDATE master_games SET {} WHERE id = ?", update_parts.join(", "));
+        let query = format!(
+            "UPDATE master_games SET {} WHERE id = ?",
+            update_parts.join(", ")
+        );
 
         conn.execute(&query, params_vec.as_slice())?;
 
@@ -233,7 +215,8 @@ pub async fn update_game(
 
 pub async fn delete_game(db: &Database, game_id: GameId) -> SqliteResult<bool> {
     db.with_connection(|conn| {
-        let rows_affected = conn.execute("DELETE FROM master_games WHERE id = ?", params![game_id])?;
+        let rows_affected =
+            conn.execute("DELETE FROM master_games WHERE id = ?", params![game_id])?;
         Ok(rows_affected > 0)
     })
 }
@@ -245,7 +228,7 @@ pub async fn update_game_rules_text(
     pdf_path: Option<String>,
 ) -> SqliteResult<bool> {
     db.with_connection(|conn| {
-        let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
         let rows_affected = conn.execute(
             "UPDATE master_games SET rules_text = ?, rules_pdf_path = ?, updated_at = ? WHERE id = ?",
             params![rules_text, pdf_path, now_str, game_id],
@@ -274,7 +257,7 @@ pub async fn get_game_rules_info(
             "#,
         )?;
 
-        let result = stmt.query_row(params![game_id], |row| {
+        query_row_optional(stmt.query_row(params![game_id], |row| {
             Ok(RulesInfoResponse {
                 game_id,
                 game_name: row.get(0)?,
@@ -284,13 +267,7 @@ pub async fn get_game_rules_info(
                 chunk_count: row.get(3)?,
                 last_processed: row.get(4)?,
             })
-        });
-
-        match result {
-            Ok(rules_info) => Ok(Some(rules_info)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e),
-        }
+        }))
     })
 }
 
@@ -305,22 +282,5 @@ fn get_game_by_id_sync(conn: &rusqlite::Connection, game_id: GameId) -> SqliteRe
         "#,
     )?;
 
-    stmt.query_row(params![game_id], |row| {
-        Ok(Game {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            description: row.get(2)?,
-            publisher: row.get(3)?,
-            year_published: row.get(4)?,
-            min_players: row.get(5)?,
-            max_players: row.get(6)?,
-            play_time_minutes: row.get(7)?,
-            complexity_rating: row.get(8)?,
-            bgg_id: row.get(9)?,
-            rules_pdf_path: row.get(10)?,
-            rules_text: row.get(11)?,
-            created_at: parse_datetime(row, "created_at")?,
-            updated_at: parse_datetime(row, "updated_at")?,
-        })
-    })
+    stmt.query_row(params![game_id], row_to_game)
 }

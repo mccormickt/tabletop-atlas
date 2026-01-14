@@ -24,9 +24,21 @@
 </script>
 
 <script lang="ts">
-	import { cn } from '$lib/utils.js';
+	import {
+		cn,
+		formatSimilarityScore,
+		getSimilarityBadgeVariant,
+		getSimilarityColor,
+		truncateText
+	} from '$lib/utils.js';
 	import { Badge } from '$lib/components/ui/badge';
-	import { createEventDispatcher } from 'svelte';
+
+	interface SearchResultData {
+		chunkId: string | number;
+		chunkText: string;
+		similarityScore: number;
+		metadata?: string;
+	}
 
 	interface SearchResultProps {
 		chunkId: string | number;
@@ -41,6 +53,7 @@
 		showSimilarity?: boolean;
 		maxTextLength?: number;
 		class?: string;
+		onClick?: (data: SearchResultData) => void;
 	}
 
 	let {
@@ -56,42 +69,13 @@
 		showSimilarity = true,
 		maxTextLength = 180,
 		class: className,
+		onClick,
 		...restProps
 	}: SearchResultProps = $props();
 
-	const dispatch = createEventDispatcher<{
-		click: {
-			chunkId: string | number;
-			chunkText: string;
-			similarityScore: number;
-			metadata?: string;
-		};
-	}>();
-
-	function formatSimilarityScore(score: number): string {
-		return (score * 100).toFixed(1) + '%';
-	}
-
-	function getSimilarityBadgeVariant(score: number): 'default' | 'secondary' | 'outline' {
-		if (score >= 0.8) return 'default';
-		if (score >= 0.6) return 'secondary';
-		return 'outline';
-	}
-
-	function getSimilarityColor(score: number): string {
-		if (score >= 0.8) return 'text-green-600';
-		if (score >= 0.6) return 'text-yellow-600';
-		return 'text-gray-600';
-	}
-
-	function truncateText(text: string, maxLength: number): string {
-		if (text.length <= maxLength) return text;
-		return text.substring(0, maxLength) + '...';
-	}
-
 	function handleClick() {
-		if (interactive) {
-			dispatch('click', {
+		if (interactive && onClick) {
+			onClick({
 				chunkId,
 				chunkText,
 				similarityScore,

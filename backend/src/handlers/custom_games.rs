@@ -1,18 +1,18 @@
-use dropshot::{endpoint, HttpError, Path, Query, RequestContext, TypedBody};
+use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
+use crate::AppState;
 use crate::auth::{extract_auth, require_auth};
 use crate::db::custom_games;
 use crate::models::{
     CreateCustomGameRequest, CustomGame, CustomGameSummary, PaginatedResponse, PaginationParams,
     UpdateCustomGameRequest,
 };
-use crate::AppState;
 
 use super::{
-    created_response, deleted_response, internal_error, not_found_error, success_response,
-    HttpCreated, HttpDeleted, HttpOk,
+    HttpCreated, HttpDeleted, HttpOk, created_response, deleted_response, internal_error,
+    not_found_error, success_response,
 };
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -110,7 +110,7 @@ pub async fn get_custom_game(
                     None,
                     dropshot::ClientErrorStatusCode::FORBIDDEN,
                     "Access denied".to_string(),
-                ))
+                ));
             }
         }
     }

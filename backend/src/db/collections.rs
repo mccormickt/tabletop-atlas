@@ -1,10 +1,22 @@
-use super::{parse_datetime, Database, PaginationInfo};
+use super::{format_now_for_db, parse_datetime, Database, PaginationInfo};
 use crate::models::{
     AddToCollectionRequest, CollectionEntry, CollectionEntryId, CollectionEntryWithGame,
     PaginatedResponse, UpdateCollectionRequest, UserId,
 };
-use chrono::Utc;
-use rusqlite::{params, Result as SqliteResult};
+use rusqlite::{params, Result as SqliteResult, Row};
+
+/// Map a database row to a CollectionEntry struct
+fn row_to_collection_entry(row: &Row) -> SqliteResult<CollectionEntry> {
+    Ok(CollectionEntry {
+        id: row.get(0)?,
+        user_id: row.get(1)?,
+        master_game_id: row.get(2)?,
+        notes: row.get(3)?,
+        rating: row.get(4)?,
+        play_count: row.get(5)?,
+        added_at: parse_datetime(row, "added_at")?,
+    })
+}
 
 pub async fn list_user_collection(
     db: &Database,
@@ -56,8 +68,7 @@ pub async fn add_to_collection(
     request: AddToCollectionRequest,
 ) -> SqliteResult<CollectionEntry> {
     db.with_transaction(|conn| {
-        let now = Utc::now();
-        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         conn.execute(
             r#"
@@ -82,17 +93,7 @@ pub async fn add_to_collection(
             "#,
         )?;
 
-        stmt.query_row(params![entry_id], |row| {
-            Ok(CollectionEntry {
-                id: row.get(0)?,
-                user_id: row.get(1)?,
-                master_game_id: row.get(2)?,
-                notes: row.get(3)?,
-                rating: row.get(4)?,
-                play_count: row.get(5)?,
-                added_at: parse_datetime(row, "added_at")?,
-            })
-        })
+        stmt.query_row(params![entry_id], row_to_collection_entry)
     })
 }
 
@@ -147,19 +148,7 @@ pub async fn update_collection_entry(
             "#,
         )?;
 
-        let entry = stmt.query_row(params![entry_id], |row| {
-            Ok(CollectionEntry {
-                id: row.get(0)?,
-                user_id: row.get(1)?,
-                master_game_id: row.get(2)?,
-                notes: row.get(3)?,
-                rating: row.get(4)?,
-                play_count: row.get(5)?,
-                added_at: parse_datetime(row, "added_at")?,
-            })
-        })?;
-
-        Ok(Some(entry))
+        Ok(Some(stmt.query_row(params![entry_id], row_to_collection_entry)?))
     })
 }
 

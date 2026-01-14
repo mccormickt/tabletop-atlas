@@ -31,6 +31,7 @@
 
 	const navItems = [
 		{ path: '/games', label: 'Games' },
+		{ path: '/challenges', label: 'Challenges' },
 		{ path: '/upload', label: 'Upload' },
 		{ path: '/search', label: 'Search' },
 		{ path: '/chat', label: 'Chat' }

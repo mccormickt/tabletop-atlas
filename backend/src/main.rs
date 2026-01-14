@@ -84,6 +84,9 @@ impl AppState {
             M::up(include_str!(
                 "../../migrations/V013__update_chat_sessions_for_multitenancy.sql"
             )),
+            M::up(include_str!(
+                "../../migrations/V014__create_challenges_tables.sql"
+            )),
         ]);
 
         migrations.to_latest(&mut db)?;
@@ -234,6 +237,22 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(custom_games::update_custom_game)?;
     api.register(custom_games::delete_custom_game)?;
 
+    // Register challenge endpoints
+    api.register(challenges::list_challenges)?;
+    api.register(challenges::create_challenge)?;
+    api.register(challenges::get_challenge)?;
+    api.register(challenges::update_challenge)?;
+    api.register(challenges::delete_challenge)?;
+    api.register(challenges::get_challenge_grid)?;
+    api.register(challenges::add_participant)?;
+    api.register(challenges::remove_participant)?;
+    api.register(challenges::assign_game)?;
+    api.register(challenges::remove_game)?;
+    api.register(challenges::record_play)?;
+    api.register(challenges::update_play)?;
+    api.register(challenges::delete_play)?;
+    api.register(challenges::get_challenge_stats)?;
+
     // Register health check
     api.register(static_files::health_check)?;
 
@@ -248,6 +267,7 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(static_files::serve_chat_view)?; // /chat
     api.register(static_files::serve_collection_view)?; // /collection
     api.register(static_files::serve_auth_views)?; // /auth/{path:.*}
+    api.register(static_files::serve_challenges_views)?; // /challenges/{path:.*}
     api.register(static_files::serve_index)?; // /
 
     Ok(api)

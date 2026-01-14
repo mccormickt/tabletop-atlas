@@ -21,44 +21,47 @@ This is a full-stack blog application inspired by the famous Ruby on Rails 15-mi
 
 ```bash
 # Start both backend and frontend in development mode
-npm run dev
+pnpm run dev
 
 # Run backend only
-npm run backend
+pnpm run backend
 # or
 cargo run -p backend
 
 # Run frontend only
-npm run frontend
+pnpm run frontend
 # or (from frontend directory)
-npm run dev
+pnpm run dev
 
 # Build everything
-npm run build
+pnpm run build
 
 # Run tests
-npm run test
+pnpm run test
 
 # Lint all code (backend + frontend)
-npm run lint
+pnpm run lint
 
 # Lint backend only (Rust clippy)
-npm run lint:backend
+pnpm run lint:backend
 
 # Lint frontend only (ESLint + Prettier)
-npm run lint:frontend
+pnpm run lint:frontend
 
 # Format all code
-npm run format
+pnpm run format
 
 # Format backend only (cargo fmt)
-npm run format:backend
+pnpm run format:backend
 
 # Format frontend only (Prettier)
-npm run format:frontend
+pnpm run format:frontend
 
 # Check formatting without making changes
-npm run format:check
+pnpm run format:check
+
+# Regenerate OpenAPI spec and TypeScript client after backend API changes
+pnpm run generate
 ```
 
 ## Linting
@@ -346,10 +349,30 @@ jj file annotate <filename>
 - [Jujutsu Tutorial by Steve Klabnik](https://steveklabnik.github.io/jujutsu-tutorial/)
 - [Comprehensive Cheat Sheet](https://www.rahuljuliato.com/posts/jj-cheat-sheet)
 
+## API Client Generation
+
+The frontend uses a generated TypeScript client to communicate with the backend API. When you make changes to backend API endpoints, you must regenerate the client.
+
+```bash
+pnpm run generate
+```
+
+This command:
+1. Runs the backend with `--openapi` flag to output the OpenAPI spec to `openapi.json` (root directory)
+2. Uses `@oxide/openapi-gen-ts` to generate TypeScript client files in `frontend/src/api/`
+
+**Generated files** (do not edit manually):
+- `openapi.json` - OpenAPI specification (root directory)
+- `frontend/src/api/Api.ts` - Generated API client class
+- `frontend/src/api/http-client.ts` - HTTP client utilities
+- `frontend/src/api/util.ts` - Utility functions
+
+**Important**: Only the root `openapi.json` is the source of truth. Do not commit any `openapi.json` to `frontend/src/api/`.
+
 ## Development Workflow
 
 - Both frontend and backend can be developed simultaneously
-- API changes should include OpenAPI schema updates
+- After backend API changes, run `pnpm run generate` to update the TypeScript client
 - shadcn components can be added via `npx shadcn@latest add [component]`
 - Database schema changes require new migration files
 - Use JJ (Jujutsu) for all version control operations instead of Git

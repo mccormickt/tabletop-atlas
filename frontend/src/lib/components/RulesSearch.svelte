@@ -4,6 +4,7 @@
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Input, Label } from '$lib/components/ui';
 	import { Badge } from '$lib/components/ui';
+	import { formatSimilarityScore, getSimilarityColor, truncateText } from '$lib/utils';
 
 	// Props
 	let {
@@ -88,21 +89,6 @@
 
 	function handleResultClick(result: SearchResult) {
 		onResultClick(result);
-	}
-
-	function formatSimilarityScore(score: number): string {
-		return (score * 100).toFixed(1) + '%';
-	}
-
-	function getSimilarityColor(score: number): string {
-		if (score >= 0.8) return 'text-green-600';
-		if (score >= 0.6) return 'text-yellow-600';
-		return 'text-gray-600';
-	}
-
-	function truncateText(text: string, maxLength: number = 150): string {
-		if (text.length <= maxLength) return text;
-		return text.substring(0, maxLength) + '...';
 	}
 
 	// Clear results when gameId changes

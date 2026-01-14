@@ -1,24 +1,21 @@
-use chrono::Utc;
-use rusqlite::{Result as SqliteResult, params};
-use serde_json;
+use rusqlite::{params, Result as SqliteResult};
 
 use crate::models::{
     CreateEmbeddingRequest, Embedding, EmbeddingId, EmbeddingSearchResult, EmbeddingSourceType,
     GameId, HouseRuleId, SimilaritySearchRequest,
 };
 
+use super::{format_now_for_db, parse_datetime, Database};
+
 /// Type alias for embedding metadata from database queries
 type EmbeddingMetadataRow = (i64, String, String, Option<i64>, Option<String>);
-
-use super::{Database, parse_datetime};
 
 pub async fn create_embedding(
     db: &Database,
     request: CreateEmbeddingRequest,
 ) -> SqliteResult<Embedding> {
     db.with_transaction(|conn| {
-        let now = Utc::now();
-        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
 
         // Convert embedding vector to JSON string for sqlite-vec
         let embedding_json = serde_json::to_string(&request.embedding)
@@ -365,7 +362,7 @@ pub async fn create_embeddings_batch(
     requests: Vec<CreateEmbeddingRequest>,
 ) -> SqliteResult<Vec<EmbeddingId>> {
     db.with_transaction(|conn| {
-        let now_str = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let now_str = format_now_for_db();
         let mut embedding_ids = Vec::new();
 
         let mut embeddings_stmt = conn.prepare(

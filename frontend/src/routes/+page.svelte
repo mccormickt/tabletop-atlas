@@ -9,7 +9,8 @@
 		GameBoxIcon,
 		Rulebook,
 		SearchGlass,
-		ChatBubble
+		ChatBubble,
+		Trophy
 	} from '$lib/components/icons';
 	import { useHeader } from '$lib/stores/header';
 	import { onMount } from 'svelte';
@@ -38,6 +39,10 @@
 
 	function navigateToChat() {
 		goto('/chat');
+	}
+
+	function navigateToChallenges() {
+		goto('/challenges');
 	}
 
 	async function countGames() {
@@ -106,7 +111,7 @@
 	</div>
 
 	<!-- Quick Actions - Game Box Lids -->
-	<div class="mb-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+	<div class="mb-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 		<button onclick={navigateToAddGame} class="group text-left">
 			<GameBox
 				variant="default"
@@ -179,6 +184,23 @@
 					<p class="text-muted-foreground font-body text-sm">
 						Get instant answers about game rules
 					</p>
+				</div>
+			</GameBox>
+		</button>
+
+		<button onclick={navigateToChallenges} class="group text-left">
+			<GameBox
+				variant="default"
+				class="h-full transition-all group-hover:-translate-y-1 group-hover:shadow-xl"
+			>
+				<div class="flex flex-col items-center p-4 text-center">
+					<div
+						class="bg-game-red/10 group-hover:bg-game-red/20 mb-4 flex h-16 w-16 items-center justify-center rounded-full transition-colors"
+					>
+						<Trophy size={32} class="text-game-red" />
+					</div>
+					<h3 class="font-display mb-2 text-lg font-semibold">8x8 Challenge</h3>
+					<p class="text-muted-foreground font-body text-sm">Track game sessions with friends</p>
 				</div>
 			</GameBox>
 		</button>

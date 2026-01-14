@@ -8,6 +8,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 pub mod auth;
+pub mod challenges;
 pub mod chat;
 pub mod collections;
 pub mod custom_games;
@@ -24,70 +25,35 @@ type HttpDeleted = HttpResponseHeaders<HttpResponseDeleted, CorsHeaders>;
 
 /// Helper function for internal server errors
 pub fn internal_error(message: String) -> HttpError {
-    let cors_headers = default_cors_headers();
-    HttpError::for_internal_error(message)
-        .with_header("Access-Control-Allow-Origin", &cors_headers.origin)
-        .expect("Failed to add CORS headers")
-        .with_header("Access-Control-Allow-Methods", &cors_headers.methods)
-        .expect("Failed to add CORS headers")
-        .with_header("Access-Control-Allow-Headers", &cors_headers.headers)
-        .expect("Failed to add CORS headers")
+    add_cors_headers(HttpError::for_internal_error(message))
 }
 
 /// Helper function for not found errors
 pub fn not_found_error(message: String) -> HttpError {
-    let cors_headers = default_cors_headers();
-    HttpError::for_not_found(None, message)
-        .with_header("Access-Control-Allow-Origin", &cors_headers.origin)
-        .expect("Failed to add CORS headers")
-        .with_header("Access-Control-Allow-Methods", &cors_headers.methods)
-        .expect("Failed to add CORS headers")
-        .with_header("Access-Control-Allow-Headers", &cors_headers.headers)
-        .expect("Failed to add CORS headers")
+    add_cors_headers(HttpError::for_not_found(None, message))
 }
 
 /// Helper function for bad request errors
 pub fn bad_request_error(message: String) -> HttpError {
-    let cors_headers = default_cors_headers();
-    HttpError::for_bad_request(None, message)
-        .with_header("Access-Control-Allow-Origin", &cors_headers.origin)
-        .expect("Failed to add CORS headers")
-        .with_header("Access-Control-Allow-Methods", &cors_headers.methods)
-        .expect("Failed to add CORS headers")
-        .with_header("Access-Control-Allow-Headers", &cors_headers.headers)
-        .expect("Failed to add CORS headers")
+    add_cors_headers(HttpError::for_bad_request(None, message))
 }
 
 /// Helper function for unauthorized errors
 pub fn unauthorized_error(message: String) -> HttpError {
-    let cors_headers = default_cors_headers();
-    HttpError::for_client_error(
+    add_cors_headers(HttpError::for_client_error(
         None,
         dropshot::ClientErrorStatusCode::UNAUTHORIZED,
         message,
-    )
-    .with_header("Access-Control-Allow-Origin", &cors_headers.origin)
-    .expect("Failed to add CORS headers")
-    .with_header("Access-Control-Allow-Methods", &cors_headers.methods)
-    .expect("Failed to add CORS headers")
-    .with_header("Access-Control-Allow-Headers", &cors_headers.headers)
-    .expect("Failed to add CORS headers")
+    ))
 }
 
 /// Helper function for forbidden errors
 pub fn forbidden_error(message: String) -> HttpError {
-    let cors_headers = default_cors_headers();
-    HttpError::for_client_error(
+    add_cors_headers(HttpError::for_client_error(
         None,
         dropshot::ClientErrorStatusCode::FORBIDDEN,
         message,
-    )
-    .with_header("Access-Control-Allow-Origin", &cors_headers.origin)
-    .expect("Failed to add CORS headers")
-    .with_header("Access-Control-Allow-Methods", &cors_headers.methods)
-    .expect("Failed to add CORS headers")
-    .with_header("Access-Control-Allow-Headers", &cors_headers.headers)
-    .expect("Failed to add CORS headers")
+    ))
 }
 
 /// Constant CORS headers configuration
@@ -97,6 +63,18 @@ fn default_cors_headers() -> CorsHeaders {
         methods: String::from("GET, POST, PUT, DELETE, OPTIONS"),
         headers: String::from("Content-Type, Authorization"),
     }
+}
+
+/// Helper to add CORS headers to an HttpError
+fn add_cors_headers(error: HttpError) -> HttpError {
+    let cors_headers = default_cors_headers();
+    error
+        .with_header("Access-Control-Allow-Origin", &cors_headers.origin)
+        .expect("Failed to add CORS headers")
+        .with_header("Access-Control-Allow-Methods", &cors_headers.methods)
+        .expect("Failed to add CORS headers")
+        .with_header("Access-Control-Allow-Headers", &cors_headers.headers)
+        .expect("Failed to add CORS headers")
 }
 
 #[derive(Serialize, JsonSchema)]

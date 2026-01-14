@@ -13,14 +13,65 @@
 
     export type { ApiConfig, ApiResult, ErrorBody, ErrorResult, } from './http-client'
     
+export type AddParticipantRequest =
+{"userId": number,};
+
 export type AddToCollectionRequest =
 {"masterGameId": number,"notes"?: string | null,"rating"?: number | null,};
+
+export type GameType =
+"master"
+| "custom"
+| "collection"
+;
+
+export type AssignGameRequest =
+{"displayName"?: string | null,"gameId": number,"gameType": GameType,"rowIndex": number,};
 
 export type UserInfo =
 {"displayName"?: string | null,"email": string,"id": number,"pictureUrl"?: string | null,"role": string,};
 
 export type AuthResponse =
 {"user": UserInfo,};
+
+export type ChallengeStatus =
+"draft"
+| "active"
+| "completed"
+| "archived"
+;
+
+export type Challenge =
+{"createdAt": Date,"description"?: string | null,"endDate"?: string | null,"gridCols": number,"gridRows": number,"id": number,"name": string,"ownerId": number,"startDate"?: string | null,"status": ChallengeStatus,"updatedAt": Date,};
+
+export type ChallengeGame =
+{"challengeId": number,"createdAt": Date,"displayName"?: string | null,"gameId": number,"gameType": GameType,"id": number,"rowIndex": number,};
+
+export type ParticipantRole =
+"owner"
+| "participant"
+;
+
+export type ChallengeParticipant =
+{"challengeId": number,"displayName"?: string | null,"id": number,"joinedAt": Date,"pictureUrl"?: string | null,"role": ParticipantRole,"userId": number,};
+
+export type PlayParticipant =
+{"challengePlayId": number,"displayName"?: string | null,"id": number,"isWinner": boolean,"score"?: number | null,"userId": number,};
+
+export type ChallengePlayWithParticipants =
+{"challengeGameId": number,"challengeId": number,"colIndex": number,"createdAt": Date,"id": number,"notes"?: string | null,"participants": (PlayParticipant)[],"playedAt": string,"updatedAt": Date,};
+
+export type LeaderboardEntry =
+{"displayName"?: string | null,"pictureUrl"?: string | null,"totalPlays": number,"userId": number,"winPercentage": number,"wins": number,};
+
+export type ChallengeStats =
+{"completedCells": number,"completionPercentage": number,"leaderboard": (LeaderboardEntry)[],"totalCells": number,};
+
+export type ChallengeGridView =
+{"challenge": Challenge,"games": (ChallengeGame)[],"participants": (ChallengeParticipant)[],"plays": (ChallengePlayWithParticipants)[],"stats": ChallengeStats,};
+
+export type ChallengeSummary =
+{"completionPercentage": number,"createdAt": Date,"description"?: string | null,"endDate"?: string | null,"gridCols": number,"gridRows": number,"id": number,"name": string,"ownerId": number,"participantCount": number,"startDate"?: string | null,"status": ChallengeStatus,};
 
 export type MessageRole =
 "user"
@@ -55,6 +106,9 @@ export type CollectionEntry =
 export type CollectionEntryWithGame =
 {"addedAt": Date,"gameName": string,"id": number,"masterGameId": number,"notes"?: string | null,"playCount": number,"rating"?: number | null,};
 
+export type CreateChallengeRequest =
+{"description"?: string | null,"endDate"?: string | null,"gridCols"?: number,"gridRows"?: number,"name": string,"startDate"?: string | null,};
+
 export type CreateChatSessionRequest =
 {"gameId": number,"includeHouseRules"?: boolean,"title"?: string | null,};
 
@@ -85,6 +139,9 @@ export type GameSummary =
 export type HouseRule =
 {"category"?: string | null,"createdAt": Date,"description": string,"gameId": number,"id": number,"isActive": boolean,"title": string,"updatedAt": Date,};
 
+export type PaginatedResponse_for_ChallengeSummary =
+{"items": (ChallengeSummary)[],"limit": number,"page": number,"total": number,"totalPages": number,};
+
 export type PaginatedResponse_for_ChatSessionSummary =
 {"items": (ChatSessionSummary)[],"limit": number,"page": number,"total": number,"totalPages": number,};
 
@@ -100,6 +157,12 @@ export type PaginatedResponse_for_GameSummary =
 export type PaginatedResponse_for_HouseRule =
 {"items": (HouseRule)[],"limit": number,"page": number,"total": number,"totalPages": number,};
 
+export type PlayParticipantInput =
+{"isWinner": boolean,"score"?: number | null,"userId": number,};
+
+export type RecordPlayRequest =
+{"challengeGameId": number,"colIndex": number,"notes"?: string | null,"participants": (PlayParticipantInput)[],"playedAt": string,};
+
 export type RulesInfoResponse =
 {"chunkCount": number,"gameId": number,"gameName": string,"hasRulesPdf": boolean,"lastProcessed"?: string | null,"rulesPdfPath"?: string | null,"textLength"?: number | null,};
 
@@ -108,6 +171,9 @@ export type SearchResult =
 
 export type RulesSearchResponse =
 {"gameId": number,"query": string,"results": (SearchResult)[],"totalResults": number,};
+
+export type UpdateChallengeRequest =
+{"description"?: string | null,"endDate"?: string | null,"name"?: string | null,"startDate"?: string | null,"status"?: ChallengeStatus | null,};
 
 export type UpdateChatSessionRequest =
 {"includeHouseRules"?: boolean | null,"title"?: string | null,};
@@ -124,12 +190,72 @@ export type UpdateGameRequest =
 export type UpdateHouseRuleRequest =
 {"category"?: string | null,"description"?: string | null,"isActive"?: boolean | null,"title"?: string | null,};
 
+export type UpdatePlayRequest =
+{"notes"?: string | null,"participants"?: (PlayParticipantInput)[] | null,"playedAt"?: string | null,};
+
 export type UploadResponse =
 {"chunksProcessed"?: number | null,"filePath"?: string | null,"message": string,"textLength"?: number | null,};
 
 export interface CallbackQueryParams {
   code: string,
   state?: string | null,
+}
+
+export interface ListChallengesQueryParams {
+  limit?: number,
+  page?: number,
+}
+
+export interface GetChallengePathParams {
+  id:number,
+}
+
+export interface UpdateChallengePathParams {
+  id:number,
+}
+
+export interface DeleteChallengePathParams {
+  id:number,
+}
+
+export interface AssignGamePathParams {
+  id:number,
+}
+
+export interface RemoveGamePathParams {
+  gameId:number,
+  id:number,
+}
+
+export interface GetChallengeGridPathParams {
+  id:number,
+}
+
+export interface AddParticipantPathParams {
+  id:number,
+}
+
+export interface RemoveParticipantPathParams {
+  id:number,
+  userId:number,
+}
+
+export interface RecordPlayPathParams {
+  id:number,
+}
+
+export interface UpdatePlayPathParams {
+  id:number,
+  playId:number,
+}
+
+export interface DeletePlayPathParams {
+  id:number,
+  playId:number,
+}
+
+export interface GetChallengeStatsPathParams {
+  id:number,
 }
 
 export interface SearchRulesQueryParams {
@@ -292,6 +418,200 @@ params: FetchParams = {}) => {
          return this.request<void>({
            path: `/api/auth/refresh`,
            method: "POST",
+  ...params,
+         })
+      },
+/**
+* List current user's challenges
+ */
+listChallenges: ({ 
+query = {}, }: {query?: ListChallengesQueryParams,
+},
+params: FetchParams = {}) => {
+         return this.request<PaginatedResponse_for_ChallengeSummary>({
+           path: `/api/challenges`,
+           method: "GET",
+  query,
+  ...params,
+         })
+      },
+/**
+* Create a new challenge
+ */
+createChallenge: ({ 
+body, }: {body: CreateChallengeRequest,
+},
+params: FetchParams = {}) => {
+         return this.request<Challenge>({
+           path: `/api/challenges`,
+           method: "POST",
+  body,
+  ...params,
+         })
+      },
+/**
+* Get a challenge by ID
+ */
+getChallenge: ({ 
+path, }: {path: GetChallengePathParams,
+},
+params: FetchParams = {}) => {
+         return this.request<Challenge>({
+           path: `/api/challenges/${path.id}`,
+           method: "GET",
+  ...params,
+         })
+      },
+/**
+* Update a challenge
+ */
+updateChallenge: ({ 
+path, body, }: {path: UpdateChallengePathParams,
+body: UpdateChallengeRequest,
+},
+params: FetchParams = {}) => {
+         return this.request<Challenge>({
+           path: `/api/challenges/${path.id}`,
+           method: "PUT",
+  body,
+  ...params,
+         })
+      },
+/**
+* Delete a challenge
+ */
+deleteChallenge: ({ 
+path, }: {path: DeleteChallengePathParams,
+},
+params: FetchParams = {}) => {
+         return this.request<void>({
+           path: `/api/challenges/${path.id}`,
+           method: "DELETE",
+  ...params,
+         })
+      },
+/**
+* Assign a game to a challenge row
+ */
+assignGame: ({ 
+path, body, }: {path: AssignGamePathParams,
+body: AssignGameRequest,
+},
+params: FetchParams = {}) => {
+         return this.request<ChallengeGame>({
+           path: `/api/challenges/${path.id}/games`,
+           method: "POST",
+  body,
+  ...params,
+         })
+      },
+/**
+* Remove a game from a challenge
+ */
+removeGame: ({ 
+path, }: {path: RemoveGamePathParams,
+},
+params: FetchParams = {}) => {
+         return this.request<void>({
+           path: `/api/challenges/${path.id}/games/${path.gameId}`,
+           method: "DELETE",
+  ...params,
+         })
+      },
+/**
+* Get full grid view of a challenge
+ */
+getChallengeGrid: ({ 
+path, }: {path: GetChallengeGridPathParams,
+},
+params: FetchParams = {}) => {
+         return this.request<ChallengeGridView>({
+           path: `/api/challenges/${path.id}/grid`,
+           method: "GET",
+  ...params,
+         })
+      },
+/**
+* Add a participant to a challenge
+ */
+addParticipant: ({ 
+path, body, }: {path: AddParticipantPathParams,
+body: AddParticipantRequest,
+},
+params: FetchParams = {}) => {
+         return this.request<ChallengeParticipant>({
+           path: `/api/challenges/${path.id}/participants`,
+           method: "POST",
+  body,
+  ...params,
+         })
+      },
+/**
+* Remove a participant from a challenge
+ */
+removeParticipant: ({ 
+path, }: {path: RemoveParticipantPathParams,
+},
+params: FetchParams = {}) => {
+         return this.request<void>({
+           path: `/api/challenges/${path.id}/participants/${path.userId}`,
+           method: "DELETE",
+  ...params,
+         })
+      },
+/**
+* Record a play in a challenge
+ */
+recordPlay: ({ 
+path, body, }: {path: RecordPlayPathParams,
+body: RecordPlayRequest,
+},
+params: FetchParams = {}) => {
+         return this.request<ChallengePlayWithParticipants>({
+           path: `/api/challenges/${path.id}/plays`,
+           method: "POST",
+  body,
+  ...params,
+         })
+      },
+/**
+* Update a play
+ */
+updatePlay: ({ 
+path, body, }: {path: UpdatePlayPathParams,
+body: UpdatePlayRequest,
+},
+params: FetchParams = {}) => {
+         return this.request<ChallengePlayWithParticipants>({
+           path: `/api/challenges/${path.id}/plays/${path.playId}`,
+           method: "PUT",
+  body,
+  ...params,
+         })
+      },
+/**
+* Delete a play
+ */
+deletePlay: ({ 
+path, }: {path: DeletePlayPathParams,
+},
+params: FetchParams = {}) => {
+         return this.request<void>({
+           path: `/api/challenges/${path.id}/plays/${path.playId}`,
+           method: "DELETE",
+  ...params,
+         })
+      },
+/**
+* Get challenge stats and leaderboard
+ */
+getChallengeStats: ({ 
+path, }: {path: GetChallengeStatsPathParams,
+},
+params: FetchParams = {}) => {
+         return this.request<ChallengeStats>({
+           path: `/api/challenges/${path.id}/stats`,
+           method: "GET",
   ...params,
          })
       },

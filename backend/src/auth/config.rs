@@ -17,8 +17,8 @@ impl AuthConfig {
     pub fn from_env() -> Result<Self, String> {
         dotenvy::dotenv().ok();
 
-        let google_client_id = std::env::var("GOOGLE_CLIENT_ID")
-            .map_err(|_| "GOOGLE_CLIENT_ID must be set")?;
+        let google_client_id =
+            std::env::var("GOOGLE_CLIENT_ID").map_err(|_| "GOOGLE_CLIENT_ID must be set")?;
         let google_client_secret = std::env::var("GOOGLE_CLIENT_SECRET")
             .map_err(|_| "GOOGLE_CLIENT_SECRET must be set")?;
         let google_redirect_uri = std::env::var("GOOGLE_REDIRECT_URI")
@@ -42,8 +42,8 @@ impl AuthConfig {
             .unwrap_or_else(|_| "604800".to_string())
             .parse()
             .map_err(|_| "JWT_REFRESH_EXPIRY must be a number")?;
-        let frontend_url = std::env::var("FRONTEND_URL")
-            .unwrap_or_else(|_| "http://localhost:8080".to_string());
+        let frontend_url =
+            std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:8080".to_string());
 
         Ok(Self {
             google_client_id,

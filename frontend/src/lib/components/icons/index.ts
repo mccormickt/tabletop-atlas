@@ -7,3 +7,4 @@ export { default as SearchGlass } from './SearchGlass.svelte';
 export { default as ChatBubble } from './ChatBubble.svelte';
 export { default as Home } from './Home.svelte';
 export { default as Upload } from './Upload.svelte';
+export { default as Trophy } from './Trophy.svelte';
