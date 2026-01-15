@@ -1,6 +1,6 @@
 use chrono::Utc;
 use rusqlite::{Connection, Result as SqliteResult, Row};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 pub mod challenges;
 pub mod chat;
@@ -13,6 +13,19 @@ pub mod sessions;
 pub mod users;
 
 // Re-exports are available but not used globally to avoid namespace pollution
+
+/// Helper function to handle mutex poisoning errors with proper logging
+fn handle_mutex_poison<T>(err: PoisonError<T>) -> rusqlite::Error {
+    // This is a critical error - a thread panicked while holding the database lock
+    tracing::error!(
+        "Database mutex poisoned - previous thread panicked. Application may be in inconsistent state."
+    );
+    tracing::debug!("PoisonError details: {:?}", err);
+    rusqlite::Error::SqliteFailure(
+        rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_LOCKED),
+        Some("Database connection mutex poisoned".to_string()),
+    )
+}
 
 /// Database connection wrapper with utility methods
 #[derive(Clone)]
@@ -31,7 +44,7 @@ impl Database {
     where
         F: FnOnce(&Connection) -> SqliteResult<R>,
     {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(handle_mutex_poison)?;
         f(&conn)
     }
 
@@ -39,7 +52,7 @@ impl Database {
     where
         F: FnOnce(&Connection) -> SqliteResult<R>,
     {
-        let mut conn = self.conn.lock().unwrap();
+        let mut conn = self.conn.lock().map_err(handle_mutex_poison)?;
         let tx = conn.transaction()?;
         let result = f(&tx)?;
         tx.commit()?;

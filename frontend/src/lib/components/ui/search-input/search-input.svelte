@@ -21,7 +21,6 @@
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import { cn } from '$lib/utils.js';
-	import { createEventDispatcher } from 'svelte';
 
 	interface Props extends Omit<HTMLInputAttributes, 'size'> {
 		ref?: HTMLInputElement | null;
@@ -32,6 +31,7 @@
 		keyboardShortcut?: string;
 		onSearch?: (query: string) => void;
 		onClear?: () => void;
+		onInput?: (value: string) => void;
 		class?: string;
 		placeholder?: string;
 		disabled?: boolean;
@@ -46,22 +46,17 @@
 		keyboardShortcut,
 		onSearch,
 		onClear,
+		onInput,
 		class: className,
 		placeholder = 'Search...',
 		disabled = false,
 		...restProps
 	}: Props = $props();
 
-	const dispatch = createEventDispatcher<{
-		search: string;
-		clear: void;
-		input: string;
-	}>();
-
 	function handleInput(event: Event) {
 		const target = event.target as HTMLInputElement;
 		value = target.value;
-		dispatch('input', value);
+		onInput?.(value);
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -74,14 +69,12 @@
 	function handleSearch() {
 		if (value && value.trim()) {
 			onSearch?.(value.trim());
-			dispatch('search', value.trim());
 		}
 	}
 
 	function handleClear() {
 		value = '';
 		onClear?.();
-		dispatch('clear');
 		ref?.focus();
 	}
 </script>

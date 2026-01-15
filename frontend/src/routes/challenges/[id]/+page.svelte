@@ -2,13 +2,18 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { useAuth, type AuthState } from '$lib/stores/auth';
-	import { getStatusColor } from '$lib';
+	import { api, getStatusColor } from '$lib';
 	import { Button } from '$lib/components/ui/button';
 	import ChallengeGrid from '$lib/components/challenges/ChallengeGrid.svelte';
 	import Leaderboard from '$lib/components/challenges/Leaderboard.svelte';
 	import CellEditModal from '$lib/components/challenges/CellEditModal.svelte';
 	import GamePicker from '$lib/components/challenges/GamePicker.svelte';
-	import type { ChallengeGridView, ChallengeGame, ChallengePlayWithParticipants } from '$api/Api';
+	import type {
+		ChallengeGridView,
+		ChallengeGame,
+		ChallengePlayWithParticipants,
+		GameType
+	} from '$api/Api';
 
 	const auth = useAuth();
 
@@ -43,16 +48,16 @@
 		isLoading = true;
 		error = null;
 		try {
-			const response = await fetch(`/api/challenges/${$page.params.id}/grid`, {
-				credentials: 'include'
+			const result = await api.methods.getChallengeGrid({
+				path: { id: Number($page.params.id) }
 			});
-			if (response.ok) {
-				gridData = await response.json();
-			} else if (response.status === 401) {
+			if (result.type === 'success') {
+				gridData = result.data;
+			} else if (result.statusCode === 401) {
 				goto('/auth/login');
-			} else if (response.status === 403) {
+			} else if (result.statusCode === 403) {
 				error = 'You are not a participant in this challenge';
-			} else if (response.status === 404) {
+			} else if (result.statusCode === 404) {
 				error = 'Challenge not found';
 			} else {
 				error = 'Failed to load challenge';
@@ -81,23 +86,25 @@
 		if (selectedRowIndex === null || !gridData) return;
 
 		try {
-			const response = await fetch(`/api/challenges/${gridData.challenge.id}/games`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'include',
-				body: JSON.stringify({
+			const result = await api.methods.assignGame({
+				path: { id: gridData.challenge.id },
+				body: {
 					rowIndex: selectedRowIndex,
-					gameType,
+					gameType: gameType as GameType,
 					gameId,
 					displayName
-				})
+				}
 			});
 
-			if (response.ok) {
+			if (result.type === 'success') {
 				await loadGrid();
+			} else {
+				console.error('Failed to assign game:', result);
+				error = 'Failed to assign game. Please try again.';
 			}
 		} catch (e) {
 			console.error('Failed to assign game:', e);
+			error = 'Failed to assign game. Please try again.';
 		}
 
 		showGamePicker = false;

@@ -13,7 +13,6 @@
 		Trophy
 	} from '$lib/components/icons';
 	import { useHeader } from '$lib/stores/header';
-	import { onMount } from 'svelte';
 
 	const header = useHeader();
 	header.configure({
@@ -56,10 +55,16 @@
 
 	let totalGames = $state(0);
 	let loading = $state(true);
+	let initialized = $state(false);
 
-	onMount(async () => {
-		totalGames = await countGames();
-		loading = false;
+	$effect(() => {
+		if (!initialized) {
+			initialized = true;
+			countGames().then((count) => {
+				totalGames = count;
+				loading = false;
+			});
+		}
 	});
 </script>
 

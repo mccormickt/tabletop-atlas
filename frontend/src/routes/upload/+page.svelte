@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { api, type GameSummary, type RulesInfoResponse, type UploadResponse } from '$lib';
 	import { Button, GameBox, LoadingSpinner } from '$lib/components/ui';
@@ -28,8 +27,13 @@
 	let rulesInfo = $state<RulesInfoResponse | null>(null);
 	let uploadSuccess = $state(false);
 
-	onMount(() => {
-		loadGames();
+	let initialized = $state(false);
+
+	$effect(() => {
+		if (!initialized) {
+			initialized = true;
+			loadGames();
+		}
 	});
 
 	async function loadGames() {

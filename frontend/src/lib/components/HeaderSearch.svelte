@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { searchStore, searchUtils, type SearchState } from '$lib/stores/search';
 	import { Button } from '$lib/components/ui';
 	import { Badge } from '$lib/components/ui';
@@ -34,16 +33,24 @@
 		isModalOpen = state.isModalOpen;
 	});
 
-	onMount(() => {
-		// Load persisted search data
-		searchUtils.loadPersistedData();
+	let initialized = $state(false);
 
-		// Set current game context if provided
-		if (currentGame) {
-			searchUtils.setCurrentGame(currentGame);
+	// One-time initialization for persisted data
+	$effect(() => {
+		if (!initialized) {
+			initialized = true;
+			// Load persisted search data
+			searchUtils.loadPersistedData();
+
+			// Set current game context if provided
+			if (currentGame) {
+				searchUtils.setCurrentGame(currentGame);
+			}
 		}
+	});
 
-		// Initialize keyboard shortcuts
+	// Keyboard shortcuts with cleanup (separate effect)
+	$effect(() => {
 		const cleanup = initKeyboardShortcuts();
 		return cleanup;
 	});
