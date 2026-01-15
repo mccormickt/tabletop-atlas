@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api, type GameSummary, type SearchResult } from '$lib';
@@ -46,21 +45,26 @@
 		hasSearched = false;
 	});
 
-	onMount(() => {
-		const params = page.url.searchParams;
-		initialUrlParams.gameId = params.get('gameId');
-		initialUrlParams.query = params.get('q');
+	let initialized = $state(false);
 
-		loadGames();
+	$effect(() => {
+		if (!initialized) {
+			initialized = true;
+			const params = page.url.searchParams;
+			initialUrlParams.gameId = params.get('gameId');
+			initialUrlParams.query = params.get('q');
 
-		if (initialUrlParams.gameId) {
-			selectedGameId = parseInt(initialUrlParams.gameId);
+			loadGames();
+
+			if (initialUrlParams.gameId) {
+				selectedGameId = parseInt(initialUrlParams.gameId);
+			}
+			if (initialUrlParams.query) {
+				searchQuery = initialUrlParams.query;
+			}
+
+			hasInitialized = true;
 		}
-		if (initialUrlParams.query) {
-			searchQuery = initialUrlParams.query;
-		}
-
-		hasInitialized = true;
 	});
 
 	$effect(() => {

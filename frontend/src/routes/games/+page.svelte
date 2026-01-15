@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { api, type GameSummary } from '$lib';
 	import { Button, GameBox, LoadingSpinner } from '$lib/components/ui';
@@ -25,8 +24,13 @@
 	let showFilters = $state(false);
 	let filters = $state({});
 
-	onMount(() => {
-		loadGames(1);
+	let initialized = $state(false);
+
+	$effect(() => {
+		if (!initialized) {
+			initialized = true;
+			loadGames(1);
+		}
 	});
 
 	async function loadGames(page: number = 1) {

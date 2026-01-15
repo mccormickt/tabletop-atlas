@@ -2,6 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { EmptyState } from '$lib/components/ui/empty-state';
 	import ToolCard from '$lib/components/tools/ToolCard.svelte';
+	import { api } from '$lib';
 	import type { ToolSummary } from '$api/Api';
 
 	let tools = $state<ToolSummary[]>([]);
@@ -21,9 +22,9 @@
 		isLoading = true;
 		error = null;
 		try {
-			const response = await fetch('/api/tools');
-			if (response.ok) {
-				tools = await response.json();
+			const result = await api.methods.listTools({});
+			if (result.type === 'success') {
+				tools = result.data;
 			} else {
 				error = 'Failed to load tools';
 			}

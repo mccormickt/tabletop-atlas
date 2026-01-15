@@ -71,11 +71,12 @@ fn add_cors_headers(error: HttpError) -> HttpError {
     let cors_headers = default_cors_headers();
     error
         .with_header("Access-Control-Allow-Origin", &cors_headers.origin)
-        .expect("Failed to add CORS headers")
-        .with_header("Access-Control-Allow-Methods", &cors_headers.methods)
-        .expect("Failed to add CORS headers")
-        .with_header("Access-Control-Allow-Headers", &cors_headers.headers)
-        .expect("Failed to add CORS headers")
+        .and_then(|e| e.with_header("Access-Control-Allow-Methods", &cors_headers.methods))
+        .and_then(|e| e.with_header("Access-Control-Allow-Headers", &cors_headers.headers))
+        .unwrap_or_else(|e| {
+            tracing::warn!("Failed to add CORS headers: {:?}", e);
+            e.into()
+        })
 }
 
 #[derive(Serialize, JsonSchema)]

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { api, type Game, type UpdateGameRequest } from '$lib';
@@ -49,12 +48,17 @@
 		bggId: ''
 	});
 
-	onMount(() => {
-		if (gameId && !isNaN(gameId)) {
-			loadGame();
-		} else {
-			error = 'Invalid game ID';
-			loading = false;
+	let initialized = $state(false);
+
+	$effect(() => {
+		if (!initialized) {
+			initialized = true;
+			if (gameId && !isNaN(gameId)) {
+				loadGame();
+			} else {
+				error = 'Invalid game ID';
+				loading = false;
+			}
 		}
 	});
 
