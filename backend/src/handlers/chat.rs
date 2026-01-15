@@ -253,7 +253,7 @@ pub async fn chat_with_rules(
     let include_house_rules = session_history.session.include_house_rules;
 
     // 2. Save user message to database
-    let _user_message = chat::add_message_to_session(
+    let user_message = chat::add_message_to_session(
         &db,
         chat_request.session_id,
         crate::models::MessageRole::User,
@@ -391,9 +391,10 @@ Instructions:
         internal_error("Failed to save response".to_string())
     })?;
 
-    // 8. Return response with context sources
+    // 8. Return response with both messages and context sources
     let chat_response = ChatResponse {
-        message: assistant_message,
+        user_message,
+        assistant_message,
         context_sources,
     };
 
