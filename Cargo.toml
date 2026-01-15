@@ -47,3 +47,5 @@ hex = "0.4"
 cookie = { version = "0.18", features = ["secure"] }
 dotenvy = "0.15"
 urlencoding = "2.1"
+# Plugin registration for extensible tools
+inventory = "0.3"

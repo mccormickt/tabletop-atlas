@@ -163,6 +163,19 @@ pub async fn serve_challenges_views(
     serve_spa_fallback().await
 }
 
+/// Serve SPA for tools routes
+#[endpoint {
+    method = GET,
+    path = "/tools/{path:.*}",
+    unpublished = true,
+}]
+pub async fn serve_tools_views(
+    _rqctx: RequestContext<AppState>,
+    _path_param: DropPath<AssetPathParam>,
+) -> Result<Response<Body>, HttpError> {
+    serve_spa_fallback().await
+}
+
 async fn serve_static_file(path: &str) -> Result<Response<Body>, HttpError> {
     match FRONTEND_ASSETS.get_file(path) {
         Some(file) => serve_static_file_content(path, file.contents()).await,

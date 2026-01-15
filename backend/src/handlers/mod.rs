@@ -15,6 +15,7 @@ pub mod custom_games;
 pub mod games;
 pub mod house_rules;
 pub mod static_files;
+pub mod tools;
 pub mod upload;
 
 // Re-exports are available but not used globally to avoid namespace pollution

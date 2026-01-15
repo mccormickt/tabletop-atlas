@@ -37,6 +37,7 @@ hex.workspace = true
 cookie.workspace = true
 dotenvy.workspace = true
 urlencoding.workspace = true
+inventory.workspace = true
 
 [build-dependencies]
 # No build dependencies needed for now

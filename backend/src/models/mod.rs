@@ -9,6 +9,7 @@ pub mod custom_game;
 pub mod embedding;
 pub mod game;
 pub mod house_rule;
+pub mod tool;
 pub mod user;
 
 pub use challenge::*;
@@ -19,6 +20,8 @@ pub use embedding::*;
 pub use game::*;
 pub use house_rule::*;
 pub use user::*;
+
+// Note: tool module uses explicit imports (crate::models::tool::*) for clarity
 
 // Common types used across models
 pub type GameId = i64;
