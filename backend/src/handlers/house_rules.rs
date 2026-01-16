@@ -219,7 +219,7 @@ pub async fn create_house_rule(
 
 /// Update an existing house rule
 #[endpoint {
-    method = PUT,
+    method = PATCH,
     path = "/api/house-rules/{id}"
 }]
 pub async fn update_house_rule(

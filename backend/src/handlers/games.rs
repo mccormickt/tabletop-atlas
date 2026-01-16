@@ -104,7 +104,7 @@ pub async fn create_game(
 
 /// Update an existing game
 #[endpoint {
-    method = PUT,
+    method = PATCH,
     path = "/api/games/{id}"
 }]
 pub async fn update_game(

@@ -554,11 +554,11 @@ export interface GetChallengePathParams {
 	id: number;
 }
 
-export interface UpdateChallengePathParams {
+export interface DeleteChallengePathParams {
 	id: number;
 }
 
-export interface DeleteChallengePathParams {
+export interface UpdateChallengePathParams {
 	id: number;
 }
 
@@ -588,12 +588,12 @@ export interface RecordPlayPathParams {
 	id: number;
 }
 
-export interface UpdatePlayPathParams {
+export interface DeletePlayPathParams {
 	id: number;
 	playId: number;
 }
 
-export interface DeletePlayPathParams {
+export interface UpdatePlayPathParams {
 	id: number;
 	playId: number;
 }
@@ -627,11 +627,11 @@ export interface ListCollectionQueryParams {
 	page?: number;
 }
 
-export interface UpdateCollectionEntryPathParams {
+export interface RemoveFromCollectionPathParams {
 	id: number;
 }
 
-export interface RemoveFromCollectionPathParams {
+export interface UpdateCollectionEntryPathParams {
 	id: number;
 }
 
@@ -644,11 +644,11 @@ export interface GetCustomGamePathParams {
 	id: number;
 }
 
-export interface UpdateCustomGamePathParams {
+export interface DeleteCustomGamePathParams {
 	id: number;
 }
 
-export interface DeleteCustomGamePathParams {
+export interface UpdateCustomGamePathParams {
 	id: number;
 }
 
@@ -661,11 +661,11 @@ export interface GetGamePathParams {
 	id: number;
 }
 
-export interface UpdateGamePathParams {
+export interface DeleteGamePathParams {
 	id: number;
 }
 
-export interface DeleteGamePathParams {
+export interface UpdateGamePathParams {
 	id: number;
 }
 
@@ -691,11 +691,11 @@ export interface GetHouseRulePathParams {
 	id: number;
 }
 
-export interface UpdateHouseRulePathParams {
+export interface DeleteHouseRulePathParams {
 	id: number;
 }
 
-export interface DeleteHouseRulePathParams {
+export interface UpdateHouseRulePathParams {
 	id: number;
 }
 
@@ -802,6 +802,16 @@ export class Api extends HttpClient {
 			});
 		},
 		/**
+		 * Delete a challenge
+		 */
+		deleteChallenge: ({ path }: { path: DeleteChallengePathParams }, params: FetchParams = {}) => {
+			return this.request<void>({
+				path: `/api/challenges/${path.id}`,
+				method: 'DELETE',
+				...params
+			});
+		},
+		/**
 		 * Update a challenge
 		 */
 		updateChallenge: (
@@ -810,18 +820,8 @@ export class Api extends HttpClient {
 		) => {
 			return this.request<Challenge>({
 				path: `/api/challenges/${path.id}`,
-				method: 'PUT',
+				method: 'PATCH',
 				body,
-				...params
-			});
-		},
-		/**
-		 * Delete a challenge
-		 */
-		deleteChallenge: ({ path }: { path: DeleteChallengePathParams }, params: FetchParams = {}) => {
-			return this.request<void>({
-				path: `/api/challenges/${path.id}`,
-				method: 'DELETE',
 				...params
 			});
 		},
@@ -904,6 +904,16 @@ export class Api extends HttpClient {
 			});
 		},
 		/**
+		 * Delete a play
+		 */
+		deletePlay: ({ path }: { path: DeletePlayPathParams }, params: FetchParams = {}) => {
+			return this.request<void>({
+				path: `/api/challenges/${path.id}/plays/${path.playId}`,
+				method: 'DELETE',
+				...params
+			});
+		},
+		/**
 		 * Update a play
 		 */
 		updatePlay: (
@@ -912,18 +922,8 @@ export class Api extends HttpClient {
 		) => {
 			return this.request<ChallengePlayWithParticipants>({
 				path: `/api/challenges/${path.id}/plays/${path.playId}`,
-				method: 'PUT',
+				method: 'PATCH',
 				body,
-				...params
-			});
-		},
-		/**
-		 * Delete a play
-		 */
-		deletePlay: ({ path }: { path: DeletePlayPathParams }, params: FetchParams = {}) => {
-			return this.request<void>({
-				path: `/api/challenges/${path.id}/plays/${path.playId}`,
-				method: 'DELETE',
 				...params
 			});
 		},
@@ -1006,7 +1006,7 @@ export class Api extends HttpClient {
 		) => {
 			return this.request<ChatSession>({
 				path: `/api/chat/sessions/${path.id}`,
-				method: 'PUT',
+				method: 'PATCH',
 				body,
 				...params
 			});
@@ -1037,20 +1037,6 @@ export class Api extends HttpClient {
 			});
 		},
 		/**
-		 * Update a collection entry
-		 */
-		updateCollectionEntry: (
-			{ path, body }: { path: UpdateCollectionEntryPathParams; body: UpdateCollectionRequest },
-			params: FetchParams = {}
-		) => {
-			return this.request<CollectionEntry>({
-				path: `/api/collection/${path.id}`,
-				method: 'PUT',
-				body,
-				...params
-			});
-		},
-		/**
 		 * Remove a game from collection
 		 */
 		removeFromCollection: (
@@ -1060,6 +1046,20 @@ export class Api extends HttpClient {
 			return this.request<void>({
 				path: `/api/collection/${path.id}`,
 				method: 'DELETE',
+				...params
+			});
+		},
+		/**
+		 * Update a collection entry
+		 */
+		updateCollectionEntry: (
+			{ path, body }: { path: UpdateCollectionEntryPathParams; body: UpdateCollectionRequest },
+			params: FetchParams = {}
+		) => {
+			return this.request<CollectionEntry>({
+				path: `/api/collection/${path.id}`,
+				method: 'PATCH',
+				body,
 				...params
 			});
 		},
@@ -1099,20 +1099,6 @@ export class Api extends HttpClient {
 			});
 		},
 		/**
-		 * Update a custom game (owner only)
-		 */
-		updateCustomGame: (
-			{ path, body }: { path: UpdateCustomGamePathParams; body: UpdateCustomGameRequest },
-			params: FetchParams = {}
-		) => {
-			return this.request<CustomGame>({
-				path: `/api/custom-games/${path.id}`,
-				method: 'PUT',
-				body,
-				...params
-			});
-		},
-		/**
 		 * Delete a custom game (owner only)
 		 */
 		deleteCustomGame: (
@@ -1122,6 +1108,20 @@ export class Api extends HttpClient {
 			return this.request<void>({
 				path: `/api/custom-games/${path.id}`,
 				method: 'DELETE',
+				...params
+			});
+		},
+		/**
+		 * Update a custom game (owner only)
+		 */
+		updateCustomGame: (
+			{ path, body }: { path: UpdateCustomGamePathParams; body: UpdateCustomGameRequest },
+			params: FetchParams = {}
+		) => {
+			return this.request<CustomGame>({
+				path: `/api/custom-games/${path.id}`,
+				method: 'PATCH',
+				body,
 				...params
 			});
 		},
@@ -1158,6 +1158,16 @@ export class Api extends HttpClient {
 			});
 		},
 		/**
+		 * Delete a game
+		 */
+		deleteGame: ({ path }: { path: DeleteGamePathParams }, params: FetchParams = {}) => {
+			return this.request<void>({
+				path: `/api/games/${path.id}`,
+				method: 'DELETE',
+				...params
+			});
+		},
+		/**
 		 * Update an existing game
 		 */
 		updateGame: (
@@ -1166,18 +1176,8 @@ export class Api extends HttpClient {
 		) => {
 			return this.request<Game>({
 				path: `/api/games/${path.id}`,
-				method: 'PUT',
+				method: 'PATCH',
 				body,
-				...params
-			});
-		},
-		/**
-		 * Delete a game
-		 */
-		deleteGame: ({ path }: { path: DeleteGamePathParams }, params: FetchParams = {}) => {
-			return this.request<void>({
-				path: `/api/games/${path.id}`,
-				method: 'DELETE',
 				...params
 			});
 		},
@@ -1244,6 +1244,16 @@ export class Api extends HttpClient {
 			});
 		},
 		/**
+		 * Delete a house rule
+		 */
+		deleteHouseRule: ({ path }: { path: DeleteHouseRulePathParams }, params: FetchParams = {}) => {
+			return this.request<void>({
+				path: `/api/house-rules/${path.id}`,
+				method: 'DELETE',
+				...params
+			});
+		},
+		/**
 		 * Update an existing house rule
 		 */
 		updateHouseRule: (
@@ -1252,18 +1262,8 @@ export class Api extends HttpClient {
 		) => {
 			return this.request<HouseRule>({
 				path: `/api/house-rules/${path.id}`,
-				method: 'PUT',
+				method: 'PATCH',
 				body,
-				...params
-			});
-		},
-		/**
-		 * Delete a house rule
-		 */
-		deleteHouseRule: ({ path }: { path: DeleteHouseRulePathParams }, params: FetchParams = {}) => {
-			return this.request<void>({
-				path: `/api/house-rules/${path.id}`,
-				method: 'DELETE',
 				...params
 			});
 		},

@@ -64,7 +64,7 @@ pub async fn add_to_collection(
 
 /// Update a collection entry
 #[endpoint {
-    method = PUT,
+    method = PATCH,
     path = "/api/collection/{id}",
     tags = ["collection"]
 }]

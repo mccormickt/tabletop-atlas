@@ -129,7 +129,7 @@ pub async fn create_chat_session(
 
 /// Update a chat session (e.g., toggle include_house_rules)
 #[endpoint {
-    method = PUT,
+    method = PATCH,
     path = "/api/chat/sessions/{id}"
 }]
 pub async fn update_chat_session(

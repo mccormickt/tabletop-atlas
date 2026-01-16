@@ -120,7 +120,7 @@ pub async fn get_custom_game(
 
 /// Update a custom game (owner only)
 #[endpoint {
-    method = PUT,
+    method = PATCH,
     path = "/api/custom-games/{id}",
     tags = ["custom_games"]
 }]

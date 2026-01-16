@@ -61,7 +61,7 @@ pub fn forbidden_error(message: String) -> HttpError {
 fn default_cors_headers() -> CorsHeaders {
     CorsHeaders {
         origin: String::from("*"),
-        methods: String::from("GET, POST, PUT, DELETE, OPTIONS"),
+        methods: String::from("GET, POST, PUT, PATCH, DELETE, OPTIONS"),
         headers: String::from("Content-Type, Authorization"),
     }
 }

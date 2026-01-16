@@ -164,7 +164,7 @@ pub async fn get_challenge(
 
 /// Update a challenge
 #[endpoint {
-    method = PUT,
+    method = PATCH,
     path = "/api/challenges/{id}",
     tags = ["challenges"]
 }]
@@ -446,7 +446,7 @@ pub async fn record_play(
 
 /// Update a play
 #[endpoint {
-    method = PUT,
+    method = PATCH,
     path = "/api/challenges/{id}/plays/{play_id}",
     tags = ["challenges"]
 }]
