@@ -78,7 +78,8 @@ pub struct ChatRequest {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ChatResponse {
-    pub message: ChatMessage,
+    pub user_message: ChatMessage,
+    pub assistant_message: ChatMessage,
     pub context_sources: Vec<ContextSource>,
 }
 

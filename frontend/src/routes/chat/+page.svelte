@@ -28,8 +28,21 @@
 
 	let showGameDrawer = $state(false);
 	let showSessionDrawer = $state(false);
+	let chatMessagesContainer: HTMLDivElement | null = $state(null);
 
 	let includeHouseRules = $derived(currentSession?.session.includeHouseRules ?? true);
+
+	function scrollToBottom() {
+		if (chatMessagesContainer) {
+			// Use requestAnimationFrame to ensure DOM has updated
+			requestAnimationFrame(() => {
+				chatMessagesContainer?.scrollTo({
+					top: chatMessagesContainer.scrollHeight,
+					behavior: 'smooth'
+				});
+			});
+		}
+	}
 
 	let initialized = $state(false);
 
@@ -187,6 +200,21 @@
 		const messageText = newMessage.trim();
 		newMessage = '';
 
+		// Optimistically add user message to the UI immediately
+		const optimisticUserMessage = {
+			id: -1, // Temporary ID
+			sessionId: currentSession.session.id,
+			role: 'user' as const,
+			content: messageText,
+			contextChunks: null,
+			createdAt: new Date().toISOString()
+		};
+		currentSession = {
+			...currentSession,
+			messages: [...currentSession.messages, optimisticUserMessage]
+		};
+		scrollToBottom();
+
 		try {
 			const result = await api.methods.chatWithRules({
 				body: {
@@ -196,13 +224,33 @@
 			});
 
 			if (result.type === 'success') {
-				await loadChatSession(currentSession.session.id);
+				// Replace optimistic message with real user message and append assistant response
+				const messagesWithoutOptimistic = currentSession.messages.filter((m) => m.id !== -1);
+				currentSession = {
+					...currentSession,
+					messages: [
+						...messagesWithoutOptimistic,
+						result.data.userMessage,
+						result.data.assistantMessage
+					]
+				};
+				scrollToBottom();
 			} else {
 				error = 'Failed to send message';
+				// Remove optimistic message on error
+				currentSession = {
+					...currentSession,
+					messages: currentSession.messages.filter((m) => m.id !== -1)
+				};
 				newMessage = messageText;
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
+			// Remove optimistic message on error
+			currentSession = {
+				...currentSession,
+				messages: currentSession.messages.filter((m) => m.id !== -1)
+			};
 			newMessage = messageText;
 		} finally {
 			sendingMessage = false;
@@ -468,7 +516,10 @@
 						</div>
 
 						<!-- Messages - Parchment Scroll Style -->
-						<div class="paper-texture flex-1 space-y-4 overflow-y-auto p-4">
+						<div
+							bind:this={chatMessagesContainer}
+							class="paper-texture flex-1 space-y-4 overflow-y-auto p-4"
+						>
 							{#if loadingCurrentSession}
 								<div class="flex items-center justify-center py-8">
 									<LoadingSpinner text="Loading conversation..." />
@@ -533,6 +584,41 @@
 										</div>
 									</div>
 								{/each}
+
+								<!-- Typing indicator while waiting for AI response -->
+								{#if sendingMessage}
+									<div class="flex items-start gap-3">
+										<div class="flex-shrink-0">
+											<div
+												class="bg-game-purple flex h-10 w-10 items-center justify-center rounded-full shadow-md"
+											>
+												<Dice size={20} value={6} class="text-white" />
+											</div>
+										</div>
+										<div class="max-w-[80%] min-w-0 flex-1">
+											<div class="mb-1 flex items-center gap-2">
+												<Badge variant="outline" class="font-ui text-xs">Game Master</Badge>
+											</div>
+											<div
+												class="bg-card border-border rounded-lg rounded-tl-none border-2 p-3 shadow-sm"
+											>
+												<div class="flex items-center gap-2">
+													<div class="flex gap-1">
+														<span
+															class="bg-muted-foreground h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]"
+														></span>
+														<span
+															class="bg-muted-foreground h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]"
+														></span>
+														<span class="bg-muted-foreground h-2 w-2 animate-bounce rounded-full"
+														></span>
+													</div>
+													<span class="text-muted-foreground font-body text-sm">Thinking...</span>
+												</div>
+											</div>
+										</div>
+									</div>
+								{/if}
 							{/if}
 						</div>
 

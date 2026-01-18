@@ -170,7 +170,11 @@ export type ContextSource = {
 	sourceType: string;
 };
 
-export type ChatResponse = { contextSources: ContextSource[]; message: ChatMessage };
+export type ChatResponse = {
+	assistantMessage: ChatMessage;
+	contextSources: ContextSource[];
+	userMessage: ChatMessage;
+};
 
 export type ChatSessionSummary = {
 	createdAt: Date;
