@@ -1,7 +1,9 @@
-use super::{format_datetime_for_db, format_now_for_db, parse_datetime, query_row_optional, Database};
+use super::{
+    Database, format_datetime_for_db, format_now_for_db, parse_datetime, query_row_optional,
+};
 use crate::models::{Session, SessionId, UserId};
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Result as SqliteResult};
+use rusqlite::{Result as SqliteResult, params};
 use sha2::{Digest, Sha256};
 
 fn hash_token(token: &str) -> String {
@@ -63,15 +65,17 @@ pub async fn find_valid_session(
             "#,
         )?;
 
-        query_row_optional(stmt.query_row(params![session_id, token_hash, now_str], |row| {
-            Ok(Session {
-                id: row.get(0)?,
-                user_id: row.get(1)?,
-                refresh_token_hash: row.get(2)?,
-                expires_at: parse_datetime(row, "expires_at")?,
-                created_at: parse_datetime(row, "created_at")?,
-            })
-        }))
+        query_row_optional(
+            stmt.query_row(params![session_id, token_hash, now_str], |row| {
+                Ok(Session {
+                    id: row.get(0)?,
+                    user_id: row.get(1)?,
+                    refresh_token_hash: row.get(2)?,
+                    expires_at: parse_datetime(row, "expires_at")?,
+                    created_at: parse_datetime(row, "created_at")?,
+                })
+            }),
+        )
     })
 }
 

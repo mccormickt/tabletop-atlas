@@ -139,14 +139,7 @@ pub async fn list_house_rules(
     let query = query.into_inner();
     let db = app_state.db();
 
-    match house_rules::list_house_rules(
-        &db,
-        query.game_id,
-        query.page,
-        query.limit,
-    )
-    .await
-    {
+    match house_rules::list_house_rules(&db, query.game_id, query.page, query.limit).await {
         Ok(result) => success_response(result),
         Err(e) => {
             tracing::error!("Failed to list house rules: {}", e);

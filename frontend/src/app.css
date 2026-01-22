@@ -186,6 +186,118 @@
 	}
 }
 
+@layer components {
+	/* Chat markdown prose styling */
+	.prose-chat {
+		/* Tables */
+		& table {
+			@apply w-full border-collapse overflow-hidden rounded-lg;
+			@apply border-wood-dark border-2;
+		}
+
+		& thead {
+			@apply bg-wood-dark text-parchment;
+		}
+
+		& th {
+			@apply border-wood-dark border px-3 py-2 text-left font-semibold;
+			font-family: var(--font-display);
+		}
+
+		& td {
+			@apply border-border border px-3 py-2;
+		}
+
+		& tbody tr:hover {
+			@apply bg-parchment-dark/30;
+		}
+
+		/* Code blocks */
+		& pre {
+			@apply bg-wood-dark text-parchment overflow-x-auto rounded-lg p-4;
+			@apply border-wood-dark border-2;
+		}
+
+		& code {
+			@apply bg-muted text-game-orange rounded px-1.5 py-0.5 text-sm;
+			font-family: var(--font-ui);
+		}
+
+		& pre code {
+			@apply bg-transparent p-0 text-inherit;
+		}
+
+		/* Links */
+		& a {
+			@apply text-game-blue decoration-game-blue/50 underline;
+			@apply hover:text-game-orange hover:decoration-game-orange;
+			@apply transition-colors;
+		}
+
+		/* Headings */
+		& h1,
+		& h2,
+		& h3,
+		& h4 {
+			@apply font-semibold;
+			font-family: var(--font-display);
+		}
+
+		/* Blockquotes */
+		& blockquote {
+			@apply border-game-blue bg-muted/50 border-l-4 py-2 pl-4 italic;
+		}
+
+		/* Horizontal rules */
+		& hr {
+			@apply border-wood-dark;
+		}
+
+		/* Lists */
+		& ul {
+			@apply list-disc pl-6;
+		}
+
+		& ol {
+			@apply list-decimal pl-6;
+		}
+
+		& li {
+			@apply my-1;
+		}
+
+		/* Code block wrapper for copy button */
+		& .code-block-wrapper {
+			@apply relative;
+		}
+
+		& .copy-btn {
+			@apply bg-parchment text-foreground absolute top-2 right-2 rounded px-2 py-1 text-xs;
+			@apply opacity-0 transition-opacity;
+			font-family: var(--font-ui);
+		}
+
+		& .code-block-wrapper:hover .copy-btn {
+			@apply opacity-100;
+		}
+	}
+
+	/* Dark mode overrides for prose-chat */
+	.dark .prose-chat {
+		& thead {
+			@apply bg-felt-green text-parchment;
+		}
+
+		& pre {
+			@apply border-border bg-felt-green;
+		}
+
+		& tbody tr:hover {
+			@apply bg-felt-green/30;
+		}
+	}
+}
+
 /* ===== Boardgame Decorative Utility Classes ===== */
 
 /* Game Box Lid Container - Main content containers with decorative border */

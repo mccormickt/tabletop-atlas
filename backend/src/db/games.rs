@@ -1,9 +1,9 @@
-use super::{format_now_for_db, parse_datetime, query_row_optional, Database, PaginationInfo};
+use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
     CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, RulesInfoResponse,
     UpdateGameRequest,
 };
-use rusqlite::{params, Result as SqliteResult, Row};
+use rusqlite::{Result as SqliteResult, Row, params};
 
 /// Map a database row to a Game struct
 fn row_to_game(row: &Row) -> SqliteResult<Game> {

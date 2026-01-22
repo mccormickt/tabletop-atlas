@@ -469,7 +469,9 @@ pub async fn update_play(
         .map_err(|e| internal_error(format!("Database error: {}", e)))?;
 
     if !play_valid {
-        return Err(not_found_error("Play not found in this challenge".to_string()));
+        return Err(not_found_error(
+            "Play not found in this challenge".to_string(),
+        ));
     }
 
     // Validate all play participants are challenge participants if provided
@@ -518,7 +520,9 @@ pub async fn delete_play(
         .map_err(|e| internal_error(format!("Database error: {}", e)))?;
 
     if !play_valid {
-        return Err(not_found_error("Play not found in this challenge".to_string()));
+        return Err(not_found_error(
+            "Play not found in this challenge".to_string(),
+        ));
     }
 
     let deleted = challenges::delete_play(&db, path.play_id)

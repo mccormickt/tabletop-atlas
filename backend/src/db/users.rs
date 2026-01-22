@@ -1,6 +1,6 @@
-use super::{format_now_for_db, parse_datetime, query_row_optional, Database};
+use super::{Database, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{CreateUserRequest, User, UserId};
-use rusqlite::{params, Result as SqliteResult, Row};
+use rusqlite::{Result as SqliteResult, Row, params};
 
 /// Map a database row to a User struct
 fn row_to_user(row: &Row) -> SqliteResult<User> {

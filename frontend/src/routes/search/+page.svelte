@@ -298,65 +298,65 @@
 		<div class="min-w-0 flex-1 space-y-6">
 			<!-- Search Form -->
 			<GameBox variant="default" class="p-6">
-					<form onsubmit={handleSearchSubmit} class="space-y-4">
-						<div class="flex gap-2">
-							<div class="relative flex-1">
-								<SearchGlass
-									size={18}
-									class="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2"
-								/>
-								<Input
-									bind:value={searchQuery}
-									placeholder="e.g. win conditions, combat, movement..."
-									disabled={!selectedGameId || !selectedGame?.hasRulesPdf || searching}
-									class="bg-card pl-10"
-								/>
-							</div>
-							<Button
-								type="submit"
-								variant="game-primary"
-								disabled={!selectedGameId ||
-									!selectedGame?.hasRulesPdf ||
-									!searchQuery.trim() ||
-									searching}
+				<form onsubmit={handleSearchSubmit} class="space-y-4">
+					<div class="flex gap-2">
+						<div class="relative flex-1">
+							<SearchGlass
+								size={18}
+								class="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2"
+							/>
+							<Input
+								bind:value={searchQuery}
+								placeholder="e.g. win conditions, combat, movement..."
+								disabled={!selectedGameId || !selectedGame?.hasRulesPdf || searching}
+								class="bg-card pl-10"
+							/>
+						</div>
+						<Button
+							type="submit"
+							variant="game-primary"
+							disabled={!selectedGameId ||
+								!selectedGame?.hasRulesPdf ||
+								!searchQuery.trim() ||
+								searching}
+						>
+							{#if searching}
+								<LoadingSpinner size="sm" />
+							{:else}
+								Search
+							{/if}
+						</Button>
+					</div>
+
+					<div class="flex items-center justify-between">
+						<p class="text-muted-foreground font-ui text-xs">
+							For Q&A, try our <a
+								href="/chat"
+								class="text-game-blue inline-flex items-center gap-1 hover:underline"
 							>
-								{#if searching}
-									<LoadingSpinner size="sm" />
-								{:else}
-									Search
-								{/if}
-							</Button>
+								<ChatBubble size={12} /> Chat
+							</a>
+						</p>
+						<div class="flex items-center gap-2">
+							<Label for="searchLimit" class="text-muted-foreground text-xs">Results:</Label>
+							<Input
+								id="searchLimit"
+								type="number"
+								bind:value={searchLimit}
+								min="1"
+								max="20"
+								disabled={searching}
+								class="h-8 w-16 text-center text-sm"
+							/>
 						</div>
+					</div>
+				</form>
 
-						<div class="flex items-center justify-between">
-							<p class="text-muted-foreground font-ui text-xs">
-								For Q&A, try our <a
-									href="/chat"
-									class="text-game-blue inline-flex items-center gap-1 hover:underline"
-								>
-									<ChatBubble size={12} /> Chat
-								</a>
-							</p>
-							<div class="flex items-center gap-2">
-								<Label for="searchLimit" class="text-muted-foreground text-xs">Results:</Label>
-								<Input
-									id="searchLimit"
-									type="number"
-									bind:value={searchLimit}
-									min="1"
-									max="20"
-									disabled={searching}
-									class="h-8 w-16 text-center text-sm"
-								/>
-							</div>
-						</div>
-					</form>
-
-					{#if error}
-						<div class="border-game-red bg-game-red/10 mt-4 rounded-lg border-2 p-3">
-							<p class="text-game-red font-ui text-sm">{error}</p>
-						</div>
-					{/if}
+				{#if error}
+					<div class="border-game-red bg-game-red/10 mt-4 rounded-lg border-2 p-3">
+						<p class="text-game-red font-ui text-sm">{error}</p>
+					</div>
+				{/if}
 			</GameBox>
 
 			<!-- Search Results - Card Sleeves -->

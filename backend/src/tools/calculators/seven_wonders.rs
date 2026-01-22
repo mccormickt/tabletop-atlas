@@ -1,8 +1,8 @@
 use crate::models::tool::{PlayerScoreResult, ScoreInput, ScoreOutput};
+use crate::tools::GameTool;
 use crate::tools::scoring::{
     Expansion, InputType, ScoringCategory, ScoringRule, ScoringSchema, ToolError, ToolType,
 };
-use crate::tools::GameTool;
 use std::collections::HashMap;
 
 pub struct SevenWondersScorer;
@@ -151,7 +151,13 @@ impl GameTool for SevenWondersScorer {
 
             // Direct scoring categories (including military)
             for cat in [
-                "military", "wonders", "civilian", "commercial", "guilds", "leaders", "cities",
+                "military",
+                "wonders",
+                "civilian",
+                "commercial",
+                "guilds",
+                "leaders",
+                "cities",
             ] {
                 if let Some(&v) = player.scores.get(cat) {
                     category_scores.insert(cat.to_string(), v);

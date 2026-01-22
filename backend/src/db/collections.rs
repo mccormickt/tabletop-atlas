@@ -1,9 +1,9 @@
-use super::{format_now_for_db, parse_datetime, Database, PaginationInfo};
+use super::{Database, PaginationInfo, format_now_for_db, parse_datetime};
 use crate::models::{
     AddToCollectionRequest, CollectionEntry, CollectionEntryId, CollectionEntryWithGame,
     PaginatedResponse, UpdateCollectionRequest, UserId,
 };
-use rusqlite::{params, Result as SqliteResult, Row};
+use rusqlite::{Result as SqliteResult, Row, params};
 
 /// Map a database row to a CollectionEntry struct
 fn row_to_collection_entry(row: &Row) -> SqliteResult<CollectionEntry> {
@@ -148,7 +148,9 @@ pub async fn update_collection_entry(
             "#,
         )?;
 
-        Ok(Some(stmt.query_row(params![entry_id], row_to_collection_entry)?))
+        Ok(Some(
+            stmt.query_row(params![entry_id], row_to_collection_entry)?,
+        ))
     })
 }
 

@@ -1,14 +1,14 @@
-use dropshot::{endpoint, HttpError, Path, RequestContext, TypedBody};
+use dropshot::{HttpError, Path, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashSet;
 
+use crate::AppState;
 use crate::models::tool::{PlayerRange, ScoreInput, ScoreOutput, ToolDetails, ToolSummary};
 use crate::tools;
 use crate::tools::GameTool;
-use crate::AppState;
 
-use super::{bad_request_error, not_found_error, success_response, HttpOk};
+use super::{HttpOk, bad_request_error, not_found_error, success_response};
 
 /// Maximum allowed length for player names
 const MAX_PLAYER_NAME_LENGTH: usize = 100;
@@ -118,8 +118,8 @@ pub async fn get_tool(
 ) -> Result<HttpOk<ToolDetails>, HttpError> {
     let tool_id = &path.into_inner().tool_id;
 
-    let tool =
-        tools::get_tool(tool_id).ok_or_else(|| not_found_error(format!("Tool not found: {}", tool_id)))?;
+    let tool = tools::get_tool(tool_id)
+        .ok_or_else(|| not_found_error(format!("Tool not found: {}", tool_id)))?;
 
     let details = ToolDetails {
         id: tool.tool_id().to_string(),
@@ -145,8 +145,8 @@ pub async fn calculate_scores(
     let tool_id = &path.into_inner().tool_id;
     let input = body.into_inner();
 
-    let tool =
-        tools::get_tool(tool_id).ok_or_else(|| not_found_error(format!("Tool not found: {}", tool_id)))?;
+    let tool = tools::get_tool(tool_id)
+        .ok_or_else(|| not_found_error(format!("Tool not found: {}", tool_id)))?;
 
     // Validate input before processing
     validate_score_input(&input, tool).map_err(bad_request_error)?;

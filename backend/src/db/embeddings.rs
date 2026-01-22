@@ -1,11 +1,11 @@
-use rusqlite::{params, Result as SqliteResult};
+use rusqlite::{Result as SqliteResult, params};
 
 use crate::models::{
     CreateEmbeddingRequest, Embedding, EmbeddingId, EmbeddingSearchResult, EmbeddingSourceType,
     GameId, HouseRuleId, SimilaritySearchRequest,
 };
 
-use super::{format_now_for_db, parse_datetime, Database};
+use super::{Database, format_now_for_db, parse_datetime};
 
 /// Type alias for embedding metadata from database queries
 type EmbeddingMetadataRow = (i64, String, String, Option<i64>, Option<String>);

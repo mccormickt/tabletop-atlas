@@ -1,4 +1,4 @@
-use super::{format_now_for_db, parse_datetime, query_row_optional, Database, PaginationInfo};
+use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
     AddParticipantRequest, AssignGameRequest, Challenge, ChallengeGame, ChallengeGameId,
     ChallengeId, ChallengeParticipant, ChallengePlay, ChallengePlayId,
@@ -7,7 +7,7 @@ use crate::models::{
     RecordPlayRequest, UpdateChallengeRequest, UpdatePlayRequest, UserId,
 };
 use chrono::{NaiveDate, Utc};
-use rusqlite::{params, Result as SqliteResult, Row};
+use rusqlite::{Result as SqliteResult, Row, params};
 
 fn parse_date(row: &Row, column: &str) -> SqliteResult<Option<NaiveDate>> {
     let date_str: Option<String> = row.get(column)?;

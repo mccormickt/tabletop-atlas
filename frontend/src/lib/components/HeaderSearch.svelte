@@ -123,7 +123,7 @@
 				onkeydown={handleKeydown}
 				type="text"
 				placeholder="Search games..."
-				class="bg-card border-game-blue ring-game-blue/20 h-9 w-64 rounded-full border-2 py-1 pr-3 pl-9 text-sm shadow-lg outline-none ring-2"
+				class="bg-card border-game-blue ring-game-blue/20 h-9 w-64 rounded-full border-2 py-1 pr-3 pl-9 text-sm shadow-lg ring-2 outline-none"
 			/>
 		</div>
 	{:else}
@@ -137,7 +137,9 @@
 		>
 			<SearchGlass size={16} class="text-muted-foreground" />
 			<span class="text-foreground">Search Games</span>
-			<span class="bg-foreground/10 text-muted-foreground rounded px-1.5 py-0.5 text-xs">{getShortcutText()}</span>
+			<span class="bg-foreground/10 text-muted-foreground rounded px-1.5 py-0.5 text-xs"
+				>{getShortcutText()}</span
+			>
 		</button>
 	{/if}
 

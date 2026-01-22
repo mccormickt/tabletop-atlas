@@ -1,9 +1,9 @@
-use super::{format_now_for_db, parse_datetime, query_row_optional, Database, PaginationInfo};
+use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
     ChatHistory, ChatMessage, ChatSession, ChatSessionId, ChatSessionSummary,
     CreateChatSessionRequest, GameId, PaginatedResponse, UpdateChatSessionRequest,
 };
-use rusqlite::{params, Result as SqliteResult, Row};
+use rusqlite::{Result as SqliteResult, Row, params};
 
 /// Map a database row to a ChatSession struct
 fn row_to_chat_session(row: &Row) -> SqliteResult<ChatSession> {

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { browser } from '$app/environment';
 	import { api, type GameSummary, type ChatSessionSummary, type ChatHistory } from '$lib';
 	import {
 		Button,
@@ -13,6 +14,79 @@
 	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
 	import { Meeple, Dice, GameBoxIcon, Rulebook, ChatBubble } from '$lib/components/icons';
 	import { page } from '$app/state';
+	import { marked } from 'marked';
+	import DOMPurify from 'dompurify';
+
+	// Configure marked for synchronous parsing
+	marked.setOptions({
+		async: false,
+		gfm: true, // GitHub Flavored Markdown
+		breaks: true // Convert \n to <br>
+	});
+
+	// Wrap code blocks with a container for copy button functionality
+	function wrapCodeBlocks(html: string): string {
+		return html.replace(
+			/<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
+			`<div class="code-block-wrapper">
+				<button class="copy-btn" onclick="window.copyCodeBlock(this)">Copy</button>
+				<pre><code$1>$2</code></pre>
+			</div>`
+		);
+	}
+
+	function parseMarkdown(content: string): string {
+		const rawHtml = marked.parse(content) as string;
+		const sanitized = DOMPurify.sanitize(rawHtml, {
+			ALLOWED_TAGS: [
+				'p',
+				'br',
+				'strong',
+				'em',
+				'ul',
+				'ol',
+				'li',
+				'h1',
+				'h2',
+				'h3',
+				'h4',
+				'h5',
+				'h6',
+				'blockquote',
+				'pre',
+				'code',
+				'a',
+				'table',
+				'thead',
+				'tbody',
+				'tr',
+				'th',
+				'td',
+				'hr',
+				'del',
+				'sup',
+				'sub',
+				'div',
+				'button'
+			],
+			ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'onclick']
+		});
+		return wrapCodeBlocks(sanitized);
+	}
+
+	// Register copy function on window for onclick handlers in sanitized HTML
+	if (browser) {
+		(
+			window as Window & { copyCodeBlock?: (button: HTMLButtonElement) => Promise<void> }
+		).copyCodeBlock = async (button: HTMLButtonElement) => {
+			const pre = button.closest('.code-block-wrapper')?.querySelector('pre');
+			if (pre) {
+				await navigator.clipboard.writeText(pre.textContent || '');
+				button.textContent = 'Copied!';
+				setTimeout(() => (button.textContent = 'Copy'), 2000);
+			}
+		};
+	}
 
 	let games = $state<GameSummary[]>([]);
 	let selectedGame = $state<GameSummary | null>(null);
@@ -579,7 +653,16 @@
 													? 'bg-game-blue rounded-tr-none text-white'
 													: 'bg-card border-border rounded-tl-none border-2'}"
 											>
-												<p class="font-body text-sm whitespace-pre-wrap">{message.content}</p>
+												{#if message.role === 'assistant'}
+													<div
+														class="prose prose-sm prose-chat font-body dark:prose-invert max-w-none overflow-x-auto"
+													>
+														<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+														{@html parseMarkdown(message.content)}
+													</div>
+												{:else}
+													<p class="font-body text-sm whitespace-pre-wrap">{message.content}</p>
+												{/if}
 											</div>
 										</div>
 									</div>
