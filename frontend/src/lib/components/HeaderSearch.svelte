@@ -5,25 +5,12 @@
 
 	// State
 	let query = $state('');
-	let games = $state<GameSummary[]>([]);
-	let filteredGames = $derived(
-		query.trim()
-			? games.filter((g) => g.name.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
-			: []
-	);
+	let searchResults = $state<GameSummary[]>([]);
 	let isOpen = $state(false);
-	let isLoading = $state(true);
+	let isLoading = $state(false);
 	let inputElement = $state<HTMLInputElement | null>(null);
 	let selectedIndex = $state(-1);
-
-	// Load games on mount
-	let initialized = $state(false);
-	$effect(() => {
-		if (!initialized) {
-			initialized = true;
-			loadGames();
-		}
-	});
+	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Keyboard shortcut (Cmd/Ctrl + K)
 	$effect(() => {
@@ -45,21 +32,47 @@
 		return () => document.removeEventListener('keydown', handleKeydown);
 	});
 
-	// Reset selection when filtered results change
+	// Debounced search when query changes
 	$effect(() => {
-		void filteredGames;
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+
+		if (!query.trim()) {
+			searchResults = [];
+			isLoading = false;
+			return;
+		}
+
+		isLoading = true;
+		searchTimeout = setTimeout(() => {
+			searchGames(query.trim());
+		}, 200);
+
+		return () => {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout);
+			}
+		};
+	});
+
+	// Reset selection when results change
+	$effect(() => {
+		void searchResults;
 		selectedIndex = -1;
 	});
 
-	async function loadGames() {
-		isLoading = true;
+	async function searchGames(searchQuery: string) {
 		try {
-			const result = await api.methods.listGames({ query: { limit: 100 } });
+			const result = await api.methods.listGames({
+				query: { limit: 10, search: searchQuery }
+			});
 			if (result.type === 'success') {
-				games = result.data.items;
+				searchResults = result.data.items;
 			}
 		} catch {
-			// Silently fail - search just won't work
+			// Silently fail
+			searchResults = [];
 		} finally {
 			isLoading = false;
 		}
@@ -78,17 +91,17 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (!isOpen || filteredGames.length === 0) return;
+		if (!isOpen || searchResults.length === 0) return;
 
 		if (event.key === 'ArrowDown' || (event.key === 'Tab' && !event.shiftKey)) {
 			event.preventDefault();
-			selectedIndex = Math.min(selectedIndex + 1, filteredGames.length - 1);
+			selectedIndex = Math.min(selectedIndex + 1, searchResults.length - 1);
 		} else if (event.key === 'ArrowUp' || (event.key === 'Tab' && event.shiftKey)) {
 			event.preventDefault();
 			selectedIndex = Math.max(selectedIndex - 1, -1);
 		} else if (event.key === 'Enter' && selectedIndex >= 0) {
 			event.preventDefault();
-			selectGame(filteredGames[selectedIndex]);
+			selectGame(searchResults[selectedIndex]);
 		}
 	}
 
@@ -149,10 +162,10 @@
 			class="search-dropdown border-border bg-card absolute top-10 right-0 z-50 mt-2 w-72 overflow-hidden rounded-lg border shadow-lg"
 		>
 			{#if isLoading}
-				<div class="text-muted-foreground p-4 text-center text-sm">Loading games...</div>
-			{:else if filteredGames.length > 0}
+				<div class="text-muted-foreground p-4 text-center text-sm">Searching...</div>
+			{:else if searchResults.length > 0}
 				<div class="max-h-80 overflow-y-auto py-1">
-					{#each filteredGames as game, index (game.id)}
+					{#each searchResults as game, index (game.id)}
 						<button
 							onmousedown={() => selectGame(game)}
 							class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors

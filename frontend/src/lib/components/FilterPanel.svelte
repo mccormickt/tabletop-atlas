@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
 	import { Button, Input, Label } from '$lib/components/ui';
+	import { SearchGlass } from '$lib/components/icons';
 
 	type FilterState = {
+		search?: string;
 		minPlayers?: number;
 		maxPlayers?: number;
 		minComplexity?: number;
@@ -14,12 +16,29 @@
 	let {
 		filters = $bindable<FilterState>({}),
 		onApply,
-		onClear
+		onClear,
+		onSearchChange
 	}: {
 		filters?: FilterState;
 		onApply?: () => void;
 		onClear?: () => void;
+		onSearchChange?: (search: string) => void;
 	} = $props();
+
+	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	function handleSearchInput(event: Event) {
+		const value = (event.target as HTMLInputElement).value;
+		filters.search = value;
+
+		// Debounce search
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+		searchTimeout = setTimeout(() => {
+			onSearchChange?.(value);
+		}, 300);
+	}
 
 	function clearFilters() {
 		filters = {};
@@ -29,10 +48,38 @@
 	function applyFilters() {
 		onApply?.();
 	}
+
+	function handleSearchKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout);
+			}
+			onSearchChange?.(filters.search || '');
+		}
+	}
 </script>
 
 <ComponentTray title="Filters" class="w-full">
 	<div class="space-y-4">
+		<!-- Quick Search -->
+		<ComponentTraySection>
+			<Label class="text-foreground mb-2 block text-sm font-semibold">Search</Label>
+			<div class="relative">
+				<SearchGlass
+					size={16}
+					class="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2"
+				/>
+				<Input
+					type="text"
+					placeholder="Search games..."
+					value={filters.search || ''}
+					oninput={handleSearchInput}
+					onkeydown={handleSearchKeydown}
+					class="h-9 pl-8 text-sm"
+				/>
+			</div>
+		</ComponentTraySection>
+
 		<!-- Player Count -->
 		<ComponentTraySection>
 			<Label class="text-foreground mb-2 block text-sm font-semibold">Player Count</Label>

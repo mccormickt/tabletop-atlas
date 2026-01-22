@@ -19,10 +19,19 @@
 	let currentPage = $state(1);
 	let totalPages = $state(1);
 	let total = $state(0);
-	let limit = $state(20);
+	let limit = $state(24);
+	let searchQuery = $state('');
 
 	let showFilters = $state(false);
-	let filters = $state({});
+	let filters = $state<{
+		search?: string;
+		minPlayers?: number;
+		maxPlayers?: number;
+		minComplexity?: number;
+		maxComplexity?: number;
+		hasRules?: boolean;
+		hasHouseRules?: boolean;
+	}>({});
 
 	let initialized = $state(false);
 
@@ -39,7 +48,11 @@
 
 		try {
 			const result = await api.methods.listGames({
-				query: { page, limit }
+				query: {
+					page,
+					limit,
+					search: searchQuery || undefined
+				}
 			});
 
 			if (result.type === 'success') {
@@ -60,6 +73,11 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	function handleSearchChange(search: string) {
+		searchQuery = search;
+		loadGames(1); // Reset to first page when searching
 	}
 
 	async function handleDelete(game: GameSummary) {
@@ -144,7 +162,15 @@
 	<div class="flex gap-6">
 		<!-- Filter Sidebar (Desktop) -->
 		<aside class="hidden w-64 flex-shrink-0 md:block">
-			<FilterPanel bind:filters onApply={() => loadGames(1)} onClear={() => loadGames(1)} />
+			<FilterPanel
+				bind:filters
+				onApply={() => loadGames(1)}
+				onClear={() => {
+					searchQuery = '';
+					loadGames(1);
+				}}
+				onSearchChange={handleSearchChange}
+			/>
 		</aside>
 
 		<!-- Mobile Filter Drawer -->
@@ -174,9 +200,11 @@
 							showFilters = false;
 						}}
 						onClear={() => {
+							searchQuery = '';
 							loadGames(1);
 							showFilters = false;
 						}}
+						onSearchChange={handleSearchChange}
 					/>
 				</div>
 			</div>

@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { browser } from '$app/environment';
 	import type { GameSummary } from '$lib';
-	import { Button, Badge, CardSleeve, ScoreTrack } from '$lib/components/ui';
+	import { Button, Badge, CardSleeve, Pagination } from '$lib/components/ui';
 	import { Dice } from './icons';
 
 	type ViewMode = 'table' | 'cards' | 'compact';
@@ -24,10 +26,28 @@
 		onDelete?: (game: GameSummary) => void;
 	} = $props();
 
-	let viewMode = $state<ViewMode>('cards');
+	// Initialize view mode from localStorage or URL param
+	function getInitialViewMode(): ViewMode {
+		if (browser) {
+			const stored = localStorage.getItem('gamesViewMode');
+			if (stored === 'table' || stored === 'cards' || stored === 'compact') {
+				return stored;
+			}
+		}
+		return 'cards';
+	}
+
+	let viewMode = $state<ViewMode>(getInitialViewMode());
 	let sortField = $state<SortField>('name');
 	let sortDirection = $state<SortDirection>('asc');
 	let selectedGames = $state<Set<string>>(new Set());
+
+	// Persist view mode to localStorage when it changes
+	$effect(() => {
+		if (browser) {
+			localStorage.setItem('gamesViewMode', viewMode);
+		}
+	});
 
 	const sortedGames = $derived(() => {
 		return [...games].sort((a, b) => {
@@ -358,41 +378,14 @@
 		</div>
 	{/if}
 
-	<!-- Pagination using Score Track -->
+	<!-- Pagination -->
 	{#if totalPages > 1}
 		<div class="mt-6 flex flex-col items-center justify-between gap-4 sm:flex-row">
 			<div class="text-muted-foreground font-ui text-sm">
-				Page {currentPage} of {totalPages}
+				Page {currentPage} of {totalPages} ({total} games)
 			</div>
 
-			<div class="flex items-center gap-2">
-				<Button
-					variant="game-secondary"
-					size="sm"
-					onclick={() => onPageChange?.(currentPage - 1)}
-					disabled={currentPage <= 1}
-				>
-					Previous
-				</Button>
-
-				<!-- Score Track Pagination (hidden on mobile) -->
-				<div class="hidden sm:block">
-					<ScoreTrack
-						total={Math.min(totalPages, 7)}
-						current={Math.min(currentPage, 7)}
-						showNumbers={true}
-					/>
-				</div>
-
-				<Button
-					variant="game-secondary"
-					size="sm"
-					onclick={() => onPageChange?.(currentPage + 1)}
-					disabled={currentPage >= totalPages}
-				>
-					Next
-				</Button>
-			</div>
+			<Pagination {currentPage} {totalPages} {onPageChange} />
 		</div>
 	{/if}
 </div>

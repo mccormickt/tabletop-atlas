@@ -39,6 +39,88 @@ export type UserInfo = {
 export type AuthResponse = { user: UserInfo };
 
 /**
+ * Error that occurred while enriching a game from BGG
+ */
+export type BggEnrichError = {
+	/** BGG ID */
+	bggId: number;
+	/** Database game ID */
+	gameId: number;
+	/** Error message */
+	message: string;
+};
+
+/**
+ * Values for comparing current game data vs BGG data
+ */
+export type BggGameValues = {
+	/** Average weight/complexity (1.0-5.0) */
+	complexityRating?: number | null;
+	/** Game description */
+	description?: string | null;
+	/** Maximum players */
+	maxPlayers?: number | null;
+	/** Minimum players */
+	minPlayers?: number | null;
+	/** Game name */
+	name: string;
+	/** Playing time in minutes */
+	playTimeMinutes?: number | null;
+	/** Year published */
+	yearPublished?: number | null;
+};
+
+/**
+ * A field that will be changed during update
+ */
+export type FieldChange = {
+	/** Field name */
+	field: string;
+	/** New value (as string for display) */
+	newValue?: string | null;
+	/** Current value (as string for display) */
+	oldValue?: string | null;
+};
+
+/**
+ * Response for single game BGG enrichment preview
+ */
+export type BggEnrichPreviewResponse = {
+	/** BGG ID */
+	bggId: number;
+	/** Values from BGG API */
+	bggValues: BggGameValues;
+	/** List of fields that differ */
+	changes: FieldChange[];
+	/** Current values in our database */
+	currentValues: BggGameValues;
+	/** Database game ID */
+	gameId: number;
+};
+
+/**
+ * Request to execute single game BGG enrichment
+ */
+export type BggEnrichRequest = {
+	/** Which fields to update from BGG data */
+	fieldsToUpdate: string[];
+};
+
+/**
+ * Preview of a game that will be enriched from BGG
+ */
+export type BggGameEnrichPreview = {
+	/** BGG ID */
+	bggId: number;
+	/** Fields that will change */
+	changes: FieldChange[];
+	/** Database game ID */
+	gameId: number;
+	/** Game name */
+	name: string;
+};
+
+/**
  * Preview of a game to be inserted from BGG CSV
  */
 export type BggGamePreview = {
@@ -58,18 +140,6 @@ export type BggGamePreview = {
 	row: number;
 	/** Year published */
 	yearPublished?: number | null;
-};
-
-/**
- * A field that will be changed during update
- */
-export type FieldChange = {
-	/** Field name */
-	field: string;
-	/** New value (as string for display) */
-	newValue?: string | null;
-	/** Current value (as string for display) */
-	oldValue?: string | null;
 };
 
 /**
@@ -120,6 +190,38 @@ export type BggImportResponse = {
 	errors: BggParseError[];
 	/** Number of games inserted */
 	insertedCount: number;
+	/** Number of games updated */
+	updatedCount: number;
+};
+
+/**
+ * Response for bulk BGG enrichment preview
+ */
+export type BulkEnrichPreviewResponse = {
+	/** Errors encountered while fetching from BGG */
+	errors: BggEnrichError[];
+	/** Games that will be updated */
+	gamesToUpdate: BggGameEnrichPreview[];
+	/** Total games fetched from BGG */
+	totalFetched: number;
+};
+
+/**
+ * Request for bulk BGG enrichment
+ */
+export type BulkEnrichRequest = {
+	/** Which fields to enrich (e.g., ["year_published", "min_players"]) */
+	fieldsToEnrich: string[];
+	/** Maximum number of games to process (default 50) */
+	limit?: number | null;
+};
+
+/**
+ * Response for bulk BGG enrichment execution
+ */
+export type BulkEnrichResponse = {
+	/** Errors encountered during update */
+	errors: BggEnrichError[];
 	/** Number of games updated */
 	updatedCount: number;
 };
@@ -374,6 +476,26 @@ export type DeleteRulesResponse = {
 	message: string;
 };
 
+/**
+ * Statistics about games needing enrichment
+ */
+export type EnrichmentStats = {
+	/** Games missing at least one field */
+	missingAny: number;
+	/** Games missing complexity_rating */
+	missingComplexity: number;
+	/** Games missing description */
+	missingDescription: number;
+	/** Games missing play_time_minutes */
+	missingPlayTime: number;
+	/** Games missing player counts (min or max) */
+	missingPlayers: number;
+	/** Games missing year_published */
+	missingYear: number;
+	/** Total games with a BGG ID */
+	totalWithBggId: number;
+};
+
 export type Expansion = { displayName: string; id: string };
 
 export type Game = {
@@ -624,6 +746,14 @@ export type UploadResponse = {
 	textLength?: number | null;
 };
 
+export interface ExecuteBggEnrichPathParams {
+	id: number;
+}
+
+export interface PreviewBggEnrichPathParams {
+	id: number;
+}
+
 export interface CallbackQueryParams {
 	code: string;
 	state?: string | null;
@@ -739,6 +869,7 @@ export interface UpdateCustomGamePathParams {
 export interface ListGamesQueryParams {
 	limit?: number;
 	page?: number;
+	search?: string | null;
 }
 
 export interface GetGamePathParams {
@@ -847,6 +978,65 @@ export class Api {
 	}
 
 	methods = {
+		/**
+		 * Execute bulk BGG enrichment
+		 */
+		executeBulkEnrich: ({ body }: { body: BulkEnrichRequest }, params: FetchParams = {}) => {
+			return this.request<BulkEnrichResponse>({
+				path: `/api/admin/bgg/bulk`,
+				method: 'POST',
+				body,
+				...params
+			});
+		},
+		/**
+		 * Preview bulk BGG enrichment
+		 */
+		previewBulkEnrich: ({ body }: { body: BulkEnrichRequest }, params: FetchParams = {}) => {
+			return this.request<BulkEnrichPreviewResponse>({
+				path: `/api/admin/bgg/bulk/preview`,
+				method: 'POST',
+				body,
+				...params
+			});
+		},
+		/**
+		 * Execute BGG enrichment for a single game
+		 */
+		executeBggEnrich: (
+			{ path, body }: { path: ExecuteBggEnrichPathParams; body: BggEnrichRequest },
+			params: FetchParams = {}
+		) => {
+			return this.request<Game>({
+				path: `/api/admin/bgg/game/${path.id}`,
+				method: 'POST',
+				body,
+				...params
+			});
+		},
+		/**
+		 * Preview BGG enrichment for a single game
+		 */
+		previewBggEnrich: (
+			{ path }: { path: PreviewBggEnrichPathParams },
+			params: FetchParams = {}
+		) => {
+			return this.request<BggEnrichPreviewResponse>({
+				path: `/api/admin/bgg/game/${path.id}/preview`,
+				method: 'GET',
+				...params
+			});
+		},
+		/**
+		 * Get enrichment statistics - how many games are missing data
+		 */
+		getEnrichmentStats: (_: EmptyObj, params: FetchParams = {}) => {
+			return this.request<EnrichmentStats>({
+				path: `/api/admin/bgg/stats`,
+				method: 'GET',
+				...params
+			});
+		},
 		/**
 		 * Execute BGG CSV import
 		 */
@@ -1288,7 +1478,7 @@ export class Api {
 			});
 		},
 		/**
-		 * List all games with pagination
+		 * List all games with pagination and optional search
 		 */
 		listGames: ({ query = {} }: { query?: ListGamesQueryParams }, params: FetchParams = {}) => {
 			return this.request<PaginatedResponse_for_GameSummary>({

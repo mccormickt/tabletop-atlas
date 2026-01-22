@@ -18,3 +18,5 @@ export { GameBox } from './game-box';
 export { CardSleeve } from './card-sleeve';
 export { ComponentTray, ComponentTraySection } from './component-tray';
 export { ScoreTrack } from './score-track';
+export { Pagination } from './pagination';
+export { Checkbox } from './checkbox';

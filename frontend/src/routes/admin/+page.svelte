@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { api, type EnrichmentStats } from '$lib';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 
@@ -7,6 +8,7 @@
 	}
 
 	let stats = $state<AdminStats | null>(null);
+	let enrichmentStats = $state<EnrichmentStats | null>(null);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 
@@ -23,15 +25,24 @@
 		isLoading = true;
 		error = null;
 		try {
-			const response = await fetch('/api/admin/stats', {
-				credentials: 'include'
-			});
-			if (response.ok) {
-				stats = await response.json();
-			} else if (response.status === 403) {
+			// Fetch both stats in parallel
+			const [statsResponse, enrichmentResult] = await Promise.all([
+				fetch('/api/admin/stats', { credentials: 'include' }),
+				api.methods.getEnrichmentStats({})
+			]);
+
+			if (statsResponse.ok) {
+				stats = await statsResponse.json();
+			} else if (statsResponse.status === 403) {
 				error = 'Access denied. Admin privileges required.';
+				return;
 			} else {
 				error = 'Failed to load admin stats';
+				return;
+			}
+
+			if (enrichmentResult.type === 'success') {
+				enrichmentStats = enrichmentResult.data;
 			}
 		} catch {
 			error = 'Failed to load admin stats';
@@ -81,6 +92,31 @@
 					<Button href="/admin/games/import">Import BGG CSV</Button>
 				</Card.Content>
 			</Card.Root>
+
+			<!-- BGG Enrichment Card -->
+			{#if enrichmentStats}
+				<Card.Root>
+					<Card.Header>
+						<Card.Title>BGG Enrichment</Card.Title>
+						<Card.Description>Games with missing data from BoardGameGeek</Card.Description>
+					</Card.Header>
+					<Card.Content>
+						<div class="space-y-3">
+							<p class="text-foreground text-2xl font-bold">
+								{enrichmentStats.missingAny}
+								<span class="text-muted-foreground text-base font-normal">need enrichment</span>
+							</p>
+							<ul class="text-muted-foreground space-y-1 text-sm">
+								<li>{enrichmentStats.missingYear} missing year</li>
+								<li>{enrichmentStats.missingPlayers} missing player count</li>
+								<li>{enrichmentStats.missingPlayTime} missing play time</li>
+								<li>{enrichmentStats.missingComplexity} missing complexity</li>
+							</ul>
+							<Button href="/admin/games/enrich" class="mt-2 w-full">Enrich from BGG</Button>
+						</div>
+					</Card.Content>
+				</Card.Root>
+			{/if}
 		</div>
 	{/if}
 </div>

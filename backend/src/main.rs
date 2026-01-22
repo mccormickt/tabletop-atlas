@@ -10,6 +10,7 @@ use rusqlite_migration::{M, Migrations};
 use sqlite_vec::sqlite3_vec_init;
 
 mod auth;
+mod bgg;
 mod db;
 mod embeddings;
 mod handlers;
@@ -263,6 +264,11 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(handlers::admin::get_admin_stats)?;
     api.register(handlers::admin::preview_bgg_import)?;
     api.register(handlers::admin::execute_bgg_import)?;
+    api.register(handlers::admin::get_enrichment_stats)?;
+    api.register(handlers::admin::preview_bgg_enrich)?;
+    api.register(handlers::admin::execute_bgg_enrich)?;
+    api.register(handlers::admin::preview_bulk_enrich)?;
+    api.register(handlers::admin::execute_bulk_enrich)?;
 
     // Register health check
     api.register(static_files::health_check)?;

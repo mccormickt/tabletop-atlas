@@ -39,6 +39,7 @@ dotenvy.workspace = true
 urlencoding.workspace = true
 inventory.workspace = true
 csv.workspace = true
+quick-xml.workspace = true
 
 [build-dependencies]
 # No build dependencies needed for now

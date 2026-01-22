@@ -1,7 +1,7 @@
 use super::{Database, format_now_for_db};
 use crate::models::Game;
 use crate::models::admin::ParsedBggGame;
-use rusqlite::{Result as SqliteResult, params};
+use rusqlite::{OptionalExtension, Result as SqliteResult, params};
 use std::collections::HashMap;
 
 // Batch size for queries to stay under SQLite's parameter limit (~999)
@@ -35,10 +35,8 @@ pub async fn get_existing_games_by_bgg_ids(
             );
 
             let mut stmt = conn.prepare(&query)?;
-            let params: Vec<&dyn rusqlite::ToSql> = batch
-                .iter()
-                .map(|id| id as &dyn rusqlite::ToSql)
-                .collect();
+            let params: Vec<&dyn rusqlite::ToSql> =
+                batch.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
 
             let game_iter = stmt.query_map(params.as_slice(), |row| {
                 Ok(Game {
@@ -158,5 +156,336 @@ pub async fn upsert_games_from_bgg(
 pub async fn get_master_games_count(db: &Database) -> SqliteResult<u32> {
     db.with_connection(|conn| {
         conn.query_row("SELECT COUNT(*) FROM master_games", [], |row| row.get(0))
+    })
+}
+
+// ============================================================================
+// BGG API Enrichment Functions
+// ============================================================================
+
+use crate::bgg::BggGameData;
+use crate::models::admin::EnrichmentStats;
+
+/// Get statistics about games needing enrichment from BGG
+pub async fn get_enrichment_stats(db: &Database) -> SqliteResult<EnrichmentStats> {
+    db.with_connection(|conn| {
+        let stats = conn.query_row(
+            r#"
+            SELECT
+                COUNT(*) FILTER (WHERE bgg_id IS NOT NULL) as total_with_bgg_id,
+                COUNT(*) FILTER (WHERE bgg_id IS NOT NULL AND year_published IS NULL) as missing_year,
+                COUNT(*) FILTER (WHERE bgg_id IS NOT NULL AND (min_players IS NULL OR max_players IS NULL)) as missing_players,
+                COUNT(*) FILTER (WHERE bgg_id IS NOT NULL AND play_time_minutes IS NULL) as missing_play_time,
+                COUNT(*) FILTER (WHERE bgg_id IS NOT NULL AND complexity_rating IS NULL) as missing_complexity,
+                COUNT(*) FILTER (WHERE bgg_id IS NOT NULL AND description IS NULL) as missing_description,
+                COUNT(*) FILTER (WHERE bgg_id IS NOT NULL AND (
+                    year_published IS NULL OR
+                    min_players IS NULL OR
+                    max_players IS NULL OR
+                    play_time_minutes IS NULL OR
+                    complexity_rating IS NULL
+                )) as missing_any
+            FROM master_games
+            "#,
+            [],
+            |row| {
+                Ok(EnrichmentStats {
+                    total_with_bgg_id: row.get(0)?,
+                    missing_year: row.get(1)?,
+                    missing_players: row.get(2)?,
+                    missing_play_time: row.get(3)?,
+                    missing_complexity: row.get(4)?,
+                    missing_description: row.get(5)?,
+                    missing_any: row.get(6)?,
+                })
+            },
+        )?;
+        Ok(stats)
+    })
+}
+
+/// Get games with BGG ID that are missing at least one of the specified fields
+pub async fn get_games_needing_enrichment(db: &Database, limit: u32) -> SqliteResult<Vec<Game>> {
+    db.with_connection(|conn| {
+        let mut stmt = conn.prepare(
+            r#"
+            SELECT id, name, description, publisher, year_published,
+                   min_players, max_players, play_time_minutes, complexity_rating,
+                   bgg_id, rules_pdf_path, rules_text, created_at, updated_at
+            FROM master_games
+            WHERE bgg_id IS NOT NULL
+              AND (
+                  year_published IS NULL OR
+                  min_players IS NULL OR
+                  max_players IS NULL OR
+                  play_time_minutes IS NULL OR
+                  complexity_rating IS NULL
+              )
+            ORDER BY name
+            LIMIT ?
+            "#,
+        )?;
+
+        let games = stmt
+            .query_map([limit], |row| {
+                Ok(Game {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                    publisher: row.get(3)?,
+                    year_published: row.get(4)?,
+                    min_players: row.get(5)?,
+                    max_players: row.get(6)?,
+                    play_time_minutes: row.get(7)?,
+                    complexity_rating: row.get(8)?,
+                    bgg_id: row.get(9)?,
+                    rules_pdf_path: row.get(10)?,
+                    rules_text: row.get(11)?,
+                    created_at: super::parse_datetime(row, "created_at")?,
+                    updated_at: super::parse_datetime(row, "updated_at")?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(games)
+    })
+}
+
+/// Get a single game by ID
+pub async fn get_game_by_id(db: &Database, game_id: i64) -> SqliteResult<Option<Game>> {
+    db.with_connection(|conn| {
+        let mut stmt = conn.prepare(
+            r#"
+            SELECT id, name, description, publisher, year_published,
+                   min_players, max_players, play_time_minutes, complexity_rating,
+                   bgg_id, rules_pdf_path, rules_text, created_at, updated_at
+            FROM master_games
+            WHERE id = ?
+            "#,
+        )?;
+
+        let game = stmt
+            .query_row([game_id], |row| {
+                Ok(Game {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                    publisher: row.get(3)?,
+                    year_published: row.get(4)?,
+                    min_players: row.get(5)?,
+                    max_players: row.get(6)?,
+                    play_time_minutes: row.get(7)?,
+                    complexity_rating: row.get(8)?,
+                    bgg_id: row.get(9)?,
+                    rules_pdf_path: row.get(10)?,
+                    rules_text: row.get(11)?,
+                    created_at: super::parse_datetime(row, "created_at")?,
+                    updated_at: super::parse_datetime(row, "updated_at")?,
+                })
+            })
+            .optional()?;
+
+        Ok(game)
+    })
+}
+
+/// Update a single game with BGG data for specified fields only
+pub async fn update_game_from_bgg(
+    db: &Database,
+    game_id: i64,
+    bgg_data: &BggGameData,
+    fields: &[String],
+) -> SqliteResult<Game> {
+    db.with_transaction(|conn| {
+        let now_str = format_now_for_db();
+
+        // Build dynamic UPDATE query based on selected fields
+        let mut set_clauses = Vec::new();
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        for field in fields {
+            match field.as_str() {
+                "description" => {
+                    set_clauses.push("description = ?");
+                    params.push(Box::new(bgg_data.description.clone()));
+                }
+                "year_published" => {
+                    set_clauses.push("year_published = ?");
+                    params.push(Box::new(bgg_data.year_published));
+                }
+                "min_players" => {
+                    set_clauses.push("min_players = ?");
+                    params.push(Box::new(bgg_data.min_players));
+                }
+                "max_players" => {
+                    set_clauses.push("max_players = ?");
+                    params.push(Box::new(bgg_data.max_players));
+                }
+                "play_time_minutes" => {
+                    set_clauses.push("play_time_minutes = ?");
+                    params.push(Box::new(bgg_data.play_time_minutes));
+                }
+                "complexity_rating" => {
+                    set_clauses.push("complexity_rating = ?");
+                    // BGG returns 0 for unrated games, filter to valid range (1.0-5.0)
+                    let valid_rating = bgg_data
+                        .complexity_rating
+                        .filter(|r| *r >= 1.0 && *r <= 5.0);
+                    params.push(Box::new(valid_rating));
+                }
+                _ => {} // Ignore unknown fields
+            }
+        }
+
+        if set_clauses.is_empty() {
+            // No fields to update, just return the current game
+            let game = conn.query_row(
+                r#"
+                SELECT id, name, description, publisher, year_published,
+                       min_players, max_players, play_time_minutes, complexity_rating,
+                       bgg_id, rules_pdf_path, rules_text, created_at, updated_at
+                FROM master_games WHERE id = ?
+                "#,
+                [game_id],
+                |row| {
+                    Ok(Game {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        description: row.get(2)?,
+                        publisher: row.get(3)?,
+                        year_published: row.get(4)?,
+                        min_players: row.get(5)?,
+                        max_players: row.get(6)?,
+                        play_time_minutes: row.get(7)?,
+                        complexity_rating: row.get(8)?,
+                        bgg_id: row.get(9)?,
+                        rules_pdf_path: row.get(10)?,
+                        rules_text: row.get(11)?,
+                        created_at: super::parse_datetime(row, "created_at")?,
+                        updated_at: super::parse_datetime(row, "updated_at")?,
+                    })
+                },
+            )?;
+            return Ok(game);
+        }
+
+        // Add updated_at
+        set_clauses.push("updated_at = ?");
+        params.push(Box::new(now_str));
+
+        // Add game_id for WHERE clause
+        params.push(Box::new(game_id));
+
+        let query = format!(
+            "UPDATE master_games SET {} WHERE id = ?",
+            set_clauses.join(", ")
+        );
+
+        let params_ref: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        conn.execute(&query, params_ref.as_slice())?;
+
+        // Return the updated game
+        let game = conn.query_row(
+            r#"
+            SELECT id, name, description, publisher, year_published,
+                   min_players, max_players, play_time_minutes, complexity_rating,
+                   bgg_id, rules_pdf_path, rules_text, created_at, updated_at
+            FROM master_games WHERE id = ?
+            "#,
+            [game_id],
+            |row| {
+                Ok(Game {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                    publisher: row.get(3)?,
+                    year_published: row.get(4)?,
+                    min_players: row.get(5)?,
+                    max_players: row.get(6)?,
+                    play_time_minutes: row.get(7)?,
+                    complexity_rating: row.get(8)?,
+                    bgg_id: row.get(9)?,
+                    rules_pdf_path: row.get(10)?,
+                    rules_text: row.get(11)?,
+                    created_at: super::parse_datetime(row, "created_at")?,
+                    updated_at: super::parse_datetime(row, "updated_at")?,
+                })
+            },
+        )?;
+
+        Ok(game)
+    })
+}
+
+/// Batch update games with BGG data
+pub async fn batch_update_games_from_bgg(
+    db: &Database,
+    updates: Vec<(i64, BggGameData, Vec<String>)>, // (game_id, bgg_data, fields)
+) -> SqliteResult<u32> {
+    db.with_transaction(|conn| {
+        let now_str = format_now_for_db();
+        let mut updated_count = 0u32;
+
+        for (game_id, bgg_data, fields) in updates {
+            // Build dynamic UPDATE query based on selected fields
+            let mut set_clauses = Vec::new();
+            let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+            for field in &fields {
+                match field.as_str() {
+                    "description" => {
+                        set_clauses.push("description = ?");
+                        params.push(Box::new(bgg_data.description.clone()));
+                    }
+                    "year_published" => {
+                        set_clauses.push("year_published = ?");
+                        params.push(Box::new(bgg_data.year_published));
+                    }
+                    "min_players" => {
+                        set_clauses.push("min_players = ?");
+                        params.push(Box::new(bgg_data.min_players));
+                    }
+                    "max_players" => {
+                        set_clauses.push("max_players = ?");
+                        params.push(Box::new(bgg_data.max_players));
+                    }
+                    "play_time_minutes" => {
+                        set_clauses.push("play_time_minutes = ?");
+                        params.push(Box::new(bgg_data.play_time_minutes));
+                    }
+                    "complexity_rating" => {
+                        set_clauses.push("complexity_rating = ?");
+                        // BGG returns 0 for unrated games, filter to valid range (1.0-5.0)
+                        let valid_rating = bgg_data
+                            .complexity_rating
+                            .filter(|r| *r >= 1.0 && *r <= 5.0);
+                        params.push(Box::new(valid_rating));
+                    }
+                    _ => {}
+                }
+            }
+
+            if set_clauses.is_empty() {
+                continue;
+            }
+
+            // Add updated_at
+            set_clauses.push("updated_at = ?");
+            params.push(Box::new(now_str.clone()));
+
+            // Add game_id for WHERE clause
+            params.push(Box::new(game_id));
+
+            let query = format!(
+                "UPDATE master_games SET {} WHERE id = ?",
+                set_clauses.join(", ")
+            );
+
+            let params_ref: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+            conn.execute(&query, params_ref.as_slice())?;
+            updated_count += 1;
+        }
+
+        Ok(updated_count)
     })
 }

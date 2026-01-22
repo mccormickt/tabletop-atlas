@@ -14,8 +14,10 @@
 	import { Badge } from '$lib/components/ui';
 	import PDFUpload from '$lib/components/PDFUpload.svelte';
 	import HouseRulesList from '$lib/components/HouseRulesList.svelte';
+	import BggEnrichModal from '$lib/components/admin/BggEnrichModal.svelte';
 
 	import { useHeader } from '$lib/stores/header';
+	import { useAuth } from '$lib/stores/auth';
 
 	// Tab type
 	type TabType = 'details' | 'house-rules';
@@ -25,6 +27,17 @@
 
 	// Configure header for this page
 	const header = useHeader();
+	const auth = useAuth();
+
+	// Auth state for admin check
+	let isUserAdmin = $state(false);
+
+	$effect(() => {
+		const unsubscribe = auth.subscribe((state) => {
+			isUserAdmin = state.user?.role === 'admin';
+		});
+		return unsubscribe;
+	});
 
 	// Game state
 	let game = $state<Game | null>(null);
@@ -34,6 +47,7 @@
 	let rulesInfo = $state<RulesInfoResponse | null>(null);
 	let showUpload = $state(false);
 	let activeTab = $state<TabType>('details');
+	let showBggEnrichModal = $state(false);
 
 	// House rules state (managed here, passed to presentational component)
 	let houseRules = $state<HouseRule[]>([]);
@@ -581,6 +595,18 @@
 										</dt>
 										<dd class="font-mono text-sm text-gray-900">{game.bggId}</dd>
 									</div>
+									{#if isUserAdmin}
+										<div class="pt-2">
+											<Button
+												size="sm"
+												variant="outline"
+												class="w-full"
+												onclick={() => (showBggEnrichModal = true)}
+											>
+												Update from BGG
+											</Button>
+										</div>
+									{/if}
 								{/if}
 							</CardContent>
 						</Card>
@@ -590,3 +616,15 @@
 		{/if}
 	</div>
 </main>
+
+{#if showBggEnrichModal && game?.bggId}
+	<BggEnrichModal
+		gameId={game.id}
+		bggId={game.bggId}
+		onClose={() => (showBggEnrichModal = false)}
+		onSuccess={() => {
+			showBggEnrichModal = false;
+			loadGame();
+		}}
+	/>
+{/if}

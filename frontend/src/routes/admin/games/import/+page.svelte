@@ -233,17 +233,15 @@
 			<Card.Content>
 				<div class="space-y-2">
 					<p class="text-foreground">
-						<span class="font-semibold">{importResult.inserted_count.toLocaleString()}</span> games
-						inserted
+						<span class="font-semibold">{importResult.inserted_count.toLocaleString()}</span> games inserted
 					</p>
 					<p class="text-foreground">
-						<span class="font-semibold">{importResult.updated_count.toLocaleString()}</span> games
-						updated
+						<span class="font-semibold">{importResult.updated_count.toLocaleString()}</span> games updated
 					</p>
 					{#if importResult.errors.length > 0}
 						<p class="text-destructive">
-							<span class="font-semibold">{importResult.errors.length.toLocaleString()}</span> rows
-							had errors
+							<span class="font-semibold">{importResult.errors.length.toLocaleString()}</span> rows had
+							errors
 						</p>
 					{/if}
 				</div>
@@ -297,7 +295,10 @@
 							New Games to Add ({preview.games_to_insert.length.toLocaleString()})
 						</Card.Title>
 						<Card.Description>
-							Showing {((insertPage - 1) * PAGE_SIZE + 1).toLocaleString()} - {Math.min(insertPage * PAGE_SIZE, preview.games_to_insert.length).toLocaleString()}
+							Showing {((insertPage - 1) * PAGE_SIZE + 1).toLocaleString()} - {Math.min(
+								insertPage * PAGE_SIZE,
+								preview.games_to_insert.length
+							).toLocaleString()}
 							of {preview.games_to_insert.length.toLocaleString()}
 						</Card.Description>
 					</Card.Header>
@@ -360,7 +361,10 @@
 							Games to Update ({preview.games_to_update.length.toLocaleString()})
 						</Card.Title>
 						<Card.Description>
-							Showing {((updatePage - 1) * PAGE_SIZE + 1).toLocaleString()} - {Math.min(updatePage * PAGE_SIZE, preview.games_to_update.length).toLocaleString()}
+							Showing {((updatePage - 1) * PAGE_SIZE + 1).toLocaleString()} - {Math.min(
+								updatePage * PAGE_SIZE,
+								preview.games_to_update.length
+							).toLocaleString()}
 							of {preview.games_to_update.length.toLocaleString()}
 						</Card.Description>
 					</Card.Header>
@@ -432,7 +436,10 @@
 							Parsing Errors ({preview.errors.length.toLocaleString()})
 						</Card.Title>
 						<Card.Description>
-							These rows will be skipped. Showing {((errorPage - 1) * PAGE_SIZE + 1).toLocaleString()}
+							These rows will be skipped. Showing {(
+								(errorPage - 1) * PAGE_SIZE +
+								1
+							).toLocaleString()}
 							- {Math.min(errorPage * PAGE_SIZE, preview.errors.length).toLocaleString()}
 							of {preview.errors.length.toLocaleString()}
 						</Card.Description>

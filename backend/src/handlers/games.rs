@@ -5,10 +5,7 @@ use crate::{
         HttpCreated, HttpDeleted, HttpError, HttpOk, bad_request_error, created_response,
         deleted_response, internal_error, not_found_error, success_response,
     },
-    models::{
-        CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, PaginationParams,
-        UpdateGameRequest,
-    },
+    models::{CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, UpdateGameRequest},
 };
 use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
@@ -19,20 +16,37 @@ pub struct GamePathParam {
     pub id: GameId,
 }
 
-/// List all games with pagination
+fn default_page() -> u32 {
+    1
+}
+fn default_limit() -> u32 {
+    20
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct GameSearchParams {
+    #[serde(default = "default_page")]
+    pub page: u32,
+    #[serde(default = "default_limit")]
+    pub limit: u32,
+    /// Search query to filter games by name
+    pub search: Option<String>,
+}
+
+/// List all games with pagination and optional search
 #[endpoint {
     method = GET,
     path = "/api/games"
 }]
 pub async fn list_games(
     rqctx: RequestContext<AppState>,
-    query: Query<PaginationParams>,
+    query: Query<GameSearchParams>,
 ) -> Result<HttpOk<PaginatedResponse<GameSummary>>, HttpError> {
     let app_state = rqctx.context();
-    let pagination = query.into_inner();
+    let params = query.into_inner();
     let db = app_state.db();
 
-    match games::list_games(&db, pagination.page, pagination.limit).await {
+    match games::list_games(&db, params.page, params.limit, params.search.as_deref()).await {
         Ok(result) => success_response(result),
         Err(e) => {
             tracing::error!("Failed to list games: {}", e);

@@ -99,6 +99,13 @@
 	let sendingMessage = $state(false);
 	let error = $state<string | null>(null);
 	let togglingHouseRules = $state(false);
+	let gameFilterQuery = $state('');
+
+	let filteredGames = $derived(
+		gameFilterQuery.trim()
+			? games.filter((g) => g.name.toLowerCase().includes(gameFilterQuery.toLowerCase()))
+			: games
+	);
 
 	let showGameDrawer = $state(false);
 	let showSessionDrawer = $state(false);
@@ -449,27 +456,38 @@
 							/>
 						</ComponentTraySection>
 					{:else}
-						<div class="space-y-2">
-							{#each games as game (game.id)}
-								<button
-									onclick={() => selectGame(game)}
-									class="w-full rounded-lg p-3 text-left transition-all
-										{selectedGame?.id === game.id
-										? 'bg-game-blue text-white'
-										: 'bg-parchment hover:bg-parchment-dark text-foreground'}"
-								>
-									<div class="font-display text-sm font-medium">{game.name}</div>
-									{#if game.publisher}
-										<div class="text-xs opacity-70">{game.publisher}</div>
-									{/if}
-									{#if game.hasRulesPdf}
-										<div class="mt-1">
-											<Rulebook size={12} class="inline opacity-60" />
-										</div>
-									{/if}
-								</button>
-							{/each}
+						<div class="mb-2">
+							<Input
+								bind:value={gameFilterQuery}
+								placeholder="Filter games..."
+								class="bg-parchment text-foreground placeholder:text-foreground/50 h-8 text-sm"
+							/>
 						</div>
+						{#if filteredGames.length === 0}
+							<p class="text-parchment/70 py-2 text-center text-sm">No games match filter</p>
+						{:else}
+							<div class="max-h-64 space-y-2 overflow-y-auto">
+								{#each filteredGames as game (game.id)}
+									<button
+										onclick={() => selectGame(game)}
+										class="w-full rounded-lg p-3 text-left transition-all
+											{selectedGame?.id === game.id
+											? 'bg-game-blue text-white'
+											: 'bg-parchment hover:bg-parchment-dark text-foreground'}"
+									>
+										<div class="font-display text-sm font-medium">{game.name}</div>
+										{#if game.publisher}
+											<div class="text-xs opacity-70">{game.publisher}</div>
+										{/if}
+										{#if game.hasRulesPdf}
+											<div class="mt-1">
+												<Rulebook size={12} class="inline opacity-60" />
+											</div>
+										{/if}
+									</button>
+								{/each}
+							</div>
+						{/if}
 					{/if}
 				</ComponentTray>
 
@@ -762,17 +780,26 @@
 					</button>
 				</div>
 			</div>
-			<div class="space-y-2 p-4">
-				{#each games as game (game.id)}
-					<CardSleeve variant={selectedGame?.id === game.id ? 'highlighted' : 'default'}>
-						<button onclick={() => selectGame(game)} class="w-full text-left">
-							<div class="font-display font-medium">{game.name}</div>
-							{#if game.publisher}
-								<div class="text-muted-foreground text-sm">{game.publisher}</div>
-							{/if}
-						</button>
-					</CardSleeve>
-				{/each}
+			<div class="p-4">
+				<div class="mb-3">
+					<Input bind:value={gameFilterQuery} placeholder="Filter games..." class="h-8 text-sm" />
+				</div>
+				{#if filteredGames.length === 0}
+					<p class="text-muted-foreground py-2 text-center text-sm">No games match filter</p>
+				{:else}
+					<div class="space-y-2">
+						{#each filteredGames as game (game.id)}
+							<CardSleeve variant={selectedGame?.id === game.id ? 'highlighted' : 'default'}>
+								<button onclick={() => selectGame(game)} class="w-full text-left">
+									<div class="font-display font-medium">{game.name}</div>
+									{#if game.publisher}
+										<div class="text-muted-foreground text-sm">{game.publisher}</div>
+									{/if}
+								</button>
+							</CardSleeve>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		</div>
 	</div>

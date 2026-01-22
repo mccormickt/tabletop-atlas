@@ -1,16 +1,22 @@
 use crate::{
     AppState,
     auth::middleware::require_admin,
+    bgg::BggClient,
     db::admin as admin_db,
-    handlers::{bad_request_error, forbidden_error, internal_error, success_response},
+    handlers::{
+        bad_request_error, forbidden_error, internal_error, not_found_error, success_response,
+    },
+    models::Game,
     models::admin::{
-        BggGamePreview, BggGameUpdatePreview, BggImportPreviewResponse, BggImportResponse,
-        BggParseError, FieldChange, ParsedBggGame,
+        BggEnrichError, BggEnrichPreviewResponse, BggEnrichRequest, BggGameEnrichPreview,
+        BggGamePreview, BggGameUpdatePreview, BggGameValues, BggImportPreviewResponse,
+        BggImportResponse, BggParseError, BulkEnrichPreviewResponse, BulkEnrichRequest,
+        BulkEnrichResponse, EnrichmentStats, FieldChange, ParsedBggGame,
     },
 };
-use dropshot::{RequestContext, UntypedBody, endpoint};
+use dropshot::{Path, RequestContext, TypedBody, UntypedBody, endpoint};
 use schemars::JsonSchema;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use super::{HttpError, HttpOk};
@@ -362,44 +368,44 @@ fn calculate_changes(existing: &crate::models::Game, new_data: &ParsedBggGame) -
 
     // For optional fields, only report change if new_data has a value
     // (meaning the CSV had that column with data)
-    if let Some(new_year) = new_data.year_published {
-        if existing.year_published != Some(new_year) {
-            changes.push(FieldChange {
-                field: "year_published".to_string(),
-                old_value: existing.year_published.map(|v| v.to_string()),
-                new_value: Some(new_year.to_string()),
-            });
-        }
+    if let Some(new_year) = new_data.year_published
+        && existing.year_published != Some(new_year)
+    {
+        changes.push(FieldChange {
+            field: "year_published".to_string(),
+            old_value: existing.year_published.map(|v| v.to_string()),
+            new_value: Some(new_year.to_string()),
+        });
     }
 
-    if let Some(new_min) = new_data.min_players {
-        if existing.min_players != Some(new_min) {
-            changes.push(FieldChange {
-                field: "min_players".to_string(),
-                old_value: existing.min_players.map(|v| v.to_string()),
-                new_value: Some(new_min.to_string()),
-            });
-        }
+    if let Some(new_min) = new_data.min_players
+        && existing.min_players != Some(new_min)
+    {
+        changes.push(FieldChange {
+            field: "min_players".to_string(),
+            old_value: existing.min_players.map(|v| v.to_string()),
+            new_value: Some(new_min.to_string()),
+        });
     }
 
-    if let Some(new_max) = new_data.max_players {
-        if existing.max_players != Some(new_max) {
-            changes.push(FieldChange {
-                field: "max_players".to_string(),
-                old_value: existing.max_players.map(|v| v.to_string()),
-                new_value: Some(new_max.to_string()),
-            });
-        }
+    if let Some(new_max) = new_data.max_players
+        && existing.max_players != Some(new_max)
+    {
+        changes.push(FieldChange {
+            field: "max_players".to_string(),
+            old_value: existing.max_players.map(|v| v.to_string()),
+            new_value: Some(new_max.to_string()),
+        });
     }
 
-    if let Some(new_time) = new_data.play_time_minutes {
-        if existing.play_time_minutes != Some(new_time) {
-            changes.push(FieldChange {
-                field: "play_time_minutes".to_string(),
-                old_value: existing.play_time_minutes.map(|v| v.to_string()),
-                new_value: Some(new_time.to_string()),
-            });
-        }
+    if let Some(new_time) = new_data.play_time_minutes
+        && existing.play_time_minutes != Some(new_time)
+    {
+        changes.push(FieldChange {
+            field: "play_time_minutes".to_string(),
+            old_value: existing.play_time_minutes.map(|v| v.to_string()),
+            new_value: Some(new_time.to_string()),
+        });
     }
 
     if let Some(new_complexity) = new_data.complexity_rating {
@@ -417,4 +423,418 @@ fn calculate_changes(existing: &crate::models::Game, new_data: &ParsedBggGame) -
     }
 
     changes
+}
+
+// ============================================================================
+// BGG API Enrichment Endpoints
+// ============================================================================
+
+/// Path parameter for game ID
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct GameIdPath {
+    pub id: i64,
+}
+
+/// Get enrichment statistics - how many games are missing data
+#[endpoint {
+    method = GET,
+    path = "/api/admin/bgg/stats"
+}]
+pub async fn get_enrichment_stats(
+    rqctx: RequestContext<AppState>,
+) -> Result<HttpOk<EnrichmentStats>, HttpError> {
+    // Verify admin access
+    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+
+    let app_state = rqctx.context();
+    let db = app_state.db();
+
+    let stats = admin_db::get_enrichment_stats(&db)
+        .await
+        .map_err(|e| internal_error(format!("Failed to get enrichment stats: {}", e)))?;
+
+    success_response(stats)
+}
+
+/// Preview BGG enrichment for a single game
+#[endpoint {
+    method = GET,
+    path = "/api/admin/bgg/game/{id}/preview"
+}]
+pub async fn preview_bgg_enrich(
+    rqctx: RequestContext<AppState>,
+    path: Path<GameIdPath>,
+) -> Result<HttpOk<BggEnrichPreviewResponse>, HttpError> {
+    // Verify admin access
+    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+
+    let game_id = path.into_inner().id;
+    let app_state = rqctx.context();
+    let db = app_state.db();
+
+    // Get the game from database
+    let game = admin_db::get_game_by_id(&db, game_id)
+        .await
+        .map_err(|e| internal_error(format!("Failed to get game: {}", e)))?
+        .ok_or_else(|| not_found_error(format!("Game {} not found", game_id)))?;
+
+    // Check if game has BGG ID
+    let bgg_id = game
+        .bgg_id
+        .ok_or_else(|| bad_request_error("Game does not have a BGG ID".to_string()))?;
+
+    // Fetch data from BGG API
+    let bgg_client = BggClient::new();
+    let bgg_data = bgg_client
+        .fetch_game(bgg_id)
+        .await
+        .map_err(|e| bad_request_error(format!("Failed to fetch from BGG: {}", e)))?;
+
+    // Build current values
+    let current_values = BggGameValues {
+        name: game.name.clone(),
+        description: game.description.clone(),
+        year_published: game.year_published,
+        min_players: game.min_players,
+        max_players: game.max_players,
+        play_time_minutes: game.play_time_minutes,
+        complexity_rating: game.complexity_rating,
+    };
+
+    // Build BGG values
+    let bgg_values = BggGameValues {
+        name: bgg_data.name.clone(),
+        description: bgg_data.description.clone(),
+        year_published: bgg_data.year_published,
+        min_players: bgg_data.min_players,
+        max_players: bgg_data.max_players,
+        play_time_minutes: bgg_data.play_time_minutes,
+        complexity_rating: bgg_data.complexity_rating,
+    };
+
+    // Calculate changes
+    let changes = calculate_bgg_changes(&game, &bgg_data);
+
+    success_response(BggEnrichPreviewResponse {
+        game_id,
+        bgg_id,
+        current_values,
+        bgg_values,
+        changes,
+    })
+}
+
+/// Execute BGG enrichment for a single game
+#[endpoint {
+    method = POST,
+    path = "/api/admin/bgg/game/{id}"
+}]
+pub async fn execute_bgg_enrich(
+    rqctx: RequestContext<AppState>,
+    path: Path<GameIdPath>,
+    body: TypedBody<BggEnrichRequest>,
+) -> Result<HttpOk<Game>, HttpError> {
+    // Verify admin access
+    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+
+    let game_id = path.into_inner().id;
+    let request = body.into_inner();
+    let app_state = rqctx.context();
+    let db = app_state.db();
+
+    // Get the game from database
+    let game = admin_db::get_game_by_id(&db, game_id)
+        .await
+        .map_err(|e| internal_error(format!("Failed to get game: {}", e)))?
+        .ok_or_else(|| not_found_error(format!("Game {} not found", game_id)))?;
+
+    // Check if game has BGG ID
+    let bgg_id = game
+        .bgg_id
+        .ok_or_else(|| bad_request_error("Game does not have a BGG ID".to_string()))?;
+
+    if request.fields_to_update.is_empty() {
+        return Err(bad_request_error(
+            "No fields selected for update".to_string(),
+        ));
+    }
+
+    // Fetch data from BGG API
+    let bgg_client = BggClient::new();
+    let bgg_data = bgg_client
+        .fetch_game(bgg_id)
+        .await
+        .map_err(|e| bad_request_error(format!("Failed to fetch from BGG: {}", e)))?;
+
+    // Update the game
+    let updated_game =
+        admin_db::update_game_from_bgg(&db, game_id, &bgg_data, &request.fields_to_update)
+            .await
+            .map_err(|e| internal_error(format!("Failed to update game: {}", e)))?;
+
+    success_response(updated_game)
+}
+
+/// Preview bulk BGG enrichment
+#[endpoint {
+    method = POST,
+    path = "/api/admin/bgg/bulk/preview"
+}]
+pub async fn preview_bulk_enrich(
+    rqctx: RequestContext<AppState>,
+    body: TypedBody<BulkEnrichRequest>,
+) -> Result<HttpOk<BulkEnrichPreviewResponse>, HttpError> {
+    // Verify admin access
+    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+
+    let request = body.into_inner();
+    let limit = request.limit.unwrap_or(50).min(200); // Cap at 200 for preview
+    let app_state = rqctx.context();
+    let db = app_state.db();
+
+    // Get games needing enrichment
+    let games = admin_db::get_games_needing_enrichment(&db, limit)
+        .await
+        .map_err(|e| internal_error(format!("Failed to get games: {}", e)))?;
+
+    if games.is_empty() {
+        return success_response(BulkEnrichPreviewResponse {
+            games_to_update: Vec::new(),
+            errors: Vec::new(),
+            total_fetched: 0,
+        });
+    }
+
+    // Collect BGG IDs
+    let bgg_ids: Vec<i32> = games.iter().filter_map(|g| g.bgg_id).collect();
+
+    // Fetch from BGG API (batched with rate limiting)
+    let bgg_client = BggClient::new();
+    let bgg_results = bgg_client
+        .fetch_games(&bgg_ids)
+        .await
+        .map_err(|e| bad_request_error(format!("Failed to fetch from BGG: {}", e)))?;
+
+    // Build lookup map by BGG ID
+    let bgg_map: HashMap<i32, _> = bgg_results.into_iter().map(|g| (g.bgg_id, g)).collect();
+
+    // Build preview
+    let mut games_to_update = Vec::new();
+    let mut errors = Vec::new();
+
+    for game in &games {
+        let bgg_id = match game.bgg_id {
+            Some(id) => id,
+            None => continue,
+        };
+
+        match bgg_map.get(&bgg_id) {
+            Some(bgg_data) => {
+                let changes = calculate_bgg_changes(game, bgg_data);
+                // Only include if there are actual changes for requested fields
+                let filtered_changes: Vec<_> = changes
+                    .into_iter()
+                    .filter(|c| request.fields_to_enrich.contains(&c.field))
+                    .collect();
+
+                if !filtered_changes.is_empty() {
+                    games_to_update.push(BggGameEnrichPreview {
+                        game_id: game.id,
+                        bgg_id,
+                        name: game.name.clone(),
+                        changes: filtered_changes,
+                    });
+                }
+            }
+            None => {
+                errors.push(BggEnrichError {
+                    game_id: game.id,
+                    bgg_id,
+                    message: "Game not found on BGG".to_string(),
+                });
+            }
+        }
+    }
+
+    success_response(BulkEnrichPreviewResponse {
+        games_to_update,
+        errors,
+        total_fetched: bgg_map.len() as u32,
+    })
+}
+
+/// Execute bulk BGG enrichment
+#[endpoint {
+    method = POST,
+    path = "/api/admin/bgg/bulk"
+}]
+pub async fn execute_bulk_enrich(
+    rqctx: RequestContext<AppState>,
+    body: TypedBody<BulkEnrichRequest>,
+) -> Result<HttpOk<BulkEnrichResponse>, HttpError> {
+    // Verify admin access
+    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+
+    let request = body.into_inner();
+    let limit = request.limit.unwrap_or(50).min(200);
+    let app_state = rqctx.context();
+    let db = app_state.db();
+
+    if request.fields_to_enrich.is_empty() {
+        return Err(bad_request_error(
+            "No fields selected for enrichment".to_string(),
+        ));
+    }
+
+    // Get games needing enrichment
+    let games = admin_db::get_games_needing_enrichment(&db, limit)
+        .await
+        .map_err(|e| internal_error(format!("Failed to get games: {}", e)))?;
+
+    if games.is_empty() {
+        return success_response(BulkEnrichResponse {
+            updated_count: 0,
+            errors: Vec::new(),
+        });
+    }
+
+    // Collect BGG IDs
+    let bgg_ids: Vec<i32> = games.iter().filter_map(|g| g.bgg_id).collect();
+
+    // Fetch from BGG API
+    let bgg_client = BggClient::new();
+    let bgg_results = bgg_client
+        .fetch_games(&bgg_ids)
+        .await
+        .map_err(|e| bad_request_error(format!("Failed to fetch from BGG: {}", e)))?;
+
+    // Build lookup map
+    let bgg_map: HashMap<i32, _> = bgg_results.into_iter().map(|g| (g.bgg_id, g)).collect();
+
+    // Build updates list
+    let mut updates = Vec::new();
+    let mut errors = Vec::new();
+
+    for game in &games {
+        let bgg_id = match game.bgg_id {
+            Some(id) => id,
+            None => continue,
+        };
+
+        match bgg_map.get(&bgg_id) {
+            Some(bgg_data) => {
+                updates.push((game.id, bgg_data.clone(), request.fields_to_enrich.clone()));
+            }
+            None => {
+                errors.push(BggEnrichError {
+                    game_id: game.id,
+                    bgg_id,
+                    message: "Game not found on BGG".to_string(),
+                });
+            }
+        }
+    }
+
+    // Execute batch update
+    let updated_count = admin_db::batch_update_games_from_bgg(&db, updates)
+        .await
+        .map_err(|e| internal_error(format!("Failed to update games: {}", e)))?;
+
+    success_response(BulkEnrichResponse {
+        updated_count,
+        errors,
+    })
+}
+
+/// Calculate changes between existing game and BGG data
+fn calculate_bgg_changes(existing: &Game, bgg_data: &crate::bgg::BggGameData) -> Vec<FieldChange> {
+    let mut changes = Vec::new();
+
+    // Description
+    if let Some(ref new_desc) = bgg_data.description {
+        let desc_changed = match &existing.description {
+            Some(old) => old != new_desc,
+            None => true,
+        };
+        if desc_changed {
+            changes.push(FieldChange {
+                field: "description".to_string(),
+                old_value: existing
+                    .description
+                    .as_ref()
+                    .map(|s| truncate_for_display(s, 100)),
+                new_value: Some(truncate_for_display(new_desc, 100)),
+            });
+        }
+    }
+
+    // Year published
+    if let Some(new_year) = bgg_data.year_published
+        && existing.year_published != Some(new_year)
+    {
+        changes.push(FieldChange {
+            field: "year_published".to_string(),
+            old_value: existing.year_published.map(|v| v.to_string()),
+            new_value: Some(new_year.to_string()),
+        });
+    }
+
+    // Min players
+    if let Some(new_min) = bgg_data.min_players
+        && existing.min_players != Some(new_min)
+    {
+        changes.push(FieldChange {
+            field: "min_players".to_string(),
+            old_value: existing.min_players.map(|v| v.to_string()),
+            new_value: Some(new_min.to_string()),
+        });
+    }
+
+    // Max players
+    if let Some(new_max) = bgg_data.max_players
+        && existing.max_players != Some(new_max)
+    {
+        changes.push(FieldChange {
+            field: "max_players".to_string(),
+            old_value: existing.max_players.map(|v| v.to_string()),
+            new_value: Some(new_max.to_string()),
+        });
+    }
+
+    // Play time
+    if let Some(new_time) = bgg_data.play_time_minutes
+        && existing.play_time_minutes != Some(new_time)
+    {
+        changes.push(FieldChange {
+            field: "play_time_minutes".to_string(),
+            old_value: existing.play_time_minutes.map(|v| v.to_string()),
+            new_value: Some(new_time.to_string()),
+        });
+    }
+
+    // Complexity rating
+    if let Some(new_complexity) = bgg_data.complexity_rating {
+        let complexity_changed = match existing.complexity_rating {
+            Some(old) => (old - new_complexity).abs() > 0.01,
+            None => true,
+        };
+        if complexity_changed {
+            changes.push(FieldChange {
+                field: "complexity_rating".to_string(),
+                old_value: existing.complexity_rating.map(|v| format!("{:.2}", v)),
+                new_value: Some(format!("{:.2}", new_complexity)),
+            });
+        }
+    }
+
+    changes
+}
+
+/// Truncate a string for display purposes
+fn truncate_for_display(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        format!("{}...", &s[..max_len])
+    }
 }

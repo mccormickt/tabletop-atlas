@@ -83,7 +83,7 @@ pub async fn create_house_rule(
 
         // First verify the game exists
         let game_exists: bool = conn.query_row(
-            "SELECT EXISTS(SELECT 1 FROM games WHERE id = ?)",
+            "SELECT EXISTS(SELECT 1 FROM master_games WHERE id = ?)",
             params![request.game_id],
             |row| row.get(0),
         )?;

@@ -25,20 +25,50 @@ fn row_to_game(row: &Row) -> SqliteResult<Game> {
     })
 }
 
+fn row_to_game_summary(row: &Row) -> SqliteResult<GameSummary> {
+    Ok(GameSummary {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        publisher: row.get(2)?,
+        year_published: row.get(3)?,
+        min_players: row.get(4)?,
+        max_players: row.get(5)?,
+        complexity_rating: row.get(6)?,
+        has_rules_pdf: row.get::<_, Option<String>>(7)?.is_some(),
+        house_rules_count: row.get(8)?,
+    })
+}
+
 pub async fn list_games(
     db: &Database,
     page: u32,
     limit: u32,
+    search: Option<&str>,
 ) -> SqliteResult<PaginatedResponse<GameSummary>> {
     let pagination = PaginationInfo::new(page, limit);
 
     db.with_connection(|conn| {
-        // Get total count
-        let total: u32 =
-            conn.query_row("SELECT COUNT(*) FROM master_games", [], |row| row.get(0))?;
+        // Build WHERE clause for search
+        let search_pattern = search.map(|s| format!("%{}%", s.to_lowercase()));
+        let where_clause = if search_pattern.is_some() {
+            "WHERE LOWER(g.name) LIKE ?"
+        } else {
+            ""
+        };
+
+        // Get total count (with search filter if provided)
+        let total: u32 = if let Some(ref pattern) = search_pattern {
+            conn.query_row(
+                &format!("SELECT COUNT(*) FROM master_games g {}", where_clause),
+                params![pattern],
+                |row| row.get(0),
+            )?
+        } else {
+            conn.query_row("SELECT COUNT(*) FROM master_games", [], |row| row.get(0))?
+        };
 
         // Get games with house rules count
-        let mut stmt = conn.prepare(
+        let query = format!(
             r#"
             SELECT
                 g.id, g.name, g.publisher, g.year_published,
@@ -47,29 +77,30 @@ pub async fn list_games(
                 COUNT(hr.id) as house_rules_count
             FROM master_games g
             LEFT JOIN house_rules hr ON g.id = hr.game_id AND hr.is_active = TRUE
+            {}
             GROUP BY g.id, g.name, g.publisher, g.year_published,
                      g.min_players, g.max_players, g.complexity_rating, g.rules_pdf_path
             ORDER BY g.name ASC
             LIMIT ? OFFSET ?
             "#,
-        )?;
+            where_clause
+        );
 
-        let game_iter = stmt.query_map(params![pagination.limit, pagination.offset], |row| {
-            Ok(GameSummary {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                publisher: row.get(2)?,
-                year_published: row.get(3)?,
-                min_players: row.get(4)?,
-                max_players: row.get(5)?,
-                complexity_rating: row.get(6)?,
-                has_rules_pdf: row.get::<_, Option<String>>(7)?.is_some(),
-                house_rules_count: row.get(8)?,
-            })
-        })?;
+        let mut stmt = conn.prepare(&query)?;
 
-        let games: Result<Vec<GameSummary>, _> = game_iter.collect();
-        let games = games?;
+        let games: Vec<GameSummary> = if let Some(ref pattern) = search_pattern {
+            stmt.query_map(
+                params![pattern, pagination.limit, pagination.offset],
+                row_to_game_summary,
+            )?
+            .collect::<Result<Vec<_>, _>>()?
+        } else {
+            stmt.query_map(
+                params![pagination.limit, pagination.offset],
+                row_to_game_summary,
+            )?
+            .collect::<Result<Vec<_>, _>>()?
+        };
 
         Ok(PaginatedResponse::new(games, total, page, limit))
     })

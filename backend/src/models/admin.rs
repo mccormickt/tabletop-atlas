@@ -108,3 +108,120 @@ impl ParsedBggGame {
         }
     }
 }
+
+// ============================================================================
+// BGG API Enrichment Models
+// ============================================================================
+
+/// Values for comparing current game data vs BGG data
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BggGameValues {
+    /// Game name
+    pub name: String,
+    /// Game description
+    pub description: Option<String>,
+    /// Year published
+    pub year_published: Option<i32>,
+    /// Minimum players
+    pub min_players: Option<i32>,
+    /// Maximum players
+    pub max_players: Option<i32>,
+    /// Playing time in minutes
+    pub play_time_minutes: Option<i32>,
+    /// Average weight/complexity (1.0-5.0)
+    pub complexity_rating: Option<f64>,
+}
+
+/// Response for single game BGG enrichment preview
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct BggEnrichPreviewResponse {
+    /// Database game ID
+    pub game_id: i64,
+    /// BGG ID
+    pub bgg_id: i32,
+    /// Current values in our database
+    pub current_values: BggGameValues,
+    /// Values from BGG API
+    pub bgg_values: BggGameValues,
+    /// List of fields that differ
+    pub changes: Vec<FieldChange>,
+}
+
+/// Request to execute single game BGG enrichment
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct BggEnrichRequest {
+    /// Which fields to update from BGG data
+    pub fields_to_update: Vec<String>,
+}
+
+/// Statistics about games needing enrichment
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct EnrichmentStats {
+    /// Total games with a BGG ID
+    pub total_with_bgg_id: u32,
+    /// Games missing year_published
+    pub missing_year: u32,
+    /// Games missing player counts (min or max)
+    pub missing_players: u32,
+    /// Games missing play_time_minutes
+    pub missing_play_time: u32,
+    /// Games missing complexity_rating
+    pub missing_complexity: u32,
+    /// Games missing description
+    pub missing_description: u32,
+    /// Games missing at least one field
+    pub missing_any: u32,
+}
+
+/// Request for bulk BGG enrichment
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct BulkEnrichRequest {
+    /// Which fields to enrich (e.g., ["year_published", "min_players"])
+    pub fields_to_enrich: Vec<String>,
+    /// Maximum number of games to process (default 50)
+    pub limit: Option<u32>,
+}
+
+/// Preview of a game that will be enriched from BGG
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BggGameEnrichPreview {
+    /// Database game ID
+    pub game_id: i64,
+    /// BGG ID
+    pub bgg_id: i32,
+    /// Game name
+    pub name: String,
+    /// Fields that will change
+    pub changes: Vec<FieldChange>,
+}
+
+/// Error that occurred while enriching a game from BGG
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BggEnrichError {
+    /// Database game ID
+    pub game_id: i64,
+    /// BGG ID
+    pub bgg_id: i32,
+    /// Error message
+    pub message: String,
+}
+
+/// Response for bulk BGG enrichment preview
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct BulkEnrichPreviewResponse {
+    /// Games that will be updated
+    pub games_to_update: Vec<BggGameEnrichPreview>,
+    /// Errors encountered while fetching from BGG
+    pub errors: Vec<BggEnrichError>,
+    /// Total games fetched from BGG
+    pub total_fetched: u32,
+}
+
+/// Response for bulk BGG enrichment execution
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct BulkEnrichResponse {
+    /// Number of games updated
+    pub updated_count: u32,
+    /// Errors encountered during update
+    pub errors: Vec<BggEnrichError>,
+}

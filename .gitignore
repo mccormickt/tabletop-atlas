@@ -1,7 +1,7 @@
 /target
 /node_modules
 /uploads
-atlas.db
+*.db
 /.playwright
 /.playwright-mcp
 .env

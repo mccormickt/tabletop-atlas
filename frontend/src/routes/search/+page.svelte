@@ -26,6 +26,13 @@
 	let searchLimit = $state(5);
 	let totalResults = $state(0);
 	let hasSearched = $state(false);
+	let gameFilterQuery = $state('');
+
+	let filteredGames = $derived(
+		gameFilterQuery.trim()
+			? games.filter((g) => g.name.toLowerCase().includes(gameFilterQuery.toLowerCase()))
+			: games
+	);
 
 	let initialUrlParams: { gameId: string | null; query: string | null } = {
 		gameId: null,
@@ -243,27 +250,38 @@
 						>
 					</ComponentTraySection>
 				{:else}
-					<div class="max-h-96 space-y-2 overflow-y-auto">
-						{#each games as game (game.id)}
-							<button
-								onclick={() => selectGame(game.id)}
-								class="w-full rounded-lg p-3 text-left transition-all
-									{selectedGameId === game.id
-									? 'bg-game-blue text-white'
-									: 'bg-parchment hover:bg-parchment-dark text-foreground'}
-									{!game.hasRulesPdf ? 'opacity-60' : ''}"
-							>
-								<div class="font-display text-sm font-medium">{game.name}</div>
-								<div class="mt-1 flex items-center gap-1">
-									{#if game.hasRulesPdf}
-										<Rulebook size={12} class="opacity-60" />
-									{:else}
-										<span class="text-xs opacity-70">No rules</span>
-									{/if}
-								</div>
-							</button>
-						{/each}
+					<div class="mb-2">
+						<Input
+							bind:value={gameFilterQuery}
+							placeholder="Filter games..."
+							class="bg-parchment text-foreground placeholder:text-foreground/50 h-8 text-sm"
+						/>
 					</div>
+					{#if filteredGames.length === 0}
+						<p class="text-parchment/70 py-2 text-center text-sm">No games match filter</p>
+					{:else}
+						<div class="max-h-80 space-y-2 overflow-y-auto">
+							{#each filteredGames as game (game.id)}
+								<button
+									onclick={() => selectGame(game.id)}
+									class="w-full rounded-lg p-3 text-left transition-all
+										{selectedGameId === game.id
+										? 'bg-game-blue text-white'
+										: 'bg-parchment hover:bg-parchment-dark text-foreground'}
+										{!game.hasRulesPdf ? 'opacity-60' : ''}"
+								>
+									<div class="font-display text-sm font-medium">{game.name}</div>
+									<div class="mt-1 flex items-center gap-1">
+										{#if game.hasRulesPdf}
+											<Rulebook size={12} class="opacity-60" />
+										{:else}
+											<span class="text-xs opacity-70">No rules</span>
+										{/if}
+									</div>
+								</button>
+							{/each}
+						</div>
+					{/if}
 				{/if}
 			</ComponentTray>
 
