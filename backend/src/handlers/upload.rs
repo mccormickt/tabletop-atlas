@@ -198,7 +198,7 @@ pub async fn delete_rules(
     let pdf_path: Option<String> = db
         .with_connection(|conn| {
             conn.query_row(
-                "SELECT rules_pdf_path FROM games WHERE id = ?",
+                "SELECT rules_pdf_path FROM master_games WHERE id = ?",
                 [game_id],
                 |row| row.get(0),
             )
@@ -222,7 +222,7 @@ pub async fn delete_rules(
     // Clear the PDF path and rules text from the game record
     db.with_connection(|conn| {
         conn.execute(
-            "UPDATE games SET rules_pdf_path = NULL, rules_text = NULL WHERE id = ?",
+            "UPDATE master_games SET rules_pdf_path = NULL, rules_text = NULL WHERE id = ?",
             [game_id],
         )
     })
