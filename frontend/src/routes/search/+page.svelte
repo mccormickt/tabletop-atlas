@@ -296,14 +296,8 @@
 
 		<!-- Search Interface and Results -->
 		<div class="min-w-0 flex-1 space-y-6">
-			<!-- Search Form - Index Card Style -->
-			<GameBox variant="default" class="relative p-6">
-				<div
-					class="bg-game-green font-display absolute -top-3 left-6 rounded-t-lg px-4 py-1 text-sm font-semibold text-white"
-				>
-					Search
-				</div>
-				<div class="pt-2">
+			<!-- Search Form -->
+			<GameBox variant="default" class="p-6">
 					<form onsubmit={handleSearchSubmit} class="space-y-4">
 						<div class="flex gap-2">
 							<div class="relative flex-1">
@@ -363,7 +357,6 @@
 							<p class="text-game-red font-ui text-sm">{error}</p>
 						</div>
 					{/if}
-				</div>
 			</GameBox>
 
 			<!-- Search Results - Card Sleeves -->
