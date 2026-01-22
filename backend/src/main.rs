@@ -173,7 +173,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Set up the server
     let config_dropshot = ConfigDropshot {
         bind_address: bind_address.parse()?,
-        default_request_body_max_bytes: 10 * 1024 * 1024, // 10MB for PDF uploads
+        default_request_body_max_bytes: 15 * 1024 * 1024, // 15MB for PDF/CSV uploads
         default_handler_task_mode: dropshot::HandlerTaskMode::Detached,
         log_headers: Default::default(),
     };
@@ -259,6 +259,11 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(handlers::tools::get_tool)?;
     api.register(handlers::tools::calculate_scores)?;
 
+    // Register admin endpoints
+    api.register(handlers::admin::get_admin_stats)?;
+    api.register(handlers::admin::preview_bgg_import)?;
+    api.register(handlers::admin::execute_bgg_import)?;
+
     // Register health check
     api.register(static_files::health_check)?;
 
@@ -275,6 +280,7 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
     api.register(static_files::serve_auth_views)?; // /auth/{path:.*}
     api.register(static_files::serve_challenges_views)?; // /challenges/{path:.*}
     api.register(static_files::serve_tools_views)?; // /tools/{path:.*}
+    api.register(static_files::serve_admin_views)?; // /admin/{path:.*}
     api.register(static_files::serve_index)?; // /
 
     Ok(api)

@@ -2,6 +2,7 @@ use chrono::Utc;
 use rusqlite::{Connection, Result as SqliteResult, Row};
 use std::sync::{Arc, Mutex, PoisonError};
 
+pub mod admin;
 pub mod challenges;
 pub mod chat;
 pub mod collections;

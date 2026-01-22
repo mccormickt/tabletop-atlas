@@ -2,6 +2,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+pub mod admin;
 pub mod challenge;
 pub mod chat;
 pub mod collection;

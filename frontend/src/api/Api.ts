@@ -14,6 +14,11 @@ export type AddToCollectionRequest = {
 	rating?: number | null;
 };
 
+/**
+ * Admin dashboard stats
+ */
+export type AdminDashboardStats = { masterGamesCount: number };
+
 export type GameType = 'master' | 'custom' | 'collection';
 
 export type AssignGameRequest = {
@@ -32,6 +37,92 @@ export type UserInfo = {
 };
 
 export type AuthResponse = { user: UserInfo };
+
+/**
+ * Preview of a game to be inserted from BGG CSV
+ */
+export type BggGamePreview = {
+	/** BGG object ID */
+	bggId: number;
+	/** Average weight/complexity (1.0-5.0) */
+	complexityRating?: number | null;
+	/** Maximum players */
+	maxPlayers?: number | null;
+	/** Minimum players */
+	minPlayers?: number | null;
+	/** Game name from BGG */
+	name: string;
+	/** Playing time in minutes */
+	playTimeMinutes?: number | null;
+	/** Row number in CSV (1-indexed) */
+	row: number;
+	/** Year published */
+	yearPublished?: number | null;
+};
+
+/**
+ * A field that will be changed during update
+ */
+export type FieldChange = {
+	/** Field name */
+	field: string;
+	/** New value (as string for display) */
+	newValue?: string | null;
+	/** Current value (as string for display) */
+	oldValue?: string | null;
+};
+
+/**
+ * Preview of a game that will be updated
+ */
+export type BggGameUpdatePreview = {
+	/** BGG object ID */
+	bggId: number;
+	/** Fields that will change */
+	changes: FieldChange[];
+	/** Existing database ID */
+	existingId: number;
+	/** Game name */
+	name: string;
+	/** Row number in CSV (1-indexed) */
+	row: number;
+};
+
+/**
+ * Error that occurred while parsing a row
+ */
+export type BggParseError = {
+	/** Error message */
+	message: string;
+	/** Row number in CSV (1-indexed) */
+	row: number;
+};
+
+/**
+ * Response for BGG import preview
+ */
+export type BggImportPreviewResponse = {
+	/** Parsing errors encountered */
+	errors: BggParseError[];
+	/** Games that will be inserted (new) */
+	gamesToInsert: BggGamePreview[];
+	/** Games that will be updated (existing by bgg_id) */
+	gamesToUpdate: BggGameUpdatePreview[];
+	/** Total rows in the CSV */
+	totalRows: number;
+};
+
+/**
+ * Response for BGG import execution
+ */
+export type BggImportResponse = {
+	/** Errors that occurred during import */
+	errors: BggParseError[];
+	/** Number of games inserted */
+	insertedCount: number;
+	/** Number of games updated */
+	updatedCount: number;
+};
 
 export type ChallengeStatus = 'draft' | 'active' | 'completed' | 'archived';
 
@@ -756,6 +847,36 @@ export class Api {
 	}
 
 	methods = {
+		/**
+		 * Execute BGG CSV import
+		 */
+		executeBggImport: (_: EmptyObj, params: FetchParams = {}) => {
+			return this.request<BggImportResponse>({
+				path: `/api/admin/games/import`,
+				method: 'POST',
+				...params
+			});
+		},
+		/**
+		 * Preview BGG CSV import (shows what will be inserted/updated)
+		 */
+		previewBggImport: (_: EmptyObj, params: FetchParams = {}) => {
+			return this.request<BggImportPreviewResponse>({
+				path: `/api/admin/games/import/preview`,
+				method: 'POST',
+				...params
+			});
+		},
+		/**
+		 * Get admin dashboard stats
+		 */
+		getAdminStats: (_: EmptyObj, params: FetchParams = {}) => {
+			return this.request<AdminDashboardStats>({
+				path: `/api/admin/stats`,
+				method: 'GET',
+				...params
+			});
+		},
 		/**
 		 * Handle Google OAuth callback
 		 */

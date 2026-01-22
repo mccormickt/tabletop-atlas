@@ -49,3 +49,5 @@ dotenvy = "0.15"
 urlencoding = "2.1"
 # Plugin registration for extensible tools
 inventory = "0.3"
+# CSV parsing for BGG imports
+csv = "1.3"

@@ -7,6 +7,7 @@ use dropshot::{
 use schemars::JsonSchema;
 use serde::Serialize;
 
+pub mod admin;
 pub mod auth;
 pub mod challenges;
 pub mod chat;
