@@ -80,13 +80,6 @@
 				</button>
 			</div>
 
-			<!-- Center - Search (when available and appropriate) -->
-			{#if showSearch && currentGame}
-				<div class="mx-8 hidden max-w-lg flex-1 lg:flex">
-					<HeaderSearch {currentGame} showSearchButton={false} />
-				</div>
-			{/if}
-
 			<!-- Navigation -->
 			<nav class="flex items-center gap-2">
 				<!-- Main Navigation Links (desktop) -->
