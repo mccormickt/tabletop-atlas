@@ -6,7 +6,6 @@
 	import MobileNav from '$lib/components/MobileNav.svelte';
 	import { createHeaderStore, setHeaderContext } from '$lib/stores/header';
 	import { createAuthStore, setAuthContext, type UserInfo } from '$lib/stores/auth';
-	import type { Game } from '$lib';
 
 	let { children } = $props();
 
@@ -24,13 +23,6 @@
 	// Create and provide auth context
 	const authStore = createAuthStore();
 	setAuthContext(authStore);
-
-	// Subscribe to header config with proper cleanup
-	let headerConfig = $state({
-		currentGame: null as Game | null,
-		showSearch: true,
-		title: undefined as string | undefined
-	});
 
 	// Subscribe to auth state
 	let authState = $state({
@@ -57,17 +49,6 @@
 	});
 
 	$effect(() => {
-		const unsubscribe = headerStore.subscribe((config) => {
-			headerConfig = {
-				currentGame: config.currentGame ?? null,
-				showSearch: config.showSearch ?? true,
-				title: config.title
-			};
-		});
-		return unsubscribe;
-	});
-
-	$effect(() => {
 		const unsubscribe = authStore.subscribe((state) => {
 			authState = {
 				user: state.user,
@@ -91,12 +72,7 @@
 {:else}
 	<div class="bg-background flex min-h-screen flex-col">
 		<!-- Global Header -->
-		<Header
-			currentGame={headerConfig.currentGame}
-			showSearch={headerConfig.showSearch}
-			user={authState.user}
-			isAuthLoading={authState.isLoading}
-		/>
+		<Header user={authState.user} isAuthLoading={authState.isLoading} />
 
 		<!-- Page Content with bottom padding for mobile nav -->
 		<main class="flex-1 pb-20 md:pb-0">

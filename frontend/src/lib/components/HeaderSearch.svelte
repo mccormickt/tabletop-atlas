@@ -1,104 +1,104 @@
 <script lang="ts">
-	import { searchStore, searchUtils, type SearchState } from '$lib/stores/search';
-	import { Button } from '$lib/components/ui';
-	import { Badge } from '$lib/components/ui';
-	import QuickSearch from './QuickSearch.svelte';
-	import SearchModal from './SearchModal.svelte';
-	import type { Game, GameSummary, SearchResult } from '$lib';
-
-	// Props
-	let {
-		currentGame = null,
-		showQuickSearch = true,
-		showSearchButton = true
-	}: {
-		currentGame?: Game | null;
-		showQuickSearch?: boolean;
-		showSearchButton?: boolean;
-	} = $props();
+	import { goto } from '$app/navigation';
+	import { api, type GameSummary } from '$lib';
+	import { SearchGlass } from './icons';
 
 	// State
-	let showQuickSearchDropdown = $state(false);
-	let isModalOpen = $state(false);
-	let searchState = $state<SearchState>({
-		isModalOpen: false,
-		recentSearches: [],
-		favoriteResults: [],
-		currentGame: null
-	});
+	let query = $state('');
+	let games = $state<GameSummary[]>([]);
+	let filteredGames = $derived(
+		query.trim()
+			? games.filter((g) => g.name.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
+			: []
+	);
+	let isOpen = $state(false);
+	let isLoading = $state(true);
+	let inputElement = $state<HTMLInputElement | null>(null);
+	let selectedIndex = $state(-1);
 
-	// Subscribe to search store
-	searchStore.subscribe((state) => {
-		searchState = state;
-		isModalOpen = state.isModalOpen;
-	});
-
+	// Load games on mount
 	let initialized = $state(false);
-
-	// One-time initialization for persisted data
 	$effect(() => {
 		if (!initialized) {
 			initialized = true;
-			// Load persisted search data
-			searchUtils.loadPersistedData();
-
-			// Set current game context if provided
-			if (currentGame) {
-				searchUtils.setCurrentGame(currentGame);
-			}
+			loadGames();
 		}
 	});
 
-	// Keyboard shortcuts with cleanup (separate effect)
+	// Keyboard shortcut (Cmd/Ctrl + K)
 	$effect(() => {
-		const cleanup = initKeyboardShortcuts();
-		return cleanup;
-	});
-
-	function initKeyboardShortcuts() {
 		function handleKeydown(event: KeyboardEvent) {
-			// Cmd/Ctrl + K to open search modal
 			if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
 				event.preventDefault();
-				openSearchModal();
+				isOpen = true;
+				// Focus input after it renders
+				setTimeout(() => inputElement?.focus(), 0);
+			}
+			// Escape to close
+			if (event.key === 'Escape' && isOpen) {
+				isOpen = false;
+				query = '';
+				inputElement?.blur();
 			}
 		}
-
 		document.addEventListener('keydown', handleKeydown);
 		return () => document.removeEventListener('keydown', handleKeydown);
-	}
+	});
 
-	function openSearchModal() {
-		searchUtils.openModal();
-	}
+	// Reset selection when filtered results change
+	$effect(() => {
+		void filteredGames;
+		selectedIndex = -1;
+	});
 
-	function closeSearchModal() {
-		searchUtils.closeModal();
-	}
-
-	function handleQuickSearchResult(event: CustomEvent<SearchResult>) {
-		const result = event.detail;
-		console.log('Quick search result selected:', result);
-		// You can dispatch this up to parent or handle navigation here
-	}
-
-	function handleModalResultSelect(event: { result: SearchResult; game: GameSummary }) {
-		console.log('Modal search result selected:', event.result, 'from game:', event.game);
-		// Handle navigation to result or display in context
-	}
-
-	function handleQuickSearch(event: CustomEvent<{ query: string; results: SearchResult[] }>) {
-		const { query, results } = event.detail;
-		if (currentGame) {
-			searchUtils.addToHistory(query, currentGame, results.length);
+	async function loadGames() {
+		isLoading = true;
+		try {
+			const result = await api.methods.listGames({ query: { limit: 100 } });
+			if (result.type === 'success') {
+				games = result.data.items;
+			}
+		} catch {
+			// Silently fail - search just won't work
+		} finally {
+			isLoading = false;
 		}
 	}
 
-	function toggleQuickSearch() {
-		showQuickSearchDropdown = !showQuickSearchDropdown;
+	function handleBlur(event: FocusEvent) {
+		// Delay to allow click events on dropdown items
+		const relatedTarget = event.relatedTarget as HTMLElement;
+		if (relatedTarget?.closest('.search-dropdown')) {
+			return;
+		}
+		setTimeout(() => {
+			isOpen = false;
+			query = '';
+		}, 150);
 	}
 
-	// Format keyboard shortcut for display
+	function handleKeydown(event: KeyboardEvent) {
+		if (!isOpen || filteredGames.length === 0) return;
+
+		if (event.key === 'ArrowDown' || (event.key === 'Tab' && !event.shiftKey)) {
+			event.preventDefault();
+			selectedIndex = Math.min(selectedIndex + 1, filteredGames.length - 1);
+		} else if (event.key === 'ArrowUp' || (event.key === 'Tab' && event.shiftKey)) {
+			event.preventDefault();
+			selectedIndex = Math.max(selectedIndex - 1, -1);
+		} else if (event.key === 'Enter' && selectedIndex >= 0) {
+			event.preventDefault();
+			selectGame(filteredGames[selectedIndex]);
+		}
+	}
+
+	function selectGame(game: GameSummary) {
+		goto(`/games/${game.id}`);
+		query = '';
+		isOpen = false;
+		inputElement?.blur();
+	}
+
 	function getShortcutText(): string {
 		if (typeof navigator !== 'undefined') {
 			const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -108,156 +108,79 @@
 	}
 </script>
 
-<div class="header-search flex items-center space-x-3">
-	<!-- Quick Search (for when on a specific game page) -->
-	{#if showQuickSearch && currentGame}
+<div class="relative">
+	{#if isOpen}
+		<!-- Input mode -->
 		<div class="relative">
-			<QuickSearch
-				gameId={currentGame.id}
-				gameName={currentGame.name}
-				placeholder="Search {currentGame.name} rules..."
-				maxResults={5}
-				autoFocus={false}
-				on:search={handleQuickSearch}
-				on:resultSelect={handleQuickSearchResult}
+			<SearchGlass
+				size={16}
+				class="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
+			/>
+			<input
+				bind:this={inputElement}
+				bind:value={query}
+				onblur={handleBlur}
+				onkeydown={handleKeydown}
+				type="text"
+				placeholder="Search games..."
+				class="bg-card border-game-blue ring-game-blue/20 h-9 w-64 rounded-full border-2 py-1 pr-3 pl-9 text-sm shadow-lg outline-none ring-2"
 			/>
 		</div>
-	{/if}
-
-	<!-- Global Search Button -->
-	{#if showSearchButton}
-		<Button
-			variant="outline"
-			size="sm"
-			onclick={openSearchModal}
-			class="flex items-center space-x-2 text-sm"
+	{:else}
+		<!-- Button mode -->
+		<button
+			onclick={() => {
+				isOpen = true;
+				setTimeout(() => inputElement?.focus(), 0);
+			}}
+			class="bg-parchment hover:bg-parchment-dark border-border flex h-9 items-center gap-2 rounded-full border px-3 text-sm transition-colors"
 		>
-			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-				></path>
-			</svg>
-			<span class="hidden sm:inline">Search Rules</span>
-			<Badge variant="secondary" class="hidden px-1.5 py-0.5 text-xs lg:inline">
-				{getShortcutText()}
-			</Badge>
-		</Button>
+			<SearchGlass size={16} class="text-muted-foreground" />
+			<span class="text-foreground">Search Games</span>
+			<span class="bg-foreground/10 text-muted-foreground rounded px-1.5 py-0.5 text-xs">{getShortcutText()}</span>
+		</button>
 	{/if}
 
-	<!-- Recent Searches Indicator -->
-	{#if searchState.recentSearches.length > 0}
-		<div class="relative">
-			<button
-				onclick={toggleQuickSearch}
-				class="text-gray-400 transition-colors hover:text-gray-600"
-				title="Recent searches"
-				aria-label="View recent searches"
-			>
-				<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-					></path>
-				</svg>
-			</button>
-
-			<!-- Recent Searches Dropdown -->
-			{#if showQuickSearchDropdown}
-				<div
-					class="absolute top-full right-0 z-50 mt-2 w-80 rounded-lg border border-gray-200 bg-white shadow-lg"
-				>
-					<div class="border-b border-gray-200 p-3">
-						<div class="flex items-center justify-between">
-							<h3 class="text-sm font-medium text-gray-900">Recent Searches</h3>
-							<button
-								onclick={() => (showQuickSearchDropdown = false)}
-								class="text-gray-400 hover:text-gray-600"
-								aria-label="Close recent searches"
+	<!-- Dropdown -->
+	{#if isOpen && query.trim()}
+		<div
+			class="search-dropdown border-border bg-card absolute top-10 right-0 z-50 mt-2 w-72 overflow-hidden rounded-lg border shadow-lg"
+		>
+			{#if isLoading}
+				<div class="text-muted-foreground p-4 text-center text-sm">Loading games...</div>
+			{:else if filteredGames.length > 0}
+				<div class="max-h-80 overflow-y-auto py-1">
+					{#each filteredGames as game, index (game.id)}
+						<button
+							onmousedown={() => selectGame(game)}
+							class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors
+								{index === selectedIndex ? 'bg-primary/10' : 'hover:bg-muted'}"
+						>
+							<div
+								class="bg-game-blue flex h-8 w-8 flex-shrink-0 items-center justify-center rounded text-xs font-bold text-white"
 							>
-								<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M6 18L18 6M6 6l12 12"
-									></path>
-								</svg>
-							</button>
-						</div>
-					</div>
-
-					<div class="max-h-64 overflow-y-auto">
-						{#each searchState.recentSearches.slice(0, 8) as search (search.id)}
-							<button
-								onclick={() => {
-									// Navigate to search with this query and game
-									showQuickSearchDropdown = false;
-									openSearchModal();
-								}}
-								class="w-full border-b border-gray-100 p-3 text-left transition-colors last:border-b-0 hover:bg-gray-50"
-							>
-								<div class="flex items-start justify-between">
-									<div class="min-w-0 flex-1">
-										<p class="truncate text-sm font-medium text-gray-900">
-											{search.query}
-										</p>
-										<p class="mt-1 text-xs text-gray-500">
-											{search.gameName} • {search.resultCount} result{search.resultCount === 1
-												? ''
-												: 's'}
-										</p>
-									</div>
-									<div class="ml-2 text-xs text-gray-400">
-										{search.timestamp.toLocaleDateString()}
-									</div>
-								</div>
-							</button>
-						{/each}
-
-						{#if searchState.recentSearches.length === 0}
-							<div class="p-6 text-center text-sm text-gray-500">No recent searches</div>
-						{/if}
-					</div>
-
-					{#if searchState.recentSearches.length > 0}
-						<div class="border-t border-gray-200 p-3">
-							<div class="flex items-center justify-between">
-								<Button variant="outline" size="sm" onclick={openSearchModal} class="text-xs">
-									Advanced Search
-								</Button>
-								<button
-									onclick={() => {
-										searchUtils.clearHistory();
-										showQuickSearchDropdown = false;
-									}}
-									class="text-xs text-gray-500 hover:text-gray-700"
-								>
-									Clear History
-								</button>
+								{game.name[0].toUpperCase()}
 							</div>
-						</div>
-					{/if}
+							<div class="min-w-0 flex-1">
+								<p class="text-foreground truncate text-sm font-medium">{game.name}</p>
+								{#if game.publisher}
+									<p class="text-muted-foreground truncate text-xs">{game.publisher}</p>
+								{/if}
+							</div>
+							{#if game.hasRulesPdf}
+								<span class="text-game-green text-xs">Has rules</span>
+							{/if}
+						</button>
+					{/each}
+				</div>
+			{:else if query.trim()}
+				<div class="p-4 text-center">
+					<p class="text-muted-foreground text-sm">No games found</p>
+					<a href="/games/add" class="text-game-blue mt-1 inline-block text-xs hover:underline">
+						Add a new game
+					</a>
 				</div>
 			{/if}
 		</div>
 	{/if}
 </div>
-
-<!-- Global Search Modal -->
-<SearchModal
-	bind:isOpen={isModalOpen}
-	onClose={closeSearchModal}
-	onResultSelect={handleModalResultSelect}
-	onGameSelect={(e) => searchUtils.setCurrentGame(e as unknown as Game)}
-/>
-
-<style>
-	.header-search {
-		position: relative;
-	}
-</style>

@@ -1,20 +1,15 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import type { Game } from '$lib';
 	import HeaderSearch from './HeaderSearch.svelte';
 	import UserMenu from './UserMenu.svelte';
 	import { Meeple, Dice } from './icons';
 	import type { UserInfo } from '$lib/stores/auth';
 
 	let {
-		currentGame = null,
-		showSearch = true,
 		user = null,
 		isAuthLoading = false
 	}: {
-		currentGame?: Game | null;
-		showSearch?: boolean;
 		user?: UserInfo | null;
 		isAuthLoading?: boolean;
 	} = $props();
@@ -104,12 +99,10 @@
 					{/each}
 				</div>
 
-				<!-- Search Button/Controls -->
-				{#if showSearch}
-					<div class="ml-4 flex items-center">
-						<HeaderSearch {currentGame} showQuickSearch={false} showSearchButton={true} />
-					</div>
-				{/if}
+				<!-- Search Rules -->
+				<div class="ml-4 hidden lg:block">
+					<HeaderSearch />
+				</div>
 
 				<!-- User Menu -->
 				<div class="ml-4">
