@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@oxide/openapi-gen-ts':
-        specifier: ^0.7.0
-        version: 0.7.0(openapi-types@12.1.3)
+        specifier: ^0.14.0
+        version: 0.14.0(commander@9.5.0)(openapi-types@12.1.3)
       '@sveltejs/adapter-static':
         specifier: ^3.0.8
         version: 3.0.8(@sveltejs/kit@2.21.5(@sveltejs/vite-plugin-svelte@5.1.0(svelte@5.34.6)(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1)))(svelte@5.34.6)(vite@6.3.5(jiti@2.4.2)(lightningcss@1.30.1)))
@@ -42,6 +42,11 @@ packages:
   '@babel/runtime@7.27.6':
     resolution: {integrity: sha512-vbavdySgbTTrmFE+EsiqUTzlOr5bzlnJtUv9PynGCAKvfQqjIXbvFdumPM/GxMDfyuGMJaJAU6TO4zc1Jf1i8Q==}
     engines: {node: '>=6.9.0'}
+
+  '@commander-js/extra-typings@14.0.0':
+    resolution: {integrity: sha512-hIn0ncNaJRLkZrxBIp5AsW/eXEHNKYQBh0aPdoUqNgD+Io3NIykQqpKFyKcuasZhicGaEZJX/JBSIkZ4e5x8Dg==}
+    peerDependencies:
+      commander: ~14.0.0
 
   '@esbuild/aix-ppc64@0.25.5':
     resolution: {integrity: sha512-9o3TMmpmftaCMepOdA5k/yDw8SfInyzWWTjYTFCX3kPSDJMROQTb8jg+h9Cnwnmm1vOzvxN7gIfB5V2ewpjtGA==}
@@ -214,9 +219,9 @@ packages:
   '@jsdevtools/ono@7.1.3':
     resolution: {integrity: sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==}
 
-  '@oxide/openapi-gen-ts@0.7.0':
-    resolution: {integrity: sha512-5pFEUC+BCmVbQsAUIhWIPFhWwdteBNaH8nGYGf0ufap/6HpRLpqyqAMNOD2THUw64wMDYKDrAjpMNUuY0u4LFg==}
-    engines: {node: '>=18'}
+  '@oxide/openapi-gen-ts@0.14.0':
+    resolution: {integrity: sha512-L7n/3Ox8UTgDwdDvqCr+PekXcTboq5HQhdEawZWD8ct9QkycCciZoClLWApz/B5T9eiQjZq/5nqyE5JJqqw6nw==}
+    engines: {node: '>=24'}
     hasBin: true
 
   '@polka/url@1.0.0-next.29':
@@ -587,9 +592,6 @@ packages:
   magic-string@0.30.17:
     resolution: {integrity: sha512-sNPKHvyjVf7gyjwS4xGTaW/mCnF8wnjtifKBEhxfZ7E/S8tQ0rssrwGNn6q8JH/ohItJfSQp9mBtQYuTlH5QnA==}
 
-  minimist@1.2.8:
-    resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
-
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
     engines: {node: '>=4'}
@@ -807,6 +809,10 @@ snapshots:
 
   '@babel/runtime@7.27.6': {}
 
+  '@commander-js/extra-typings@14.0.0(commander@9.5.0)':
+    dependencies:
+      commander: 9.5.0
+
   '@esbuild/aix-ppc64@0.25.5':
     optional: true
 
@@ -901,13 +907,14 @@ snapshots:
 
   '@jsdevtools/ono@7.1.3': {}
 
-  '@oxide/openapi-gen-ts@0.7.0(openapi-types@12.1.3)':
+  '@oxide/openapi-gen-ts@0.14.0(commander@9.5.0)(openapi-types@12.1.3)':
     dependencies:
-      minimist: 1.2.8
+      '@commander-js/extra-typings': 14.0.0(commander@9.5.0)
       prettier: 2.7.1
       swagger-parser: 10.0.3(openapi-types@12.1.3)
       ts-pattern: 5.7.1
     transitivePeerDependencies:
+      - commander
       - openapi-types
 
   '@polka/url@1.0.0-next.29': {}
@@ -1062,8 +1069,7 @@ snapshots:
 
   color-name@1.1.4: {}
 
-  commander@9.5.0:
-    optional: true
+  commander@9.5.0: {}
 
   concurrently@8.2.2:
     dependencies:
@@ -1215,8 +1221,6 @@ snapshots:
   magic-string@0.30.17:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.0
-
-  minimist@1.2.8: {}
 
   mri@1.2.0: {}
 

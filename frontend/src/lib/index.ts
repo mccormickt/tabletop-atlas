@@ -1,6 +1,7 @@
 // place files you want to import through the `$lib` alias in this folder.
 
-import { Api } from '../api/Api';
+import { Api, type UploadResponse } from '../api/Api';
+import { handleResponse, type ApiResult } from '../api/http-client';
 
 // Create API client instance
 export const api = new Api({
@@ -11,6 +12,25 @@ export const api = new Api({
 		}
 	}
 });
+
+/**
+ * Upload a PDF file for a game's rules.
+ * This is a custom function because the generated API client doesn't support binary uploads.
+ */
+export async function uploadRulesPdf(
+	gameId: number,
+	file: File
+): Promise<ApiResult<UploadResponse>> {
+	const response = await fetch(`/api/games/${gameId}/rules-upload`, {
+		method: 'POST',
+		credentials: 'include',
+		headers: {
+			'Content-Type': 'application/octet-stream'
+		},
+		body: file
+	});
+	return handleResponse<UploadResponse>(response);
+}
 
 // Re-export types for convenience
 export type {

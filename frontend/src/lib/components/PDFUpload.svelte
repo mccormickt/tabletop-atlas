@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { api } from '$lib';
+	import { api, uploadRulesPdf } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Progress } from '$lib/components/ui';
@@ -116,10 +116,7 @@
 				}
 			}, 200);
 
-			const result = await api.methods.uploadRulesPdf({
-				path: { id: gameId },
-				body: selectedFile
-			});
+			const result = await uploadRulesPdf(gameId, selectedFile);
 
 			clearInterval(progressInterval);
 			uploadProgress = 100;
