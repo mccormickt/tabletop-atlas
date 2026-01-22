@@ -3,14 +3,17 @@ use std::path::Path;
 use std::process::Command;
 
 fn main() {
-    println!("cargo:rerun-if-changed=../frontend/src/**");
+    println!("cargo:rerun-if-changed=../frontend/src");
     println!("cargo:rerun-if-changed=../frontend/package.json");
     println!("cargo:rerun-if-changed=../frontend/svelte.config.js");
     println!("cargo:rerun-if-changed=../frontend/vite.config.ts");
 
     // Get the project root directory
-    let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let project_root = Path::new(&manifest_dir).parent().unwrap();
+    let manifest_dir =
+        env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR must be set by cargo");
+    let project_root = Path::new(&manifest_dir)
+        .parent()
+        .expect("CARGO_MANIFEST_DIR must have a parent directory");
     let frontend_dir = project_root.join("frontend");
 
     // Check if BUILD_FRONTEND is set
@@ -33,20 +36,21 @@ fn build_frontend(frontend_dir: &Path) {
         frontend_dir.display()
     );
 
-    // Check if frontend directory exists
     if !frontend_dir.exists() {
-        println!("cargo:warning=Frontend directory not found, skipping build");
-        return;
+        panic!(
+            "Frontend directory not found at: {}",
+            frontend_dir.display()
+        );
     }
 
-    // Check if package.json exists
     let package_json = frontend_dir.join("package.json");
     if !package_json.exists() {
-        println!("cargo:warning=package.json not found, skipping frontend build");
-        return;
+        panic!(
+            "package.json not found at: {}",
+            package_json.display()
+        );
     }
 
-    // Build the frontend
     let build_status = Command::new("pnpm")
         .arg("run")
         .arg("build")
@@ -55,27 +59,23 @@ fn build_frontend(frontend_dir: &Path) {
 
     match build_status {
         Ok(status) if status.success() => {
-            println!("cargo:warning=Frontend built successfully");
-
-            // Check if build output exists
             let build_dir = frontend_dir.join("build");
-            if build_dir.exists() {
-                println!(
-                    "cargo:warning=Frontend build output found at: {}",
-                    build_dir.display()
-                );
-            } else {
-                println!("cargo:warning=Frontend build completed but output directory not found");
+            if !build_dir.exists() {
+                panic!("Frontend build completed but output directory not found");
             }
+            println!(
+                "cargo:warning=Frontend built successfully at: {}",
+                build_dir.display()
+            );
         }
         Ok(status) => {
-            println!(
-                "cargo:warning=Frontend build failed (exit code: {})",
+            panic!(
+                "Frontend build failed with exit code: {}",
                 status.code().unwrap_or(-1)
             );
         }
         Err(e) => {
-            println!("cargo:warning=Failed to run pnpm build: {}", e);
+            panic!("Failed to run pnpm build: {}", e);
         }
     }
 }
@@ -85,13 +85,13 @@ fn create_empty_build_dir(frontend_dir: &Path) {
 
     let build_dir = frontend_dir.join("build");
     if !build_dir.exists() {
-        if let Err(e) = fs::create_dir_all(&build_dir) {
-            println!(
-                "cargo:warning=Failed to create empty build directory: {}",
+        fs::create_dir_all(&build_dir).unwrap_or_else(|e| {
+            panic!(
+                "Failed to create empty build directory at {}: {}",
+                build_dir.display(),
                 e
             );
-            return;
-        }
+        });
 
         // Create a simple index.html for development
         let index_html = build_dir.join("index.html");
@@ -109,13 +109,17 @@ fn create_empty_build_dir(frontend_dir: &Path) {
         <h1>Development Mode</h1>
         <p>The frontend is running in development mode.</p>
         <p>API endpoints are available at <code>/api/*</code></p>
-        <p>To build the frontend, run: <code>BUILD_FRONTEND=1 cargo build</code></p>
+        <p>To build the frontend, unset <code>NO_BUILD_FRONTEND</code> and run: <code>cargo build</code></p>
     </div>
 </body>
 </html>"#;
 
-        if let Err(e) = fs::write(&index_html, dev_content) {
-            println!("cargo:warning=Failed to create dev index.html: {}", e);
-        }
+        fs::write(&index_html, dev_content).unwrap_or_else(|e| {
+            panic!(
+                "Failed to create dev index.html at {}: {}",
+                index_html.display(),
+                e
+            );
+        });
     }
 }
