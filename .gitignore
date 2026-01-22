@@ -5,3 +5,8 @@
 /.playwright
 /.playwright-mcp
 .env
+
+# Melange build artifacts
+packages/
+melange.rsa
+melange.rsa.pub
