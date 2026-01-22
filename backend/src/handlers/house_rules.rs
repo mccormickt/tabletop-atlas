@@ -12,7 +12,7 @@ use crate::{
     },
     models::{
         CreateEmbeddingRequest, CreateHouseRuleRequest, EmbeddingSourceType, GameId, HouseRule,
-        HouseRuleId, PaginatedResponse, PaginationParams, UpdateHouseRuleRequest,
+        HouseRuleId, PaginatedResponse, UpdateHouseRuleRequest,
     },
 };
 
@@ -110,11 +110,20 @@ pub struct HouseRulePathParam {
     pub id: HouseRuleId,
 }
 
+fn default_page() -> u32 {
+    1
+}
+fn default_limit() -> u32 {
+    20
+}
+
 #[derive(Deserialize, JsonSchema)]
 pub struct HouseRulesByGameQuery {
     pub game_id: GameId,
-    #[serde(flatten)]
-    pub pagination: PaginationParams,
+    #[serde(default = "default_page")]
+    pub page: u32,
+    #[serde(default = "default_limit")]
+    pub limit: u32,
 }
 
 /// List house rules for a specific game
@@ -133,8 +142,8 @@ pub async fn list_house_rules(
     match house_rules::list_house_rules(
         &db,
         query.game_id,
-        query.pagination.page,
-        query.pagination.limit,
+        query.page,
+        query.limit,
     )
     .await
     {
