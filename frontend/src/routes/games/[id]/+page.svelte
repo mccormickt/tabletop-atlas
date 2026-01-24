@@ -17,7 +17,7 @@
 	import BggEnrichModal from '$lib/components/admin/BggEnrichModal.svelte';
 
 	import { useHeader } from '$lib/stores/header';
-	import { useAuth } from '$lib/stores/auth';
+	import { useAuth, type AuthState } from '$lib/stores/auth';
 
 	// Tab type
 	type TabType = 'details' | 'house-rules';
@@ -29,12 +29,16 @@
 	const header = useHeader();
 	const auth = useAuth();
 
-	// Auth state for admin check
+	// Auth state
+	let authState = $state<AuthState>({ user: null, isLoading: true, error: null });
 	let isUserAdmin = $state(false);
+	let isAuthenticated = $state(false);
 
 	$effect(() => {
 		const unsubscribe = auth.subscribe((state) => {
+			authState = state;
 			isUserAdmin = state.user?.role === 'admin';
+			isAuthenticated = !!state.user;
 		});
 		return unsubscribe;
 	});
@@ -48,6 +52,11 @@
 	let showUpload = $state(false);
 	let activeTab = $state<TabType>('details');
 	let showBggEnrichModal = $state(false);
+
+	// Collection state
+	let isInCollection = $state(false);
+	let collectionEntryId = $state<number | null>(null);
+	let addingToCollection = $state(false);
 
 	// House rules state (managed here, passed to presentational component)
 	let houseRules = $state<HouseRule[]>([]);
@@ -73,6 +82,82 @@
 			loadHouseRules();
 		}
 	});
+
+	// Check collection status when authenticated and game is loaded
+	$effect(() => {
+		if (isAuthenticated && game && !authState.isLoading) {
+			checkCollectionStatus();
+		}
+	});
+
+	async function checkCollectionStatus() {
+		try {
+			const result = await api.methods.listCollection({
+				query: { page: 1, limit: 100 }
+			});
+
+			if (result.type === 'success') {
+				const entry = result.data.items.find((item) => item.masterGameId === gameId);
+				if (entry) {
+					isInCollection = true;
+					collectionEntryId = entry.id;
+				} else {
+					isInCollection = false;
+					collectionEntryId = null;
+				}
+			}
+		} catch {
+			// Silently fail - collection status is not critical
+		}
+	}
+
+	async function handleAddToCollection() {
+		if (!isAuthenticated || addingToCollection) return;
+
+		addingToCollection = true;
+		try {
+			const result = await api.methods.addToCollection({
+				body: { masterGameId: gameId }
+			});
+
+			if (result.type === 'success') {
+				isInCollection = true;
+				collectionEntryId = result.data.id;
+			} else if (result.type === 'error') {
+				alert(result.data.message || 'Failed to add to collection');
+			} else if (result.type === 'client_error') {
+				alert(result.error.message || 'Failed to add to collection');
+			}
+		} catch (err) {
+			alert(err instanceof Error ? err.message : 'Failed to add to collection');
+		} finally {
+			addingToCollection = false;
+		}
+	}
+
+	async function handleRemoveFromCollection() {
+		if (!collectionEntryId || addingToCollection) return;
+
+		addingToCollection = true;
+		try {
+			const result = await api.methods.removeFromCollection({
+				path: { id: collectionEntryId }
+			});
+
+			if (result.type === 'success') {
+				isInCollection = false;
+				collectionEntryId = null;
+			} else if (result.type === 'error') {
+				alert(result.data.message || 'Failed to remove from collection');
+			} else if (result.type === 'client_error') {
+				alert(result.error.message || 'Failed to remove from collection');
+			}
+		} catch (err) {
+			alert(err instanceof Error ? err.message : 'Failed to remove from collection');
+		} finally {
+			addingToCollection = false;
+		}
+	}
 
 	function navigateToChat() {
 		if (gameId) {
@@ -306,11 +391,36 @@
 					<Button variant="ghost" onclick={handleBack} class="text-gray-600 hover:text-gray-900">
 						← Back to Games
 					</Button>
-					<div class="flex space-x-3">
-						<Button variant="outline" onclick={handleEdit}>Edit Game</Button>
-						<Button variant="destructive" onclick={handleDelete} disabled={deleting}>
-							{deleting ? 'Deleting...' : 'Delete Game'}
-						</Button>
+					<div class="flex flex-wrap items-center gap-2">
+						<!-- Collection Action -->
+						{#if isAuthenticated}
+							{#if isInCollection}
+								<Button
+									variant="outline"
+									onclick={handleRemoveFromCollection}
+									disabled={addingToCollection}
+									class="border-green-600 text-green-600 hover:bg-green-50"
+								>
+									{addingToCollection ? 'Removing...' : '✓ In Collection'}
+								</Button>
+							{:else}
+								<Button
+									variant="default"
+									onclick={handleAddToCollection}
+									disabled={addingToCollection}
+								>
+									{addingToCollection ? 'Adding...' : 'Add to Collection'}
+								</Button>
+							{/if}
+						{/if}
+
+						<!-- Admin Actions -->
+						{#if isUserAdmin}
+							<Button variant="outline" onclick={handleEdit}>Edit Game</Button>
+							<Button variant="destructive" onclick={handleDelete} disabled={deleting}>
+								{deleting ? 'Deleting...' : 'Delete Game'}
+							</Button>
+						{/if}
 					</div>
 				</div>
 

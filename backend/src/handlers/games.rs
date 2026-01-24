@@ -1,5 +1,6 @@
 use crate::{
     AppState,
+    auth::middleware::require_admin,
     db::games,
     handlers::{
         HttpCreated, HttpDeleted, HttpError, HttpOk, bad_request_error, created_response,
@@ -81,7 +82,7 @@ pub async fn get_game(
     }
 }
 
-/// Create a new game
+/// Create a new game (admin only)
 #[endpoint {
     method = POST,
     path = "/api/games"
@@ -90,6 +91,9 @@ pub async fn create_game(
     rqctx: RequestContext<AppState>,
     body: TypedBody<CreateGameRequest>,
 ) -> Result<HttpCreated<Game>, HttpError> {
+    // Require admin access for creating master games
+    require_admin(&rqctx)?;
+
     let app_state = rqctx.context();
     let create_request = body.into_inner();
     let db = app_state.db();
@@ -116,7 +120,7 @@ pub async fn create_game(
     }
 }
 
-/// Update an existing game
+/// Update an existing game (admin only)
 #[endpoint {
     method = PATCH,
     path = "/api/games/{id}"
@@ -126,6 +130,9 @@ pub async fn update_game(
     path: Path<GamePathParam>,
     body: TypedBody<UpdateGameRequest>,
 ) -> Result<HttpOk<Game>, HttpError> {
+    // Require admin access for updating master games
+    require_admin(&rqctx)?;
+
     let app_state = rqctx.context();
     let game_id = path.into_inner().id;
     let update_request = body.into_inner();
@@ -159,7 +166,7 @@ pub async fn update_game(
     }
 }
 
-/// Delete a game
+/// Delete a game (admin only)
 #[endpoint {
     method = DELETE,
     path = "/api/games/{id}"
@@ -168,6 +175,9 @@ pub async fn delete_game(
     rqctx: RequestContext<AppState>,
     path: Path<GamePathParam>,
 ) -> Result<HttpDeleted, HttpError> {
+    // Require admin access for deleting master games
+    require_admin(&rqctx)?;
+
     let app_state = rqctx.context();
     let game_id = path.into_inner().id;
     let db = app_state.db();

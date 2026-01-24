@@ -47,7 +47,6 @@ pub fn require_auth(rqctx: &RequestContext<AppState>) -> Result<AuthenticatedUse
     })
 }
 
-#[allow(dead_code)]
 pub fn require_admin(rqctx: &RequestContext<AppState>) -> Result<AuthenticatedUser, HttpError> {
     let user = require_auth(rqctx)?;
 

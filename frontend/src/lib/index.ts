@@ -57,7 +57,19 @@ export type {
 	PaginatedResponse_for_ChatSessionSummary,
 	SearchResult,
 	RulesSearchResponse,
-	SearchRulesQueryParams
+	SearchRulesQueryParams,
+	// Collection types
+	CollectionEntry,
+	CollectionEntryWithGame,
+	AddToCollectionRequest,
+	UpdateCollectionRequest,
+	PaginatedResponse_for_CollectionEntryWithGame,
+	// Custom game types
+	CustomGame,
+	CustomGameSummary,
+	CreateCustomGameRequest,
+	UpdateCustomGameRequest,
+	PaginatedResponse_for_CustomGameSummary
 } from '../api/Api';
 
 // Re-export utilities
