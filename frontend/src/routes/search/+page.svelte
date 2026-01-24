@@ -27,12 +27,7 @@
 	let totalResults = $state(0);
 	let hasSearched = $state(false);
 	let gameFilterQuery = $state('');
-
-	let filteredGames = $derived(
-		gameFilterQuery.trim()
-			? games.filter((g) => g.name.toLowerCase().includes(gameFilterQuery.toLowerCase()))
-			: games
-	);
+	let gameSearchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	let initialUrlParams: { gameId: string | null; query: string | null } = {
 		gameId: null,
@@ -91,13 +86,16 @@
 		}
 	});
 
-	async function loadGames() {
+	async function loadGames(search?: string) {
 		loading = true;
 		error = null;
 
 		try {
 			const result = await api.methods.listGames({
-				query: { limit: 100 }
+				query: {
+					limit: 50,
+					search: search || undefined
+				}
 			});
 
 			if (result.type === 'success') {
@@ -111,6 +109,27 @@
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
 		} finally {
 			loading = false;
+		}
+	}
+
+	function handleGameSearchInput(event: Event) {
+		const value = (event.target as HTMLInputElement).value;
+		gameFilterQuery = value;
+
+		if (gameSearchTimeout) {
+			clearTimeout(gameSearchTimeout);
+		}
+		gameSearchTimeout = setTimeout(() => {
+			loadGames(value);
+		}, 300);
+	}
+
+	function handleGameSearchKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			if (gameSearchTimeout) {
+				clearTimeout(gameSearchTimeout);
+			}
+			loadGames(gameFilterQuery);
 		}
 	}
 
@@ -238,50 +257,52 @@
 		<!-- Game Selection Sidebar -->
 		<div class="flex-shrink-0 lg:w-80">
 			<ComponentTray title="Select Game">
+				<div class="mb-2">
+					<Input
+						value={gameFilterQuery}
+						oninput={handleGameSearchInput}
+						onkeydown={handleGameSearchKeydown}
+						placeholder="Search games..."
+						class="bg-parchment text-foreground placeholder:text-foreground/50 h-8 text-sm"
+					/>
+				</div>
 				{#if loading}
 					<ComponentTraySection>
-						<LoadingSpinner text="Loading games..." />
+						<LoadingSpinner text="Searching..." />
 					</ComponentTraySection>
 				{:else if games.length === 0}
 					<ComponentTraySection>
-						<p class="text-parchment/70 mb-2 text-center text-sm">No games found</p>
-						<Button variant="game-primary" href="/games/add" size="sm" class="w-full"
-							>Add Game</Button
-						>
+						<p class="text-parchment/70 mb-2 text-center text-sm">
+							{gameFilterQuery ? 'No games match search' : 'No games found'}
+						</p>
+						{#if !gameFilterQuery}
+							<Button variant="game-primary" href="/games/add" size="sm" class="w-full"
+								>Add Game</Button
+							>
+						{/if}
 					</ComponentTraySection>
 				{:else}
-					<div class="mb-2">
-						<Input
-							bind:value={gameFilterQuery}
-							placeholder="Filter games..."
-							class="bg-parchment text-foreground placeholder:text-foreground/50 h-8 text-sm"
-						/>
+					<div class="max-h-80 space-y-2 overflow-y-auto">
+						{#each games as game (game.id)}
+							<button
+								onclick={() => selectGame(game.id)}
+								class="w-full rounded-lg p-3 text-left transition-all
+									{selectedGameId === game.id
+									? 'bg-game-blue text-white'
+									: 'bg-parchment hover:bg-parchment-dark text-foreground'}
+									{!game.hasRulesPdf ? 'opacity-60' : ''}"
+							>
+								<div class="font-display text-sm font-medium">{game.name}</div>
+								<div class="mt-1 flex items-center gap-1">
+									{#if game.hasRulesPdf}
+										<Rulebook size={12} class="opacity-60" />
+									{:else}
+										<span class="text-xs opacity-70">No rules</span>
+									{/if}
+								</div>
+							</button>
+						{/each}
 					</div>
-					{#if filteredGames.length === 0}
-						<p class="text-parchment/70 py-2 text-center text-sm">No games match filter</p>
-					{:else}
-						<div class="max-h-80 space-y-2 overflow-y-auto">
-							{#each filteredGames as game (game.id)}
-								<button
-									onclick={() => selectGame(game.id)}
-									class="w-full rounded-lg p-3 text-left transition-all
-										{selectedGameId === game.id
-										? 'bg-game-blue text-white'
-										: 'bg-parchment hover:bg-parchment-dark text-foreground'}
-										{!game.hasRulesPdf ? 'opacity-60' : ''}"
-								>
-									<div class="font-display text-sm font-medium">{game.name}</div>
-									<div class="mt-1 flex items-center gap-1">
-										{#if game.hasRulesPdf}
-											<Rulebook size={12} class="opacity-60" />
-										{:else}
-											<span class="text-xs opacity-70">No rules</span>
-										{/if}
-									</div>
-								</button>
-							{/each}
-						</div>
-					{/if}
 				{/if}
 			</ComponentTray>
 

@@ -867,6 +867,7 @@ export interface UpdateCustomGamePathParams {
 }
 
 export interface ListGamesQueryParams {
+	hasRulesPdf?: boolean | null;
 	limit?: number;
 	page?: number;
 	search?: string | null;
@@ -1489,7 +1490,7 @@ export class Api {
 			});
 		},
 		/**
-		 * Create a new game
+		 * Create a new game (admin only)
 		 */
 		createGame: ({ body }: { body: CreateGameRequest }, params: FetchParams = {}) => {
 			return this.request<Game>({
@@ -1510,7 +1511,7 @@ export class Api {
 			});
 		},
 		/**
-		 * Delete a game
+		 * Delete a game (admin only)
 		 */
 		deleteGame: ({ path }: { path: DeleteGamePathParams }, params: FetchParams = {}) => {
 			return this.request<void>({
@@ -1520,7 +1521,7 @@ export class Api {
 			});
 		},
 		/**
-		 * Update an existing game
+		 * Update an existing game (admin only)
 		 */
 		updateGame: (
 			{ path, body }: { path: UpdateGamePathParams; body: UpdateGameRequest },

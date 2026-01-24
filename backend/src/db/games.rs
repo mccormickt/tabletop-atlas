@@ -44,27 +44,39 @@ pub async fn list_games(
     page: u32,
     limit: u32,
     search: Option<&str>,
+    has_rules_pdf: Option<bool>,
 ) -> SqliteResult<PaginatedResponse<GameSummary>> {
     let pagination = PaginationInfo::new(page, limit);
 
     db.with_connection(|conn| {
-        // Build WHERE clause for search
+        // Build WHERE clauses
         let search_pattern = search.map(|s| format!("%{}%", s.to_lowercase()));
-        let where_clause = if search_pattern.is_some() {
-            "WHERE LOWER(g.name) LIKE ?"
+        let mut where_conditions: Vec<String> = Vec::new();
+
+        if search_pattern.is_some() {
+            where_conditions.push("LOWER(g.name) LIKE ?".to_string());
+        }
+
+        if let Some(has_pdf) = has_rules_pdf {
+            if has_pdf {
+                where_conditions.push("g.rules_pdf_path IS NOT NULL".to_string());
+            } else {
+                where_conditions.push("g.rules_pdf_path IS NULL".to_string());
+            }
+        }
+
+        let where_clause = if where_conditions.is_empty() {
+            String::new()
         } else {
-            ""
+            format!("WHERE {}", where_conditions.join(" AND "))
         };
 
-        // Get total count (with search filter if provided)
+        // Get total count (with filters)
+        let count_query = format!("SELECT COUNT(*) FROM master_games g {}", where_clause);
         let total: u32 = if let Some(ref pattern) = search_pattern {
-            conn.query_row(
-                &format!("SELECT COUNT(*) FROM master_games g {}", where_clause),
-                params![pattern],
-                |row| row.get(0),
-            )?
+            conn.query_row(&count_query, params![pattern], |row| row.get(0))?
         } else {
-            conn.query_row("SELECT COUNT(*) FROM master_games", [], |row| row.get(0))?
+            conn.query_row(&count_query, [], |row| row.get(0))?
         };
 
         // Get games with house rules count

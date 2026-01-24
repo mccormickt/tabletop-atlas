@@ -26,6 +26,8 @@
 	let selectedGame = $state<GameSummary | null>(null);
 	let rulesInfo = $state<RulesInfoResponse | null>(null);
 	let uploadSuccess = $state(false);
+	let searchQuery = $state('');
+	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	let initialized = $state(false);
 
@@ -36,13 +38,16 @@
 		}
 	});
 
-	async function loadGames() {
+	async function loadGames(search?: string) {
 		loading = true;
 		error = null;
 
 		try {
 			const result = await api.methods.listGames({
-				query: { limit: 100 }
+				query: {
+					limit: 50,
+					search: search || undefined
+				}
 			});
 
 			if (result.type === 'success') {
@@ -56,6 +61,28 @@
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
 		} finally {
 			loading = false;
+		}
+	}
+
+	function handleSearchInput(event: Event) {
+		const value = (event.target as HTMLInputElement).value;
+		searchQuery = value;
+
+		// Debounce search
+		if (searchTimeout) {
+			clearTimeout(searchTimeout);
+		}
+		searchTimeout = setTimeout(() => {
+			loadGames(value);
+		}, 300);
+	}
+
+	function handleSearchKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			if (searchTimeout) {
+				clearTimeout(searchTimeout);
+			}
+			loadGames(searchQuery);
 		}
 	}
 
@@ -138,48 +165,71 @@
 		<!-- Game Selection -->
 		<div class="lg:col-span-1">
 			<ComponentTray title="Select Game">
-				{#if loading}
-					<ComponentTraySection>
-						<LoadingSpinner text="Loading games..." />
-					</ComponentTraySection>
-				{:else if error && games.length === 0}
+				{#if error && games.length === 0 && !searchQuery}
 					<ComponentTraySection>
 						<p class="text-parchment/70 mb-2 text-center text-sm">{error}</p>
-						<Button variant="game-primary" onclick={loadGames} size="sm" class="w-full"
+						<Button variant="game-primary" onclick={() => loadGames()} size="sm" class="w-full"
 							>Try Again</Button
 						>
 					</ComponentTraySection>
-				{:else if games.length === 0}
-					<ComponentTraySection>
-						<p class="text-parchment/70 mb-2 text-center text-sm">No games found</p>
-						<Button variant="game-primary" href="/games/add" size="sm" class="w-full"
-							>Add Game</Button
-						>
-					</ComponentTraySection>
 				{:else}
-					<div class="max-h-80 space-y-2 overflow-y-auto">
-						{#each games as game (game.id)}
-							<button
-								onclick={() => selectGame(game.id)}
-								class="w-full rounded-lg p-3 text-left transition-all
-									{selectedGameId === game.id
-									? 'bg-game-blue text-white'
-									: 'bg-parchment hover:bg-parchment-dark text-foreground'}"
-							>
-								<div class="flex items-start justify-between">
-									<div class="min-w-0 flex-1">
-										<div class="font-display truncate text-sm font-medium">{game.name}</div>
-										{#if game.publisher}
-											<div class="truncate text-xs opacity-70">{game.publisher}</div>
+					<!-- Search Input -->
+					<ComponentTraySection class="mb-3">
+						<div class="relative">
+							<SearchGlass
+								size={16}
+								class="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2"
+							/>
+							<input
+								type="text"
+								placeholder="Search games..."
+								value={searchQuery}
+								oninput={handleSearchInput}
+								onkeydown={handleSearchKeydown}
+								class="bg-parchment border-wood-dark/30 placeholder:text-muted-foreground h-9 w-full rounded-md border pr-3 pl-8 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+							/>
+						</div>
+					</ComponentTraySection>
+					{#if loading}
+						<ComponentTraySection>
+							<LoadingSpinner text="Searching..." />
+						</ComponentTraySection>
+					{:else if games.length === 0}
+						<ComponentTraySection>
+							<p class="text-muted-foreground py-4 text-center text-sm">
+								{searchQuery ? `No games match "${searchQuery}"` : 'No games found'}
+							</p>
+							{#if !searchQuery}
+								<Button variant="game-primary" href="/games/add" size="sm" class="w-full"
+									>Add Game</Button
+								>
+							{/if}
+						</ComponentTraySection>
+					{:else}
+						<div class="max-h-80 space-y-2 overflow-y-auto">
+							{#each games as game (game.id)}
+								<button
+									onclick={() => selectGame(game.id)}
+									class="w-full rounded-lg p-3 text-left transition-all
+										{selectedGameId === game.id
+										? 'bg-game-blue text-white'
+										: 'bg-parchment hover:bg-parchment-dark text-foreground'}"
+								>
+									<div class="flex items-start justify-between">
+										<div class="min-w-0 flex-1">
+											<div class="font-display truncate text-sm font-medium">{game.name}</div>
+											{#if game.publisher}
+												<div class="truncate text-xs opacity-70">{game.publisher}</div>
+											{/if}
+										</div>
+										{#if game.hasRulesPdf}
+											<Rulebook size={16} class="ml-2 flex-shrink-0 opacity-70" />
 										{/if}
 									</div>
-									{#if game.hasRulesPdf}
-										<Rulebook size={16} class="ml-2 flex-shrink-0 opacity-70" />
-									{/if}
-								</div>
-							</button>
-						{/each}
-					</div>
+								</button>
+							{/each}
+						</div>
+					{/if}
 				{/if}
 			</ComponentTray>
 

@@ -19,6 +19,8 @@ This is a full-stack blog application inspired by the famous Ruby on Rails 15-mi
 
 ## Development Commands
 
+**IMPORTANT**: All `pnpm run` commands must be run from the **project root directory** (`/home/jan0ski/git/tabletop-atlas`), not from subdirectories like `frontend/` or `backend/`. The root `package.json` defines scripts that delegate to the appropriate workspace.
+
 ```bash
 # Start both backend and frontend in development mode
 pnpm run dev
@@ -202,6 +204,61 @@ $effect(() => {
    - Avoid duplicating utility functions in components
 
 5. **Consolidate related `$effect` blocks** when they have the same dependencies
+
+### Search and Filtering Patterns
+
+**CRITICAL: Always use backend filtering, never client-side filtering for paginated data.**
+
+Client-side filtering on paginated data is a recurring bug pattern in this codebase. When you filter data client-side after fetching a page, users only see filtered results from that page—items matching the filter on other pages are invisible.
+
+**Anti-pattern (DO NOT DO THIS):**
+```typescript
+// BAD: Fetches page 1, then filters client-side
+const result = await api.methods.listGames({ query: { page: 1, limit: 50 } });
+const filtered = result.data.items.filter(g => g.hasRulesPdf); // Games with PDFs on page 2+ are lost!
+```
+
+**Correct pattern:**
+```typescript
+// GOOD: Filter on the backend using API parameters
+const result = await api.methods.listGames({
+  query: {
+    page: 1,
+    limit: 50,
+    hasRulesPdf: true  // Backend filter parameter
+  }
+});
+```
+
+**Search implementation pattern for game lists:**
+1. Add debounced search input (300ms delay)
+2. Call backend API with `search` parameter on input change
+3. Use backend filter parameters for default filters (e.g., `hasRulesPdf: true`)
+4. When user searches, relax filters to show broader results (e.g., `hasRulesPdf: undefined`)
+
+**Example: Game selector with search and PDF filter:**
+```typescript
+async function loadGames(search?: string) {
+  // When searching, show all games; otherwise only show games with PDFs
+  const hasRulesPdf = search ? undefined : true;
+
+  const result = await api.methods.listGames({
+    query: {
+      page: 1,
+      limit: 50,
+      search: search || undefined,
+      hasRulesPdf
+    }
+  });
+  // ... handle result
+}
+```
+
+**When adding new filters:**
+1. Add the filter parameter to the backend API (`GameSearchParams` struct)
+2. Update the database query to handle the filter
+3. Regenerate the API client (`pnpm run generate`)
+4. Use the filter parameter in frontend API calls
 
 ## Database
 

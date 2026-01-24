@@ -100,12 +100,7 @@
 	let error = $state<string | null>(null);
 	let togglingHouseRules = $state(false);
 	let gameFilterQuery = $state('');
-
-	let filteredGames = $derived(
-		gameFilterQuery.trim()
-			? games.filter((g) => g.name.toLowerCase().includes(gameFilterQuery.toLowerCase()))
-			: games
-	);
+	let gameSearchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	let showGameDrawer = $state(false);
 	let showSessionDrawer = $state(false);
@@ -157,18 +152,25 @@
 		}
 	}
 
-	async function loadGames() {
+	async function loadGames(search?: string) {
 		loadingGames = true;
 		error = null;
 
 		try {
+			// When searching, show all games; otherwise only show games with PDFs
+			const hasRulesPdf = search ? undefined : true;
+
 			const result = await api.methods.listGames({
-				query: { page: 1, limit: 100 }
+				query: {
+					page: 1,
+					limit: 50,
+					search: search || undefined,
+					hasRulesPdf
+				}
 			});
 
 			if (result.type === 'success') {
-				const gamesWithPdf = result.data.items.filter((game) => game.hasRulesPdf);
-				games = gamesWithPdf.length > 0 ? gamesWithPdf : result.data.items;
+				games = result.data.items;
 			} else {
 				error = 'Failed to load games';
 			}
@@ -176,6 +178,27 @@
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
 		} finally {
 			loadingGames = false;
+		}
+	}
+
+	function handleGameSearchInput(event: Event) {
+		const value = (event.target as HTMLInputElement).value;
+		gameFilterQuery = value;
+
+		if (gameSearchTimeout) {
+			clearTimeout(gameSearchTimeout);
+		}
+		gameSearchTimeout = setTimeout(() => {
+			loadGames(value);
+		}, 300);
+	}
+
+	function handleGameSearchKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			if (gameSearchTimeout) {
+				clearTimeout(gameSearchTimeout);
+			}
+			loadGames(gameFilterQuery);
 		}
 	}
 
@@ -442,52 +465,54 @@
 			<!-- Game Selection Sidebar (Desktop) -->
 			<div class="hidden space-y-4 lg:col-span-1 lg:block">
 				<ComponentTray title="Select Game">
-					{#if loadingGames && games.length === 0}
+					<div class="mb-2">
+						<Input
+							value={gameFilterQuery}
+							oninput={handleGameSearchInput}
+							onkeydown={handleGameSearchKeydown}
+							placeholder="Search games..."
+							class="bg-parchment text-foreground placeholder:text-foreground/50 h-8 text-sm"
+						/>
+					</div>
+					{#if loadingGames}
 						<ComponentTraySection>
-							<LoadingSpinner text="Loading games..." />
+							<LoadingSpinner text="Searching..." />
 						</ComponentTraySection>
 					{:else if games.length === 0}
 						<ComponentTraySection>
-							<EmptyState
-								icon="game"
-								title="No games available"
-								description="Upload PDF rules for games to enable chat"
-								size="sm"
-							/>
+							{#if gameFilterQuery}
+								<p class="text-parchment/70 py-2 text-center text-sm">No games match search</p>
+							{:else}
+								<EmptyState
+									icon="game"
+									title="No games available"
+									description="Upload PDF rules for games to enable chat"
+									size="sm"
+								/>
+							{/if}
 						</ComponentTraySection>
 					{:else}
-						<div class="mb-2">
-							<Input
-								bind:value={gameFilterQuery}
-								placeholder="Filter games..."
-								class="bg-parchment text-foreground placeholder:text-foreground/50 h-8 text-sm"
-							/>
+						<div class="max-h-64 space-y-2 overflow-y-auto">
+							{#each games as game (game.id)}
+								<button
+									onclick={() => selectGame(game)}
+									class="w-full rounded-lg p-3 text-left transition-all
+										{selectedGame?.id === game.id
+										? 'bg-game-blue text-white'
+										: 'bg-parchment hover:bg-parchment-dark text-foreground'}"
+								>
+									<div class="font-display text-sm font-medium">{game.name}</div>
+									{#if game.publisher}
+										<div class="text-xs opacity-70">{game.publisher}</div>
+									{/if}
+									{#if game.hasRulesPdf}
+										<div class="mt-1">
+											<Rulebook size={12} class="inline opacity-60" />
+										</div>
+									{/if}
+								</button>
+							{/each}
 						</div>
-						{#if filteredGames.length === 0}
-							<p class="text-parchment/70 py-2 text-center text-sm">No games match filter</p>
-						{:else}
-							<div class="max-h-64 space-y-2 overflow-y-auto">
-								{#each filteredGames as game (game.id)}
-									<button
-										onclick={() => selectGame(game)}
-										class="w-full rounded-lg p-3 text-left transition-all
-											{selectedGame?.id === game.id
-											? 'bg-game-blue text-white'
-											: 'bg-parchment hover:bg-parchment-dark text-foreground'}"
-									>
-										<div class="font-display text-sm font-medium">{game.name}</div>
-										{#if game.publisher}
-											<div class="text-xs opacity-70">{game.publisher}</div>
-										{/if}
-										{#if game.hasRulesPdf}
-											<div class="mt-1">
-												<Rulebook size={12} class="inline opacity-60" />
-											</div>
-										{/if}
-									</button>
-								{/each}
-							</div>
-						{/if}
 					{/if}
 				</ComponentTray>
 
@@ -782,13 +807,23 @@
 			</div>
 			<div class="p-4">
 				<div class="mb-3">
-					<Input bind:value={gameFilterQuery} placeholder="Filter games..." class="h-8 text-sm" />
+					<Input
+						value={gameFilterQuery}
+						oninput={handleGameSearchInput}
+						onkeydown={handleGameSearchKeydown}
+						placeholder="Search games..."
+						class="h-8 text-sm"
+					/>
 				</div>
-				{#if filteredGames.length === 0}
-					<p class="text-muted-foreground py-2 text-center text-sm">No games match filter</p>
+				{#if loadingGames}
+					<p class="text-muted-foreground py-2 text-center text-sm">Searching...</p>
+				{:else if games.length === 0}
+					<p class="text-muted-foreground py-2 text-center text-sm">
+						{gameFilterQuery ? 'No games match search' : 'No games found'}
+					</p>
 				{:else}
 					<div class="space-y-2">
-						{#each filteredGames as game (game.id)}
+						{#each games as game (game.id)}
 							<CardSleeve variant={selectedGame?.id === game.id ? 'highlighted' : 'default'}>
 								<button onclick={() => selectGame(game)} class="w-full text-left">
 									<div class="font-display font-medium">{game.name}</div>

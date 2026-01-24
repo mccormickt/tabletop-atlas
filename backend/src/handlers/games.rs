@@ -32,6 +32,8 @@ pub struct GameSearchParams {
     pub limit: u32,
     /// Search query to filter games by name
     pub search: Option<String>,
+    /// Filter to only include games that have rules PDFs uploaded
+    pub has_rules_pdf: Option<bool>,
 }
 
 /// List all games with pagination and optional search
@@ -47,7 +49,15 @@ pub async fn list_games(
     let params = query.into_inner();
     let db = app_state.db();
 
-    match games::list_games(&db, params.page, params.limit, params.search.as_deref()).await {
+    match games::list_games(
+        &db,
+        params.page,
+        params.limit,
+        params.search.as_deref(),
+        params.has_rules_pdf,
+    )
+    .await
+    {
         Ok(result) => success_response(result),
         Err(e) => {
             tracing::error!("Failed to list games: {}", e);
