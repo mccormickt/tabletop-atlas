@@ -10,7 +10,6 @@ use async_openai::{
 };
 use serde::{Deserialize, Serialize};
 
-//const DEFAULT_MODEL: &str = "mistral-small3.2:24b";
 const DEFAULT_MODEL: &str = "gpt-oss:latest";
 
 /// Service for generating chat completions using OpenAI-compatible APIs (like Ollama)
@@ -219,7 +218,7 @@ mod tests {
     #[test]
     fn test_llm_client_creation() {
         let client = LLMClient::new();
-        assert_eq!(client.get_model(), "mistral-small3.2:24b");
+        assert_eq!(client.get_model(), "gpt-oss:latest");
     }
 
     #[test]
@@ -229,7 +228,7 @@ mod tests {
         assert_eq!(client.get_model(), "custom-model");
     }
 
-    // Note: These tests require a running Ollama instance with mistral-small3.2:24b
+    // Note: These tests require a running Ollama instance with gpt-oss:latest
     // They will be skipped if Ollama is not available
     #[tokio::test]
     async fn test_simple_completion() {
@@ -237,7 +236,7 @@ mod tests {
 
         // Test connection first
         if client.test_connection().await.is_err() {
-            println!("Skipping LLM test - Ollama with mistral-small3.2:24b not available");
+            println!("Skipping LLM test - Ollama with gpt-oss:latest not available");
             return;
         }
 
@@ -256,7 +255,7 @@ mod tests {
         let client = LLMClient::new();
 
         if client.test_connection().await.is_err() {
-            println!("Skipping LLM test - Ollama with mistral-small3.2:24b not available");
+            println!("Skipping LLM test - Ollama with gpt-oss:latest not available");
             return;
         }
 
@@ -287,7 +286,7 @@ mod tests {
         let client = LLMClient::new();
 
         if client.test_connection().await.is_err() {
-            println!("Skipping LLM test - Ollama with mistral-small3.2:24b not available");
+            println!("Skipping LLM test - Ollama with gpt-oss:latest not available");
             return;
         }
 
