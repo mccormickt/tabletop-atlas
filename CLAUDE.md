@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Architecture
 
-This is a full-stack blog application inspired by the famous Ruby on Rails 15-minute blog demo, built with:
+Tabletop Atlas is a board game rules management platform with AI-powered chat, built with:
 
 - **Backend**: Rust with Dropshot web framework, SQLite database
 - **Framework**: Svelte 5 using sveltekit with svelte-shadcn/ui components
@@ -15,6 +15,7 @@ This is a full-stack blog application inspired by the famous Ruby on Rails 15-mi
 - `backend/`: Dropshot API server with handlers, models, and database layer as well as serving the frontend's static assets
 - `frontend/`: Svelte 5 app
 - `migrations/`: SQLite database migrations
+- `docs/`: Feature architecture reference — see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Root workspace manages both projects
 
 ## Development Commands
@@ -98,12 +99,18 @@ pnpm run generate
 
 - **Framework**: Dropshot for type-safe HTTP APIs with automatic OpenAPI generation
 - **Database**: SQLite with rusqlite and rusqlite_migration for schema management
-- **Structure**: Handlers organized by resource (posts, comments), separate models and database layers
+- **Structure**: Handlers organized by resource, separate models and database layers
 - **Key files**:
   - `backend/src/main.rs`: Server startup and configuration
   - `backend/src/handlers/`: API endpoint implementations
   - `backend/src/models/`: Data structures and validation
   - `backend/src/db/`: Database connection and query logic
+  - `backend/src/llm.rs`: LLM client (gpt-oss via Ollama)
+  - `backend/src/embeddings.rs`: Embedding generation (nomic-embed-text)
+  - `backend/src/pdf.rs`: PDF text extraction and chunking
+  - `backend/src/bgg.rs`: BoardGameGeek API client
+  - `backend/src/auth/`: OAuth/OIDC authentication module
+  - `backend/src/tools/`: Scoring calculators (7 Wonders, Carcassonne)
 
 ## Frontend Architecture
 
@@ -260,9 +267,14 @@ async function loadGames(search?: string) {
 3. Regenerate the API client (`pnpm run generate`)
 4. Use the filter parameter in frontend API calls
 
+## Feature Areas
+
+The application covers: games & collections, PDF rules & embeddings, AI chat (RAG), rules search, authentication (OIDC/JWT), challenges (multiplayer grids), tools & scoring calculators, admin (BGG import/enrichment), and house rules. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed API endpoints, file mappings, and configuration values for each area.
+
 ## Database
 
-- SQLite with migrations in `migrations/` directory
+- SQLite with sqlite-vec extension for vector similarity search
+- Migrations in `migrations/` directory
 - Migration files follow `V001__description.sql` pattern
 - Database initialization and migration running handled in backend startup
 
