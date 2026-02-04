@@ -31,9 +31,7 @@ environment:
 
 pipeline:
   # Install deps (PNPM_STORE_DIR is persisted by melange's --cache-dir)
-  # Root install needed: @sveltejs/adapter-static is in root package.json
-  # but imported by frontend/svelte.config.js
-  - runs: pnpm install --frozen-lockfile && pnpm --prefix frontend install --frozen-lockfile
+  - runs: pnpm install --frozen-lockfile
 
   # Build Rust backend; build.rs also builds the frontend via pnpm,
   # so no separate frontend build step is needed in this pipeline

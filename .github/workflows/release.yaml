@@ -46,7 +46,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.melange-cache
-          key: melange-deps-${{ hashFiles('Cargo.lock', 'pnpm-lock.yaml', 'frontend/pnpm-lock.yaml') }}
+          key: melange-deps-${{ hashFiles('Cargo.lock', 'pnpm-lock.yaml') }}
           restore-keys: |
             melange-deps-
 

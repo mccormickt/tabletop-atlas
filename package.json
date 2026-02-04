@@ -2,12 +2,12 @@
   "name": "tabletop-atlas",
   "private": true,
   "scripts": {
-    "generate": "cargo run -p backend -- --openapi > openapi.json && openapi-gen-ts openapi.json frontend/src/api ",
+    "generate": "cargo run -p backend -- --openapi > openapi.json && openapi-gen-ts openapi.json frontend/src/api",
     "dev": "cargo watch -w backend/ -w frontend/ -- cargo run",
     "build": "cargo build --release",
-    "test": "cargo test && pnpm test --prefix frontend",
+    "test": "cargo test && pnpm --prefix frontend run test",
     "backend": "cargo run -p backend",
-    "frontend": "pnpm run dev --prefix frontend",
+    "frontend": "pnpm --prefix frontend run dev",
     "lint": "cargo clippy -- -D warnings && pnpm --prefix frontend run lint",
     "lint:backend": "cargo clippy -- -D warnings",
     "lint:frontend": "pnpm --prefix frontend run lint",
@@ -18,7 +18,11 @@
   },
   "devDependencies": {
     "@oxide/openapi-gen-ts": "^0.14.0",
-    "@sveltejs/adapter-static": "^3.0.8",
-    "concurrently": "^8.2.0"
+    "concurrently": "^8.2.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

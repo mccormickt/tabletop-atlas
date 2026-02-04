@@ -8,7 +8,7 @@ Tabletop Atlas is a board game rules management platform with AI-powered chat, b
 
 - **Backend**: Rust with Dropshot web framework, SQLite database
 - **Framework**: Svelte 5 using sveltekit with svelte-shadcn/ui components
-- **Structure**: Monorepo with workspace setup
+- **Structure**: pnpm workspace monorepo (`pnpm-workspace.yaml` declares `frontend` as a workspace package)
 
 ### Key Directories
 
@@ -33,8 +33,8 @@ cargo run -p backend
 
 # Run frontend only
 pnpm run frontend
-# or (from frontend directory)
-pnpm run dev
+# or
+pnpm --prefix frontend run dev
 
 # Build everything
 pnpm run build
@@ -82,8 +82,8 @@ pnpm run generate
 - Uses **Prettier** for code formatting
 - Configuration in `frontend/eslint.config.js` and `frontend/.prettierrc`
 - The `src/api/` directory is excluded from linting (auto-generated code)
-- Run `pnpm run lint` from frontend directory to check
-- Run `pnpm run format` from frontend directory to fix formatting
+- Run `pnpm run lint:frontend` to check
+- Run `pnpm run format:frontend` to fix formatting
 
 ### Svelte-specific Linting Notes
 

@@ -45,10 +45,7 @@ fn build_frontend(frontend_dir: &Path) {
 
     let package_json = frontend_dir.join("package.json");
     if !package_json.exists() {
-        panic!(
-            "package.json not found at: {}",
-            package_json.display()
-        );
+        panic!("package.json not found at: {}", package_json.display());
     }
 
     let build_status = Command::new("pnpm")
