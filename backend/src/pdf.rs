@@ -389,7 +389,7 @@ mod tests {
         let text = "A ".repeat(600); // 1200 characters
         let chunks = service.chunk_text(&text);
 
-        assert!(chunks.len() >= 1); // Should be split appropriately
+        assert!(!chunks.is_empty()); // Should be split appropriately
         for chunk in &chunks {
             assert!(chunk.len() <= MAX_CHUNK_SIZE);
             assert!(chunk.len() >= MIN_CHUNK_SIZE);
