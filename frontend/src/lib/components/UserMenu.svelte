@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { useAuth, type UserInfo } from '$lib/stores/auth';
 	import { Button } from '$lib/components/ui/button';
 
@@ -85,14 +86,14 @@
 				</div>
 				<div class="py-1">
 					<a
-						href="/collection"
+						href={resolve('/collection')}
 						class="text-foreground hover:bg-muted block px-4 py-2 text-sm"
 						onclick={closeMenu}
 					>
 						My Collection
 					</a>
 					<a
-						href="/games/custom"
+						href={resolve('/games/custom')}
 						class="text-foreground hover:bg-muted block px-4 py-2 text-sm"
 						onclick={closeMenu}
 					>
@@ -101,7 +102,7 @@
 					{#if user.role === 'admin'}
 						<div class="border-border my-1 border-t"></div>
 						<a
-							href="/admin"
+							href={resolve('/admin')}
 							class="text-foreground hover:bg-muted block px-4 py-2 text-sm"
 							onclick={closeMenu}
 						>

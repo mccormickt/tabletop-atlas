@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { browser } from '$app/environment';
 
 	// Redirect to the new tabbed games page with custom tab
+
 	$effect(() => {
 		if (browser) {
-			goto('/games?tab=custom', { replaceState: true });
+			goto(resolve('/games') + '?tab=custom', { replaceState: true });
 		}
 	});
 </script>

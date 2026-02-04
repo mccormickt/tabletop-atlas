@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ChallengeGame } from '$api/Api';
+	import type { ChallengeGame } from '$lib';
 	import { Button } from '$lib/components/ui/button';
 
 	let {

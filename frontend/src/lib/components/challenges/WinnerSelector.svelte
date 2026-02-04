@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ChallengeParticipant } from '$api/Api';
+	import type { ChallengeParticipant } from '$lib';
 	import { Input } from '$lib/components/ui/input';
 
 	let {

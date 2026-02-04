@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { api, type Game, type UpdateGameRequest } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
@@ -15,7 +16,7 @@
 	});
 
 	// Get game ID from URL parameters
-	let gameId = $derived(parseInt(page.params.id));
+	let gameId = $derived(parseInt(page.params.id ?? '0'));
 
 	// State management
 	let game = $state<Game | null>(null);
@@ -207,7 +208,7 @@
 				success = true;
 				// Navigate to the game detail page after a short delay
 				setTimeout(() => {
-					goto(`/games/${gameId}`);
+					goto(resolve(`/games/${gameId}`));
 				}, 1500);
 			} else if (result.type === 'error') {
 				error = result.data.message || 'An error occurred while updating the game';
@@ -222,7 +223,7 @@
 	}
 
 	function handleCancel() {
-		goto(`/games/${gameId}`);
+		goto(resolve(`/games/${gameId}`));
 	}
 </script>
 
@@ -270,7 +271,7 @@
 				<p class="mb-4 text-gray-600">{error}</p>
 				<div class="flex justify-center space-x-3">
 					<Button onclick={loadGame}>Try Again</Button>
-					<Button variant="outline" onclick={() => goto('/games')}>Go Back</Button>
+					<Button variant="outline" onclick={() => goto(resolve('/games'))}>Go Back</Button>
 				</div>
 			</CardContent>
 		</Card>

@@ -34,13 +34,17 @@ export async function uploadRulesPdf(
 
 // Re-export types for convenience
 export type {
+	// Game types
 	Game,
 	GameSummary,
+	GameType,
 	CreateGameRequest,
 	UpdateGameRequest,
+	// House rules
 	HouseRule,
 	CreateHouseRuleRequest,
 	UpdateHouseRuleRequest,
+	// Chat types
 	ChatSession,
 	ChatSessionSummary,
 	ChatMessage,
@@ -49,12 +53,13 @@ export type {
 	ChatResponse,
 	ContextSource,
 	RulesInfoResponse,
-	UploadResponse,
 	CreateChatSessionRequest,
 	UpdateChatSessionRequest,
-	PaginatedResponse_for_GameSummary,
-	PaginatedResponse_for_HouseRule,
-	PaginatedResponse_for_ChatSessionSummary,
+	MessageRole,
+	// Upload
+	UploadResponse,
+	DeleteRulesResponse,
+	// Search types
 	SearchResult,
 	RulesSearchResponse,
 	SearchRulesQueryParams,
@@ -69,7 +74,62 @@ export type {
 	CustomGameSummary,
 	CreateCustomGameRequest,
 	UpdateCustomGameRequest,
-	PaginatedResponse_for_CustomGameSummary
+	PaginatedResponse_for_CustomGameSummary,
+	// Challenge types
+	Challenge,
+	ChallengeSummary,
+	ChallengeStatus,
+	ChallengeGame,
+	ChallengeParticipant,
+	ChallengePlayWithParticipants,
+	ChallengeStats,
+	ChallengeGridView,
+	ParticipantRole,
+	LeaderboardEntry,
+	PlayParticipant,
+	PlayParticipantInput,
+	RecordPlayRequest,
+	CreateChallengeRequest,
+	AddParticipantRequest,
+	AssignGameRequest,
+	PaginatedResponse_for_ChallengeSummary,
+	// Tool types
+	ToolSummary,
+	ToolDetails,
+	ToolType,
+	ScoreInput,
+	ScoreOutput,
+	ScoringCategory,
+	ScoringSchema,
+	ScoringRule,
+	PlayerScoreInput,
+	PlayerScoreResult,
+	Expansion,
+	InputType,
+	SelectOption,
+	ThresholdEntry,
+	PlayerRange,
+	// Admin / BGG types
+	AdminDashboardStats,
+	BggEnrichPreviewResponse,
+	BggEnrichRequest,
+	BggEnrichError,
+	BggGameValues,
+	BggGameEnrichPreview,
+	FieldChange,
+	BulkEnrichPreviewResponse,
+	BulkEnrichRequest,
+	BulkEnrichResponse,
+	EnrichmentStats,
+	BggGamePreview,
+	BggGameUpdatePreview,
+	BggParseError,
+	BggImportPreviewResponse,
+	BggImportResponse,
+	// Pagination types
+	PaginatedResponse_for_GameSummary,
+	PaginatedResponse_for_HouseRule,
+	PaginatedResponse_for_ChatSessionSummary
 } from '../api/Api';
 
 // Re-export utilities

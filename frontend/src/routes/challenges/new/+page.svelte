@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { useAuth, type AuthState } from '$lib/stores/auth';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -23,7 +24,7 @@
 		const unsubscribe = auth.subscribe((state) => {
 			authState = state;
 			if (!state.isLoading && !state.user) {
-				goto('/auth/login');
+				goto(resolve('/auth/login'));
 			}
 		});
 		return unsubscribe;
@@ -56,9 +57,9 @@
 
 			if (response.ok) {
 				const challenge = await response.json();
-				goto(`/challenges/${challenge.id}`);
+				goto(resolve(`/challenges/${challenge.id}`));
 			} else if (response.status === 401) {
-				goto('/auth/login');
+				goto(resolve('/auth/login'));
 			} else {
 				const data = await response.json();
 				error = data.message || 'Failed to create challenge';
@@ -82,7 +83,7 @@
 
 <div class="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
 	<div class="mb-8">
-		<a href="/challenges" class="text-muted-foreground hover:text-foreground text-sm">
+		<a href={resolve('/challenges')} class="text-muted-foreground hover:text-foreground text-sm">
 			&larr; Back to Challenges
 		</a>
 		<h1 class="text-foreground mt-4 text-3xl font-bold">Create Challenge</h1>
@@ -171,7 +172,9 @@
 			</div>
 
 			<div class="flex gap-4 pt-4">
-				<Button type="button" variant="outline" href="/challenges" class="flex-1">Cancel</Button>
+				<Button type="button" variant="outline" href={resolve('/challenges')} class="flex-1"
+					>Cancel</Button
+				>
 				<Button type="submit" class="flex-1" disabled={isSubmitting}>
 					{#if isSubmitting}
 						Creating...

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { useAuth, type AuthState } from '$lib/stores/auth';
 
 	let { children } = $props();
@@ -13,7 +14,7 @@
 			authState = state;
 			// Redirect non-admin users to home
 			if (!state.isLoading && (!state.user || state.user.role !== 'admin')) {
-				goto('/');
+				goto(resolve('/'));
 			}
 		});
 		return unsubscribe;

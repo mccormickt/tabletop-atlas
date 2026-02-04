@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { api, type GameSummary, type SearchResult } from '$lib';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import {
 		Button,
 		Input,
@@ -153,16 +155,17 @@
 	}
 
 	function updateUrlParams() {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		if (selectedGameId) {
 			params.set('gameId', selectedGameId.toString());
 		}
 		if (searchQuery.trim()) {
 			params.set('q', searchQuery.trim());
 		}
-		const newUrl = `/search?${params.toString()}`;
+		const queryString = params.toString();
+		const newUrl = `/search${queryString ? '?' + queryString : ''}`;
 		if (newUrl !== window.location.pathname + window.location.search) {
-			goto(newUrl, { replaceState: true });
+			goto(resolve('/search') + (queryString ? '?' + queryString : ''), { replaceState: true });
 		}
 	}
 
@@ -181,7 +184,7 @@
 		try {
 			const result = await api.methods.searchRules({
 				query: {
-					gameId: selectedGameId,
+					gameId: String(selectedGameId),
 					query: searchQuery.trim(),
 					limit: searchLimit
 				}
@@ -217,7 +220,7 @@
 	}
 
 	function goToGame(gameId: number) {
-		goto(`/games/${gameId}`);
+		goto(resolve(`/games/${gameId}`));
 	}
 
 	function getDiceValue(score: number): 1 | 2 | 3 | 4 | 5 | 6 {
@@ -370,7 +373,7 @@
 					<div class="flex items-center justify-between">
 						<p class="text-muted-foreground font-ui text-xs">
 							For Q&A, try our <a
-								href="/chat"
+								href={resolve('/chat')}
 								class="text-game-blue inline-flex items-center gap-1 hover:underline"
 							>
 								<ChatBubble size={12} /> Chat
@@ -447,7 +450,7 @@
 					<h3 class="font-display mb-2 text-lg font-semibold">No Matches Found</h3>
 					<p class="text-muted-foreground font-body mb-4 text-sm">
 						Try different keywords or check our <a
-							href="/chat"
+							href={resolve('/chat')}
 							class="text-game-blue hover:underline">Chat</a
 						> for Q&A
 					</p>

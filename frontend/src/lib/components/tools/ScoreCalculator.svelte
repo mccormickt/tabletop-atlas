@@ -4,7 +4,7 @@
 	import ExpansionSelector from './ExpansionSelector.svelte';
 	import ScoringGrid from './ScoringGrid.svelte';
 	import ScoreSummary from './ScoreSummary.svelte';
-	import type { ToolDetails, ScoreInput, ScoreOutput, PlayerScoreInput } from '$api/Api';
+	import type { ToolDetails, ScoreInput, ScoreOutput, PlayerScoreInput } from '$lib';
 
 	let {
 		tool,

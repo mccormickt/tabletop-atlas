@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { Home, GameBoxIcon, Upload, SearchGlass, ChatBubble } from './icons';
 
@@ -23,7 +24,7 @@
 	<div class="flex items-stretch justify-around">
 		{#each navItems as item (item.path)}
 			<a
-				href={item.path}
+				href={resolve(item.path)}
 				class="mobile-nav-item flex flex-1 flex-col items-center justify-center px-1 py-2 transition-all
 					{isActivePath(item.path)
 					? 'text-game-blue bg-parchment-dark'

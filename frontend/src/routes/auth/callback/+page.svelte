@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { useAuth } from '$lib/stores/auth';
 	import { Meeple } from '$lib/components/icons';
 
@@ -11,7 +12,7 @@
 		// Check authentication status after the callback
 		auth.checkAuth().then((user) => {
 			if (user) {
-				goto('/');
+				goto(resolve('/'));
 			} else {
 				error = 'Authentication failed. Please try again.';
 			}
@@ -24,7 +25,7 @@
 		{#if error}
 			<div class="bg-destructive/10 border-destructive rounded-lg border p-6">
 				<p class="text-destructive mb-4">{error}</p>
-				<a href="/auth/login" class="text-primary hover:underline">Try again</a>
+				<a href={resolve('/auth/login')} class="text-primary hover:underline">Try again</a>
 			</div>
 		{:else}
 			<div class="mb-4 flex justify-center">

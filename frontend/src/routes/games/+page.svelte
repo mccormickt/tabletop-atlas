@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { browser } from '$app/environment';
 	import {
 		api,
@@ -336,9 +337,9 @@
 
 	function navigateToAddGame() {
 		if (activeTab === 'custom' || !isAdmin) {
-			goto('/games/custom/add');
+			goto(resolve('/games/custom/add'));
 		} else {
-			goto('/games/add');
+			goto(resolve('/games/add'));
 		}
 	}
 

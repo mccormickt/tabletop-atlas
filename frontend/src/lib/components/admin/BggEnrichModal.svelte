@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { api, type BggEnrichPreviewResponse, type FieldChange } from '$lib';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { Button } from '$lib/components/ui/button';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Label } from '$lib/components/ui/label';
@@ -47,7 +48,7 @@
 	}
 
 	function toggleField(field: string) {
-		const newSet = new Set(selectedFields);
+		const newSet = new SvelteSet(selectedFields);
 		if (newSet.has(field)) {
 			newSet.delete(field);
 		} else {

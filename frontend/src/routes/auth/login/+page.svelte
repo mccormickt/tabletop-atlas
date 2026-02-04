@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { useAuth } from '$lib/stores/auth';
 	import { Button } from '$lib/components/ui/button';
 	import { Meeple } from '$lib/components/icons';
@@ -7,14 +8,14 @@
 	const auth = useAuth();
 
 	let isRedirecting = $state(false);
-	let authState = $state({ user: null, isLoading: true });
+	let authState = $state<{ user: unknown; isLoading: boolean }>({ user: null, isLoading: true });
 
 	$effect(() => {
 		const unsubscribe = auth.subscribe((state) => {
 			authState = state;
 			// If already authenticated, redirect to home
 			if (!state.isLoading && state.user) {
-				goto('/');
+				goto(resolve('/'));
 			}
 		});
 		return unsubscribe;

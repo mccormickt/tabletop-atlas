@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { api } from '$lib';
 	import { Button, GameBox } from '$lib/components/ui';
 	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
@@ -21,27 +22,27 @@
 	});
 
 	function navigateToGames() {
-		goto('/games');
+		goto(resolve('/games'));
 	}
 
 	function navigateToAddGame() {
-		goto('/games/add');
+		goto(resolve('/games/add'));
 	}
 
 	function navigateToUpload() {
-		goto('/upload');
+		goto(resolve('/upload'));
 	}
 
 	function navigateToSearch() {
-		goto('/search');
+		goto(resolve('/search'));
 	}
 
 	function navigateToChat() {
-		goto('/chat');
+		goto(resolve('/chat'));
 	}
 
 	function navigateToChallenges() {
-		goto('/challenges');
+		goto(resolve('/challenges'));
 	}
 
 	async function countGames() {

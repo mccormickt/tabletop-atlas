@@ -63,6 +63,12 @@ pnpm run format:frontend
 # Check formatting without making changes
 pnpm run format:check
 
+# Type-check frontend (svelte-check)
+pnpm run check:frontend
+
+# Lint + type-check everything
+pnpm run check
+
 # Regenerate OpenAPI spec and TypeScript client after backend API changes
 pnpm run generate
 ```
@@ -94,6 +100,32 @@ pnpm run generate
   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
   {@html safeContent}
   ```
+- The ESLint rule `svelte/no-navigation-without-resolve` is disabled globally (redundant with svelte-check typed routes). `resolve()` usage is enforced at the type level instead.
+
+## Type Checking
+
+### Frontend (svelte-check)
+
+- Uses **svelte-check** with TypeScript for full type validation of Svelte components
+- Run `pnpm run check:frontend` to check for type errors (matches CI behavior)
+- Run `pnpm run check` to lint + type-check everything
+- This catches errors that ESLint does not: missing imports, wrong prop types, invalid typed routes, etc.
+- CI runs `pnpm --prefix frontend run check` which invokes `svelte-kit sync && svelte-check --tsconfig ./tsconfig.json`
+- **Always run after making significant changes** — IDE may not catch all Svelte-specific type errors
+
+### Common svelte-check Error Patterns
+
+- **`resolve()` typed routes**: SvelteKit enforces typed route strings. Dynamic query params must be appended separately:
+  ```typescript
+  // Good
+  goto(resolve('/chat') + `?game_id=${id}`);
+  // Bad — typed routes don't accept query strings
+  goto(resolve(`/chat?game_id=${id}`));
+  ```
+- **Missing type exports from `$lib`**: All API types used in components must be re-exported from `frontend/src/lib/index.ts`
+- **`$derived` vs `$derived.by`**: Use `$derived.by()` when the derivation needs a function body (statements), use `$derived()` for simple expressions
+- **Svelte 5 event handling**: Use callback props (`onUploaded`, `onDeleted`) not Svelte 4 `on:event` syntax
+- **ErrorResult type**: Access HTTP status via `result.response.status`, not `result.statusCode`
 
 ## Backend Architecture
 

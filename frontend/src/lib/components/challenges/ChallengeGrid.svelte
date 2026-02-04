@@ -4,7 +4,7 @@
 		ChallengeGame,
 		ChallengePlayWithParticipants,
 		ChallengeParticipant
-	} from '$api/Api';
+	} from '$lib';
 	import ChallengeCell from './ChallengeCell.svelte';
 	import GameRow from './GameRow.svelte';
 
@@ -37,10 +37,12 @@
 	}
 
 	// Generate row and column indices
-	const rowIndices = $derived(Array.from({ length: challenge.gridRows }, (unused, i) => i));
-	const colIndices = $derived(Array.from({ length: challenge.gridCols }, (unused, i) => i));
-	// Suppress lint for unused parameter
-	void (rowIndices, colIndices);
+	const rowIndices = $derived(
+		Array.from({ length: challenge.gridRows }, (_unused, i: number) => i)
+	);
+	const colIndices = $derived(
+		Array.from({ length: challenge.gridCols }, (_unused, i: number) => i)
+	);
 </script>
 
 <div class="overflow-x-auto">

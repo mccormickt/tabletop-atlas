@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import {
 		api,
 		type Game,
@@ -23,7 +24,7 @@
 	type TabType = 'details' | 'house-rules';
 
 	// Get game ID from URL parameters
-	let gameId = $derived(parseInt(page.params.id));
+	let gameId = $derived(parseInt(page.params.id ?? '0'));
 
 	// Configure header for this page
 	const header = useHeader();
@@ -161,9 +162,9 @@
 
 	function navigateToChat() {
 		if (gameId) {
-			goto(`/chat?game_id=${gameId}`);
+			goto(resolve('/chat') + `?game_id=${gameId}`);
 		} else {
-			goto(`/chat`);
+			goto(resolve('/chat'));
 		}
 	}
 
@@ -268,7 +269,7 @@
 
 			if (result.type === 'success') {
 				// Navigate back to games list
-				goto('/games');
+				goto(resolve('/games'));
 			} else if (result.type === 'error') {
 				alert(result.data.message || 'Failed to delete game');
 			} else if (result.type === 'client_error') {
@@ -283,12 +284,12 @@
 
 	function handleEdit() {
 		if (game) {
-			goto(`/games/${game.id}/edit`);
+			goto(resolve(`/games/${game.id}/edit`));
 		}
 	}
 
 	function handleBack() {
-		goto('/games');
+		goto(resolve('/games'));
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -313,7 +314,7 @@
 
 	function navigateToSearch() {
 		if (game) {
-			goto(`/search?gameId=${game.id}`);
+			goto(resolve('/search') + `?gameId=${game.id}`);
 		}
 	}
 
@@ -670,7 +671,7 @@
 							<CardContent class="space-y-3">
 								<Button
 									class="w-full"
-									variant={activeTab === 'house-rules' ? 'default' : 'outline'}
+									variant="outline"
 									onclick={() => (activeTab = 'house-rules')}
 								>
 									View House Rules

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { useAuth, type AuthState } from '$lib/stores/auth';
 	import { api, getStatusColor } from '$lib';
 	import { Button } from '$lib/components/ui/button';
@@ -13,7 +14,7 @@
 		ChallengeGame,
 		ChallengePlayWithParticipants,
 		GameType
-	} from '$api/Api';
+	} from '$lib';
 
 	const auth = useAuth();
 
@@ -36,7 +37,7 @@
 		const unsubscribe = auth.subscribe((state) => {
 			authState = state;
 			if (!state.isLoading && !state.user) {
-				goto('/auth/login');
+				goto(resolve('/auth/login'));
 			} else if (state.user && $page.params.id) {
 				loadGrid();
 			}
@@ -53,11 +54,11 @@
 			});
 			if (result.type === 'success') {
 				gridData = result.data;
-			} else if (result.statusCode === 401) {
-				goto('/auth/login');
-			} else if (result.statusCode === 403) {
+			} else if (result.response.status === 401) {
+				goto(resolve('/auth/login'));
+			} else if (result.response.status === 403) {
 				error = 'You are not a participant in this challenge';
-			} else if (result.statusCode === 404) {
+			} else if (result.response.status === 404) {
 				error = 'Challenge not found';
 			} else {
 				error = 'Failed to load challenge';
@@ -135,7 +136,7 @@
 		</div>
 	{:else if gridData}
 		<div class="mb-8">
-			<a href="/challenges" class="text-muted-foreground hover:text-foreground text-sm">
+			<a href={resolve('/challenges')} class="text-muted-foreground hover:text-foreground text-sm">
 				&larr; Back to Challenges
 			</a>
 			<div class="mt-4 flex items-start justify-between">

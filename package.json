@@ -14,7 +14,9 @@
     "format": "cargo fmt && pnpm --prefix frontend run format",
     "format:backend": "cargo fmt",
     "format:frontend": "pnpm --prefix frontend run format",
-    "format:check": "cargo fmt --check && pnpm --prefix frontend run lint"
+    "format:check": "cargo fmt --check && pnpm --prefix frontend run lint",
+    "check": "pnpm run lint && pnpm --prefix frontend run check",
+    "check:frontend": "pnpm --prefix frontend run check"
   },
   "devDependencies": {
     "@oxide/openapi-gen-ts": "^0.14.0",

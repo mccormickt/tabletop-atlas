@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import HeaderSearch from './HeaderSearch.svelte';
 	import UserMenu from './UserMenu.svelte';
@@ -21,7 +22,7 @@
 	}
 
 	function navigateHome() {
-		goto('/');
+		goto(resolve('/'));
 	}
 
 	const navItems = [
@@ -85,7 +86,7 @@
 							<span class="text-gold-foil mx-2 opacity-60">◆</span>
 						{/if}
 						<a
-							href={item.path}
+							href={resolve(item.path as '/')}
 							class="nav-link font-display relative px-3 py-2 text-sm font-medium tracking-wide transition-all duration-200
 								{isActivePath(item.path) ? 'text-game-blue' : 'text-muted-foreground hover:text-foreground'}"
 						>

@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { api, type BulkEnrichPreviewResponse, type BulkEnrichResponse } from '$lib';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -48,7 +50,7 @@
 	let errorTotalPages = $derived(preview ? Math.ceil(preview.errors.length / PAGE_SIZE) : 0);
 
 	function toggleField(fieldId: string) {
-		const newSet = new Set(selectedFields);
+		const newSet = new SvelteSet(selectedFields);
 		if (newSet.has(fieldId)) {
 			newSet.delete(fieldId);
 		} else {
@@ -249,7 +251,7 @@
 										<tr class="border-border border-b">
 											<td class="px-2 py-1">
 												<a
-													href="/games/{game.gameId}"
+													href={resolve(`/games/${game.gameId}`)}
 													class="text-game-blue hover:underline"
 													target="_blank"
 												>
