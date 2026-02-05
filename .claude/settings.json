@@ -7,8 +7,8 @@
       "Bash(*credentials*)",
       "Bash(*secret*)",
       "Bash(cat *.db)",
-      "Bash(sqlite3 *.db:*DELETE*)",
-      "Bash(sqlite3 *.db:*DROP*)",
+      "Bash(sqlite3 *DELETE*)",
+      "Bash(sqlite3 *DROP*)",
       "Bash(*node_modules*)",
       "Bash(*target/release*)",
       "Bash(*target/debug*)"
