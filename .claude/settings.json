@@ -1,0 +1,106 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(rm -r:*)",
+      "Bash(*>.env*)",
+      "Bash(*credentials*)",
+      "Bash(*secret*)",
+      "Bash(cat *.db)",
+      "Bash(sqlite3 *.db:*DELETE*)",
+      "Bash(sqlite3 *.db:*DROP*)",
+      "Bash(*node_modules*)",
+      "Bash(*target/release*)",
+      "Bash(*target/debug*)"
+    ],
+    "allow": [
+      "Bash(jj st:*)",
+      "Bash(jj status:*)",
+      "Bash(jj log:*)",
+      "Bash(jj diff:*)",
+      "Bash(jj describe:*)",
+      "Bash(jj new:*)",
+      "Bash(jj commit:*)",
+      "Bash(jj squash:*)",
+      "Bash(jj split:*)",
+      "Bash(jj bookmark:*)",
+      "Bash(jj git push:*)",
+      "Bash(jj git fetch:*)",
+      "Bash(jj rebase:*)",
+      "Bash(jj edit:*)",
+      "Bash(jj restore:*)",
+      "Bash(jj undo:*)",
+      "Bash(jj file annotate:*)",
+      "Bash(jj op log:*)",
+
+      "Bash(pnpm run dev:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm run test:*)",
+      "Bash(pnpm run lint:*)",
+      "Bash(pnpm run format:*)",
+      "Bash(pnpm run check:*)",
+      "Bash(pnpm run generate:*)",
+      "Bash(pnpm run backend:*)",
+      "Bash(pnpm run frontend:*)",
+      "Bash(pnpm --prefix frontend:*)",
+      "Bash(pnpm exec prettier:*)",
+      "Bash(pnpm exec eslint:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm remove:*)",
+
+      "Bash(cargo build:*)",
+      "Bash(cargo run:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo doc:*)",
+
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr checkout:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh api:*)",
+      "Bash(gh run:*)",
+
+      "Bash(ls:*)",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(curl:*)",
+      "Bash(sqlite3:*)",
+      "Bash(npx shadcn@latest add:*)",
+
+      "WebSearch",
+      "WebFetch(domain:docs.rs)",
+      "WebFetch(domain:docs.jj-vcs.dev)",
+      "WebFetch(domain:svelte.dev)",
+      "WebFetch(domain:kit.svelte.dev)",
+      "WebFetch(domain:tailwindcss.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:boardgamegeek.com)",
+      "WebFetch(domain:localhost)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/format-changed.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
