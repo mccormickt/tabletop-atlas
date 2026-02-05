@@ -7,8 +7,8 @@
 #   - workflow_dispatch: Manual trigger with optional tag input
 #
 # Flow:
-#   1. Extract version (from release tag or manual input)
-#   2. Build APK packages for x86_64 and aarch64
+#   1. Setup: Generate signing key and determine version
+#   2. Build APK packages for x86_64 and aarch64 (parallel, native runners)
 #   3. Build and push container image to GHCR
 #   4. Attach APK artifacts to the GitHub release (release events only)
 
@@ -36,8 +36,8 @@ permissions:
   packages: write
 
 jobs:
-  build-apk:
-    name: Build APK
+  setup:
+    name: Setup
     runs-on: ubuntu-latest
     if: github.repository_owner == 'mccormickt'
     outputs:
@@ -69,88 +69,110 @@ jobs:
       - name: Setup melange
         uses: chainguard-dev/actions/setup-melange@v1.5.14
 
+      - name: Generate signing key
+        run: melange keygen
+
+      - name: Upload signing key (private + public)
+        uses: actions/upload-artifact@v4
+        with:
+          name: signing-key
+          path: |
+            melange.rsa
+            melange.rsa.pub
+          if-no-files-found: error
+          retention-days: 1
+
+  build-apk:
+    name: Build APK (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    needs: setup
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download signing key
+        uses: actions/download-artifact@v4
+        with:
+          name: signing-key
+
+      - name: Setup melange
+        uses: chainguard-dev/actions/setup-melange@v1.5.14
+
       - name: Ensure cache directories exist
         run: |
-          set -euo pipefail
           mkdir -p "$HOME/.melange-cache"
           mkdir -p "$HOME/.apk-cache"
 
-      - name: Cache cargo and pnpm stores
+      - name: Cache melange dependencies
         uses: actions/cache@v4
         with:
           path: ~/.melange-cache
-          key: melange-deps-${{ hashFiles('Cargo.lock', 'pnpm-lock.yaml') }}
+          key: melange-${{ matrix.arch }}-${{ hashFiles('Cargo.lock', 'pnpm-lock.yaml', 'melange.yaml') }}
           restore-keys: |
-            melange-deps-
+            melange-${{ matrix.arch }}-
+            melange-
 
       - name: Cache APK packages
         uses: actions/cache@v4
         with:
           path: ~/.apk-cache
-          key: melange-apk-${{ hashFiles('melange.yaml') }}
+          key: apk-${{ matrix.arch }}-${{ hashFiles('melange.yaml') }}
           restore-keys: |
-            melange-apk-
-
-      - name: Generate signing key
-        run: melange keygen
+            apk-${{ matrix.arch }}-
+            apk-
 
       - name: Build APK
         run: |
           set -euo pipefail
-          melange build melange.yaml \
+          sudo melange build melange.yaml \
+            --arch ${{ matrix.arch }} \
             --signing-key melange.rsa \
             --cache-dir "$HOME/.melange-cache" \
             --apk-cache-dir "$HOME/.apk-cache" \
             --out-dir packages/
 
+      - name: Fix cache permissions
+        if: always()
+        run: |
+          sudo chown -R runner:runner "$HOME/.melange-cache" "$HOME/.apk-cache"
+
       - name: Upload APK packages
         uses: actions/upload-artifact@v4
         with:
-          name: apk-packages
-          path: packages/
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Upload signing key (public)
-        uses: actions/upload-artifact@v4
-        with:
-          name: signing-key
-          path: melange.rsa.pub
+          name: apk-${{ matrix.arch }}
+          path: packages/${{ matrix.arch }}/
           if-no-files-found: error
           retention-days: 1
 
   build-image:
     name: Build and Push Image
     runs-on: ubuntu-latest
-    needs: build-apk
+    needs: [setup, build-apk]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download APK packages
+      - name: Download x86_64 APK
         uses: actions/download-artifact@v4
         with:
-          name: apk-packages
-          path: packages/
+          name: apk-x86_64
+          path: packages/x86_64/
+
+      - name: Download aarch64 APK
+        uses: actions/download-artifact@v4
+        with:
+          name: apk-aarch64
+          path: packages/aarch64/
 
       - name: Download signing key
         uses: actions/download-artifact@v4
         with:
           name: signing-key
-          path: .
-
-      - name: Setup apko
-        uses: chainguard-dev/actions/setup-apko@v1.5.14
-
-      - name: Ensure cache directory exists
-        run: mkdir -p "$HOME/.apk-cache"
-
-      - name: Cache Wolfi packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.apk-cache
-          key: apko-${{ hashFiles('apko.yaml') }}
-          restore-keys: |
-            apko-
 
       - name: Log in to Container Registry
         uses: docker/login-action@v3
@@ -159,47 +181,67 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push image
+      - name: Build tags
+        id: tags
         run: |
-          set -euo pipefail
-          TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-apk.outputs.image_tag }}"
-
-          # Add :latest tag for release events, or if explicitly requested for manual runs
+          TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.setup.outputs.image_tag }}"
           if [ "${{ github.event_name }}" = "release" ] || [ "${{ inputs.push_latest }}" = "true" ]; then
             TAGS="$TAGS ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
           fi
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
 
-          apko publish apko.yaml \
-            --cache-dir "$HOME/.apk-cache" \
-            --keyring-append melange.rsa.pub \
-            $TAGS
+      - name: Build and push image
+        uses: chainguard-images/actions/apko-publish@main
+        with:
+          config: apko.yaml
+          tag: ${{ steps.tags.outputs.tags }}
+          keyring-append: melange.rsa.pub
 
   release:
     name: Attach Release Artifacts
     runs-on: ubuntu-latest
-    needs: [build-apk, build-image]
+    needs: [setup, build-apk, build-image]
     # Only attach artifacts when triggered by an actual release
     if: github.event_name == 'release'
     steps:
-      - name: Download APK packages
+      - name: Download x86_64 APK
         uses: actions/download-artifact@v4
         with:
-          name: apk-packages
-          path: packages/
+          name: apk-x86_64
+          path: packages/x86_64/
+
+      - name: Download aarch64 APK
+        uses: actions/download-artifact@v4
+        with:
+          name: apk-aarch64
+          path: packages/aarch64/
+
+      - name: Download signing key
+        uses: actions/download-artifact@v4
+        with:
+          name: signing-key
 
       - name: Prepare release assets
         run: |
           set -euo pipefail
-          VERSION="${{ needs.build-apk.outputs.image_tag }}"
+          TAG="${{ needs.setup.outputs.image_tag }}"
+
+          # Create APK repository archive (both arches + indexes + signing key)
+          cp melange.rsa.pub packages/
+          tar -czvf "tabletop-atlas-${TAG}-apk-repo.tar.gz" packages/
+
+          # Copy individual APKs with version names
           for arch in x86_64 aarch64; do
             apk=$(find "packages/${arch}" -name "*.apk" -type f)
             [[ -n "$apk" ]] || { echo "::error::No APK found for ${arch}"; exit 1; }
-            cp "$apk" "tabletop-atlas-${VERSION}-${arch}.apk"
+            cp "$apk" "tabletop-atlas-${TAG}-${arch}.apk"
           done
 
       - name: Attach release artifacts
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            tabletop-atlas-${{ needs.build-apk.outputs.image_tag }}-x86_64.apk
-            tabletop-atlas-${{ needs.build-apk.outputs.image_tag }}-aarch64.apk
+            tabletop-atlas-${{ needs.setup.outputs.image_tag }}-apk-repo.tar.gz
+            tabletop-atlas-${{ needs.setup.outputs.image_tag }}-x86_64.apk
+            tabletop-atlas-${{ needs.setup.outputs.image_tag }}-aarch64.apk
+            melange.rsa.pub
