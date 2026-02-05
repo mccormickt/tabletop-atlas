@@ -477,3 +477,25 @@ This command:
 - shadcn components can be added via `npx shadcn@latest add [component]`
 - Database schema changes require new migration files
 - Use JJ (Jujutsu) for all version control operations instead of Git
+
+### Auto-Formatting
+
+**Formatting is handled automatically.** A Claude Code hook runs `cargo fmt` (Rust) and `prettier` (frontend) after each file edit. You don't need to run format commands manually during development.
+
+### When to Run Lint/Check
+
+**Before opening a PR**, run the full check to catch issues CI will flag:
+
+```bash
+pnpm run check  # Lint + type-check everything
+```
+
+This runs:
+- `cargo clippy -- -D warnings` (catches logical issues, not just formatting)
+- `eslint` (code quality beyond formatting)
+- `svelte-check` (type errors IDE may miss)
+
+**Don't run lint/format after every small change** — the auto-format hook handles formatting, and running full checks constantly is slow. Save the full `pnpm run check` for:
+- Before creating a PR
+- After significant refactoring
+- When you suspect type issues
