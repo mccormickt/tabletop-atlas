@@ -135,11 +135,9 @@
 		<EmptyState
 			title="No House Rules"
 			description="Add custom rules and variants for this game. House rules can be included in chat context for personalized rule lookups."
-		>
-			{#if !showForm}
-				<Button onclick={startCreate} class="mt-4">Add Your First House Rule</Button>
-			{/if}
-		</EmptyState>
+			actionText={!showForm ? 'Add Your First House Rule' : undefined}
+			onAction={!showForm ? startCreate : undefined}
+		/>
 	{:else}
 		<!-- House rules list -->
 		<div class="space-y-4">

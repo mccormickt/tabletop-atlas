@@ -1,0 +1,42 @@
+package:
+  name: tabletop-atlas
+  version: 0.1.0
+  epoch: 0
+  description: "Board game management with AI-powered rules chat"
+  copyright:
+    - attestation: Copyright 2025
+      license: Apache-2.0
+  target-architecture:
+    - x86_64
+    - aarch64
+  dependencies:
+    runtime:
+      - ca-certificates-bundle
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+    packages:
+      - build-base
+      - openssl-dev
+      - rust
+      - nodejs-22
+      - pnpm
+  environment:
+    CARGO_HOME: /var/cache/melange/cargo
+    PNPM_STORE_DIR: /var/cache/melange/pnpm
+
+pipeline:
+  # Install deps (PNPM_STORE_DIR is persisted by melange's --cache-dir)
+  - runs: pnpm install --frozen-lockfile
+
+  # Build Rust backend; build.rs also builds the frontend via pnpm,
+  # so no separate frontend build step is needed in this pipeline
+  - uses: cargo/build
+    with:
+      modroot: .
+      output: backend
+      opts: --release -p backend

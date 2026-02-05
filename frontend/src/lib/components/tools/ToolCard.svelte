@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { ToolSummary } from '$api/Api';
+	import { resolve } from '$app/paths';
+	import type { ToolSummary } from '$lib';
 
 	let { tool }: { tool: ToolSummary } = $props();
 
@@ -18,7 +19,7 @@
 </script>
 
 <a
-	href="/tools/{tool.id}"
+	href={resolve(`/tools/${tool.id}`)}
 	class="bg-card border-border hover:border-primary group block rounded-lg border p-4 transition-all hover:shadow-md"
 >
 	<div class="mb-3 flex items-start justify-between">

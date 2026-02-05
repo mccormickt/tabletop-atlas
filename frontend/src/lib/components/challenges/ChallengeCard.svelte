@@ -1,12 +1,13 @@
 <script lang="ts">
-	import type { ChallengeSummary } from '$api/Api';
+	import type { ChallengeSummary } from '$lib';
+	import { resolve } from '$app/paths';
 	import { formatDate, getStatusColor } from '$lib';
 
 	let { challenge }: { challenge: ChallengeSummary } = $props();
 </script>
 
 <a
-	href="/challenges/{challenge.id}"
+	href={resolve(`/challenges/${challenge.id}`)}
 	class="bg-card border-border hover:border-primary block rounded-lg border p-4 transition-colors"
 >
 	<div class="mb-2 flex items-start justify-between">
@@ -45,13 +46,13 @@
 	{#if challenge.startDate || challenge.endDate}
 		<div class="text-muted-foreground mt-2 text-xs">
 			{#if challenge.startDate}
-				<span>Started: {formatDate(challenge.startDate)}</span>
+				<span>Started: {formatDate(new Date(challenge.startDate))}</span>
 			{/if}
 			{#if challenge.startDate && challenge.endDate}
 				<span class="mx-1">•</span>
 			{/if}
 			{#if challenge.endDate}
-				<span>Ends: {formatDate(challenge.endDate)}</span>
+				<span>Ends: {formatDate(new Date(challenge.endDate))}</span>
 			{/if}
 		</div>
 	{/if}

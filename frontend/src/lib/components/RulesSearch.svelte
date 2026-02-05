@@ -47,7 +47,7 @@
 		try {
 			const result = await api.methods.searchRules({
 				query: {
-					gameId,
+					gameId: String(gameId),
 					query: searchQuery.trim(),
 					limit: maxResults
 				}

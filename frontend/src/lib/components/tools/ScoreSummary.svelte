@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ScoreOutput, ScoringCategory } from '$api/Api';
+	import type { ScoreOutput, ScoringCategory } from '$lib';
 
 	let {
 		result,

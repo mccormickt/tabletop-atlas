@@ -1,0 +1,16 @@
+[workspace]
+changelog_update = true
+# Create git tags when release PR is merged
+git_tag_enable = true
+git_tag_name = "v{{ version }}"
+# release-plz creates the GitHub release and git tag on PR merge.
+# The tag push then triggers release.yaml, which builds the APK/image
+# and attaches artifacts to the existing GitHub release.
+git_release_enable = true
+git_release_name = "v{{ version }}"
+
+[[package]]
+name = "backend"
+changelog_path = "CHANGELOG.md"
+# Not a crates.io library; releases are APK/container only
+publish = false

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { api, type GameSummary } from '$lib';
 	import { SearchGlass } from './icons';
 
@@ -106,7 +107,7 @@
 	}
 
 	function selectGame(game: GameSummary) {
-		goto(`/games/${game.id}`);
+		goto(resolve(`/games/${game.id}`));
 		query = '';
 		isOpen = false;
 		inputElement?.blur();
@@ -191,7 +192,10 @@
 			{:else if query.trim()}
 				<div class="p-4 text-center">
 					<p class="text-muted-foreground text-sm">No games found</p>
-					<a href="/games/add" class="text-game-blue mt-1 inline-block text-xs hover:underline">
+					<a
+						href={resolve('/games/add')}
+						class="text-game-blue mt-1 inline-block text-xs hover:underline"
+					>
 						Add a new game
 					</a>
 				</div>

@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { browser } from '$app/environment';
 	import type { GameSummary, CollectionEntryWithGame, CustomGameSummary } from '$lib';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { Button, Badge, CardSleeve, Pagination } from '$lib/components/ui';
 	import { Dice } from './icons';
 
@@ -81,7 +83,7 @@
 	};
 
 	// Convert data to unified display items based on mode
-	let displayItems = $derived<DisplayItem[]>(() => {
+	let displayItems = $derived.by<DisplayItem[]>(() => {
 		if (mode === 'library') {
 			return games.map((g) => ({
 				id: String(g.id),
@@ -101,12 +103,7 @@
 				masterGameId: item.masterGameId,
 				rating: item.rating,
 				notes: item.notes,
-				playCount: item.playCount,
-				yearPublished: item.yearPublished,
-				minPlayers: item.minPlayers,
-				maxPlayers: item.maxPlayers,
-				complexityRating: item.complexityRating,
-				hasRulesPdf: item.hasRulesPdf
+				playCount: item.playCount
 			}));
 		} else {
 			return customGames.map((g) => ({
@@ -122,8 +119,8 @@
 		}
 	});
 
-	const sortedItems = $derived(() => {
-		const items = displayItems();
+	const sortedItems = $derived.by(() => {
+		const items = displayItems;
 		return [...items].sort((a, b) => {
 			let aVal: string | number | undefined | null = a[sortField as keyof DisplayItem] as
 				| string
@@ -161,26 +158,26 @@
 
 	function handleView(item: DisplayItem) {
 		if (mode === 'collection' && item.masterGameId) {
-			goto(`/games/${item.masterGameId}`);
+			goto(resolve(`/games/${item.masterGameId}`));
 		} else if (mode === 'custom') {
-			goto(`/games/custom/${item.id}`);
+			goto(resolve(`/games/custom/${item.id}`));
 		} else {
-			goto(`/games/${item.id}`);
+			goto(resolve(`/games/${item.id}`));
 		}
 	}
 
 	function handleEdit(item: DisplayItem) {
 		if (mode === 'custom') {
-			goto(`/games/custom/${item.id}/edit`);
+			goto(resolve(`/games/custom/${item.id}/edit`));
 		} else if (mode === 'collection' && item.masterGameId) {
-			goto(`/games/${item.masterGameId}/edit`);
+			goto(resolve(`/games/${item.masterGameId}/edit`));
 		} else {
-			goto(`/games/${item.id}/edit`);
+			goto(resolve(`/games/${item.id}/edit`));
 		}
 	}
 
 	function toggleSelect(itemId: string) {
-		const newSelection = new Set(selectedIds);
+		const newSelection = new SvelteSet(selectedIds);
 		if (newSelection.has(itemId)) {
 			newSelection.delete(itemId);
 		} else {
@@ -190,7 +187,7 @@
 	}
 
 	function selectAll() {
-		const items = displayItems();
+		const items = displayItems;
 		if (selectedIds.size === items.length) {
 			onSelectionChange?.(new Set());
 		} else {
@@ -282,8 +279,7 @@
 								<th class="px-4 py-3 text-left">
 									<input
 										type="checkbox"
-										checked={selectedIds.size === displayItems().length &&
-											displayItems().length > 0}
+										checked={selectedIds.size === displayItems.length && displayItems.length > 0}
 										onchange={selectAll}
 										class="h-4 w-4 rounded"
 									/>
@@ -347,7 +343,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-border divide-y">
-						{#each sortedItems() as item (item.id)}
+						{#each sortedItems as item (item.id)}
 							<tr class="hover:bg-parchment-dark/50 transition-colors">
 								{#if showSelectionCheckboxes}
 									<td class="px-4 py-3">
@@ -437,7 +433,7 @@
 	<!-- Card View -->
 	{#if viewMode === 'cards'}
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-			{#each sortedItems() as item (item.id)}
+			{#each sortedItems as item (item.id)}
 				<CardSleeve variant="default" class="p-0">
 					<div class="relative">
 						{#if showSelectionCheckboxes}
@@ -542,7 +538,7 @@
 	{#if viewMode === 'compact'}
 		<div class="game-box-lid p-2">
 			<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-				{#each sortedItems() as item (item.id)}
+				{#each sortedItems as item (item.id)}
 					<div class="flex items-center gap-2">
 						{#if showSelectionCheckboxes}
 							<input

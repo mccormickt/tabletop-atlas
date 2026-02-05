@@ -1,0 +1,171 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ -z "$VERSION" ] || ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "::error::Invalid version '$VERSION' from tag '${GITHUB_REF_NAME}'"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Setup melange
+        uses: chainguard-dev/actions/setup-melange@v1
+
+      - name: Ensure cache directories exist
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.melange-cache"
+          mkdir -p "$HOME/.apk-cache"
+
+      - name: Cache cargo and pnpm stores
+        uses: actions/cache@v4
+        with:
+          path: ~/.melange-cache
+          key: melange-deps-${{ hashFiles('Cargo.lock', 'pnpm-lock.yaml') }}
+          restore-keys: |
+            melange-deps-
+
+      - name: Cache APK packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.apk-cache
+          key: melange-apk-${{ hashFiles('melange.yaml') }}
+          restore-keys: |
+            melange-apk-
+
+      - name: Generate signing key
+        run: melange keygen
+
+      - name: Build APK
+        run: |
+          melange build melange.yaml \
+            --signing-key melange.rsa \
+            --cache-dir "$HOME/.melange-cache" \
+            --apk-cache-dir "$HOME/.apk-cache" \
+            --out-dir packages/
+
+      - name: Upload APK packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-packages
+          path: packages/
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload signing key (public)
+        uses: actions/upload-artifact@v4
+        with:
+          name: signing-key
+          path: melange.rsa.pub
+          if-no-files-found: error
+          retention-days: 1
+
+  build-image:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    needs: build-apk
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download APK packages
+        uses: actions/download-artifact@v4
+        with:
+          name: apk-packages
+          path: packages/
+
+      - name: Download signing key
+        uses: actions/download-artifact@v4
+        with:
+          name: signing-key
+          path: .
+
+      - name: Setup apko
+        uses: chainguard-dev/actions/setup-apko@v1
+
+      - name: Ensure cache directory exists
+        run: mkdir -p "$HOME/.apk-cache"
+
+      - name: Cache Wolfi packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.apk-cache
+          key: apko-${{ hashFiles('apko.yaml') }}
+          restore-keys: |
+            apko-
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        run: |
+          apko publish apko.yaml \
+            --cache-dir "$HOME/.apk-cache" \
+            --keyring-append melange.rsa.pub \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-apk.outputs.version }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  release:
+    name: Attach Release Artifacts
+    runs-on: ubuntu-latest
+    needs: [build-apk, build-image]
+    steps:
+      - name: Download APK packages
+        uses: actions/download-artifact@v4
+        with:
+          name: apk-packages
+          path: packages/
+
+      - name: Prepare release assets
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.build-apk.outputs.version }}"
+          for arch in x86_64 aarch64; do
+            mapfile -t apk_files < <(find "packages/${arch}" -name "*.apk" -type f)
+            count=${#apk_files[@]}
+            if [ "$count" -eq 0 ]; then
+              echo "::error::No APK found for ${arch} in packages/${arch}/"
+              ls -la "packages/${arch}/" 2>/dev/null || echo "Directory does not exist"
+              exit 1
+            elif [ "$count" -gt 1 ]; then
+              echo "::error::Expected exactly 1 APK for ${arch}, found ${count}:"
+              printf '  %s\n' "${apk_files[@]}"
+              exit 1
+            fi
+            cp "${apk_files[0]}" "tabletop-atlas-${VERSION}-${arch}.apk"
+          done
+
+      - name: Attach release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            tabletop-atlas-${{ needs.build-apk.outputs.version }}-x86_64.apk
+            tabletop-atlas-${{ needs.build-apk.outputs.version }}-aarch64.apk

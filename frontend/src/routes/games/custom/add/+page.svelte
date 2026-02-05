@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { useAuth, type AuthState } from '$lib/stores/auth';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -27,7 +28,7 @@
 		const unsubscribe = auth.subscribe((state) => {
 			authState = state;
 			if (!state.isLoading && !state.user) {
-				goto('/auth/login');
+				goto(resolve('/auth/login'));
 			}
 		});
 		return unsubscribe;
@@ -60,9 +61,9 @@
 			});
 
 			if (response.ok) {
-				goto('/games/custom');
+				goto(resolve('/games/custom'));
 			} else if (response.status === 401) {
-				goto('/auth/login');
+				goto(resolve('/auth/login'));
 			} else {
 				const data = await response.json();
 				error = data.message || 'Failed to create custom game';
@@ -178,7 +179,8 @@
 				<Button type="submit" disabled={isSubmitting || !formData.name}>
 					{isSubmitting ? 'Creating...' : 'Create Game'}
 				</Button>
-				<Button type="button" variant="outline" onclick={() => goto('/games/custom')}>Cancel</Button
+				<Button type="button" variant="outline" onclick={() => goto(resolve('/games/custom'))}
+					>Cancel</Button
 				>
 			</div>
 		</form>

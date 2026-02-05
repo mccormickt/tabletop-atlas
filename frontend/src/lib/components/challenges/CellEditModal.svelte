@@ -1,13 +1,10 @@
 <script lang="ts">
-	import type {
-		ChallengeGame,
-		ChallengePlayWithParticipants,
-		ChallengeParticipant
-	} from '$api/Api';
+	import type { ChallengeGame, ChallengePlayWithParticipants, ChallengeParticipant } from '$lib';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import { SvelteMap } from 'svelte/reactivity';
 	import WinnerSelector from './WinnerSelector.svelte';
 
 	let {
@@ -37,19 +34,17 @@
 	// Form state
 	let playedAt = $state(existingPlay?.playedAt || new Date().toISOString().split('T')[0]);
 	let notes = $state(existingPlay?.notes || '');
-	let selectedParticipants = $state<Map<number, { isWinner: boolean; score: number | null }>>(
-		new Map(
-			existingPlay?.participants.map((p) => [
-				p.userId,
-				{ isWinner: p.isWinner, score: p.score ?? null }
-			]) || []
-		)
+	let selectedParticipants = new SvelteMap<number, { isWinner: boolean; score: number | null }>(
+		existingPlay?.participants.map((p) => [
+			p.userId,
+			{ isWinner: p.isWinner, score: p.score ?? null }
+		]) || []
 	);
 
 	const isEditing = $derived(!!existingPlay);
 
 	function toggleParticipant(userId: number) {
-		const newMap = new Map(selectedParticipants);
+		const newMap = new SvelteMap(selectedParticipants);
 		if (newMap.has(userId)) {
 			newMap.delete(userId);
 		} else {
@@ -61,7 +56,7 @@
 	function toggleWinner(userId: number) {
 		const current = selectedParticipants.get(userId);
 		if (current) {
-			const newMap = new Map(selectedParticipants);
+			const newMap = new SvelteMap(selectedParticipants);
 			newMap.set(userId, { ...current, isWinner: !current.isWinner });
 			selectedParticipants = newMap;
 		}
@@ -70,7 +65,7 @@
 	function updateScore(userId: number, score: number | null) {
 		const current = selectedParticipants.get(userId);
 		if (current) {
-			const newMap = new Map(selectedParticipants);
+			const newMap = new SvelteMap(selectedParticipants);
 			newMap.set(userId, { ...current, score });
 			selectedParticipants = newMap;
 		}

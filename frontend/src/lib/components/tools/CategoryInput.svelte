@@ -2,7 +2,7 @@
 	import IntegerInput from './inputs/IntegerInput.svelte';
 	import CounterInput from './inputs/CounterInput.svelte';
 	import ScienceInput from './inputs/ScienceInput.svelte';
-	import type { ScoringCategory } from '$api/Api';
+	import type { ScoringCategory } from '$lib';
 
 	let {
 		category,

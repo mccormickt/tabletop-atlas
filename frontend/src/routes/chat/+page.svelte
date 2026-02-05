@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { browser } from '$app/environment';
-	import { api, type GameSummary, type ChatSessionSummary, type ChatHistory } from '$lib';
+	import {
+		api,
+		type GameSummary,
+		type ChatSessionSummary,
+		type ChatHistory,
+		type ChatMessage
+	} from '$lib';
 	import {
 		Button,
 		Input,
@@ -211,7 +218,7 @@
 		const url = new URL(window.location.href);
 		url.searchParams.set('game_id', game.id.toString());
 		url.searchParams.delete('session_id');
-		goto(url.toString(), { replaceState: true });
+		goto(resolve('/chat') + url.search, { replaceState: true });
 	}
 
 	async function loadChatSessions(gameId: number) {
@@ -220,7 +227,7 @@
 
 		try {
 			const result = await api.methods.listChatSessions({
-				query: { gameId, page: 1, limit: 50 }
+				query: { gameId: String(gameId), page: 1, limit: 50 }
 			});
 
 			if (result.type === 'success') {
@@ -258,7 +265,7 @@
 
 				const url = new URL(window.location.href);
 				url.searchParams.set('session_id', result.data.id.toString());
-				goto(url.toString(), { replaceState: true });
+				goto(resolve('/chat') + url.search, { replaceState: true });
 			} else {
 				error = 'Failed to create chat session';
 			}
@@ -284,7 +291,7 @@
 
 				const url = new URL(window.location.href);
 				url.searchParams.set('session_id', sessionId.toString());
-				goto(url.toString(), { replaceState: true });
+				goto(resolve('/chat') + url.search, { replaceState: true });
 			} else {
 				error = 'Failed to load chat session';
 			}
@@ -305,33 +312,34 @@
 		newMessage = '';
 
 		// Optimistically add user message to the UI immediately
-		const optimisticUserMessage = {
+		const optimisticUserMessage: ChatMessage = {
 			id: -1, // Temporary ID
 			sessionId: currentSession.session.id,
 			role: 'user' as const,
 			content: messageText,
 			contextChunks: null,
-			createdAt: new Date().toISOString()
+			createdAt: new Date()
 		};
 		currentSession = {
-			...currentSession,
+			session: currentSession.session,
 			messages: [...currentSession.messages, optimisticUserMessage]
 		};
 		scrollToBottom();
 
 		try {
+			const session = currentSession!;
 			const result = await api.methods.chatWithRules({
 				body: {
-					sessionId: currentSession.session.id,
+					sessionId: session.session.id,
 					message: messageText
 				}
 			});
 
 			if (result.type === 'success') {
 				// Replace optimistic message with real user message and append assistant response
-				const messagesWithoutOptimistic = currentSession.messages.filter((m) => m.id !== -1);
+				const messagesWithoutOptimistic = session.messages.filter((m) => m.id !== -1);
 				currentSession = {
-					...currentSession,
+					session: session.session,
 					messages: [
 						...messagesWithoutOptimistic,
 						result.data.userMessage,
@@ -343,18 +351,20 @@
 				error = 'Failed to send message';
 				// Remove optimistic message on error
 				currentSession = {
-					...currentSession,
-					messages: currentSession.messages.filter((m) => m.id !== -1)
+					session: session.session,
+					messages: session.messages.filter((m) => m.id !== -1)
 				};
 				newMessage = messageText;
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
 			// Remove optimistic message on error
-			currentSession = {
-				...currentSession,
-				messages: currentSession.messages.filter((m) => m.id !== -1)
-			};
+			if (currentSession) {
+				currentSession = {
+					session: currentSession.session,
+					messages: currentSession.messages.filter((m) => m.id !== -1)
+				};
+			}
 			newMessage = messageText;
 		} finally {
 			sendingMessage = false;

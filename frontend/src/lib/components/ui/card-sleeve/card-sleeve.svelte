@@ -19,13 +19,15 @@
 
 	export type CardSleeveVariant = VariantProps<typeof cardSleeveVariants>['variant'];
 
-	export type CardSleeveProps = HTMLAttributes<HTMLDivElement> & {
+	export type CardSleeveProps = HTMLAttributes<HTMLElement> & {
 		variant?: CardSleeveVariant;
 		href?: string;
 	};
 </script>
 
 <script lang="ts">
+	import { resolve } from '$app/paths';
+
 	let {
 		class: className,
 		variant = 'default',
@@ -37,7 +39,7 @@
 
 {#if href}
 	<a
-		{href}
+		href={resolve(href as '/')}
 		class={cn(cardSleeveVariants({ variant }), 'block no-underline', className)}
 		{...restProps}
 	>

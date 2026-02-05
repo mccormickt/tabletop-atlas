@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import Header from '$lib/components/Header.svelte';
 	import MobileNav from '$lib/components/MobileNav.svelte';
 	import { createHeaderStore, setHeaderContext } from '$lib/stores/header';
@@ -44,7 +45,7 @@
 	$effect(() => {
 		const pathname = page.url.pathname;
 		if (!authState.isLoading && !authState.user && !isPublicRoute(pathname)) {
-			goto('/auth/login');
+			goto(resolve('/auth/login'));
 		}
 	});
 

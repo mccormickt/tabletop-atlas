@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { useAuth, type AuthState } from '$lib/stores/auth';
 	import { Button } from '$lib/components/ui/button';
 	import { EmptyState } from '$lib/components/ui/empty-state';
 	import ChallengeCard from '$lib/components/challenges/ChallengeCard.svelte';
-	import type { ChallengeSummary } from '$api/Api';
+	import type { ChallengeSummary } from '$lib';
 
 	const auth = useAuth();
 
@@ -17,7 +18,7 @@
 		const unsubscribe = auth.subscribe((state) => {
 			authState = state;
 			if (!state.isLoading && !state.user) {
-				goto('/auth/login');
+				goto(resolve('/auth/login'));
 			} else if (state.user) {
 				loadChallenges();
 			}
@@ -36,7 +37,7 @@
 				const data = await response.json();
 				challenges = data.items || [];
 			} else if (response.status === 401) {
-				goto('/auth/login');
+				goto(resolve('/auth/login'));
 			} else {
 				error = 'Failed to load challenges';
 			}
@@ -70,26 +71,12 @@
 		</div>
 	{:else if challenges.length === 0}
 		<EmptyState
+			icon="document"
 			title="No challenges yet"
 			description="Create your first challenge to start tracking game sessions with friends."
-		>
-			<svg
-				slot="icon"
-				xmlns="http://www.w3.org/2000/svg"
-				class="text-muted-foreground h-12 w-12"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-				/>
-			</svg>
-			<Button href="/challenges/new">Create Challenge</Button>
-		</EmptyState>
+			actionText="Create Challenge"
+			onAction={() => goto(resolve('/challenges/new'))}
+		/>
 	{:else}
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			{#each challenges as challenge (challenge.id)}

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { useAuth, type AuthState } from '$lib/stores/auth';
 	import { Button } from '$lib/components/ui/button';
 	import { EmptyState } from '$lib/components/ui/empty-state';
-	import { CardStack } from '$lib/components/icons';
 
 	interface CollectionEntry {
 		id: number;
@@ -24,7 +24,7 @@
 		const unsubscribe = auth.subscribe((state) => {
 			authState = state;
 			if (!state.isLoading && !state.user) {
-				goto('/auth/login');
+				goto(resolve('/auth/login'));
 			} else if (state.user) {
 				loadCollection();
 			}
@@ -43,7 +43,7 @@
 				const data = await response.json();
 				collection = data.items || [];
 			} else if (response.status === 401) {
-				goto('/auth/login');
+				goto(resolve('/auth/login'));
 			} else {
 				error = 'Failed to load collection';
 			}
@@ -90,10 +90,10 @@
 		<EmptyState
 			title="Your collection is empty"
 			description="Start adding games to your collection from the Games page."
-		>
-			<CardStack slot="icon" size={48} class="text-muted-foreground" />
-			<Button href="/games">Browse Games</Button>
-		</EmptyState>
+			icon="game"
+			actionText="Browse Games"
+			onAction={() => goto(resolve('/games'))}
+		/>
 	{:else}
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			{#each collection as entry (entry.id)}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { api, type CreateGameRequest } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
@@ -152,7 +153,7 @@
 				success = true;
 				// Navigate to the game detail page after a short delay
 				setTimeout(() => {
-					goto(`/games/${result.data.id}`);
+					goto(resolve(`/games/${result.data.id}`));
 				}, 1500);
 			} else if (result.type === 'error') {
 				error = result.data.message || 'An error occurred while saving the game';
@@ -167,7 +168,7 @@
 	}
 
 	function handleCancel() {
-		goto('/games');
+		goto(resolve('/games'));
 	}
 </script>
 

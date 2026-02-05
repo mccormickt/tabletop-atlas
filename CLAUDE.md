@@ -8,7 +8,7 @@ Tabletop Atlas is a board game rules management platform with AI-powered chat, b
 
 - **Backend**: Rust with Dropshot web framework, SQLite database
 - **Framework**: Svelte 5 using sveltekit with svelte-shadcn/ui components
-- **Structure**: Monorepo with workspace setup
+- **Structure**: pnpm workspace monorepo (`pnpm-workspace.yaml` declares `frontend` as a workspace package)
 
 ### Key Directories
 
@@ -33,8 +33,8 @@ cargo run -p backend
 
 # Run frontend only
 pnpm run frontend
-# or (from frontend directory)
-pnpm run dev
+# or
+pnpm --prefix frontend run dev
 
 # Build everything
 pnpm run build
@@ -63,6 +63,12 @@ pnpm run format:frontend
 # Check formatting without making changes
 pnpm run format:check
 
+# Type-check frontend (svelte-check)
+pnpm run check:frontend
+
+# Lint + type-check everything
+pnpm run check
+
 # Regenerate OpenAPI spec and TypeScript client after backend API changes
 pnpm run generate
 ```
@@ -82,8 +88,8 @@ pnpm run generate
 - Uses **Prettier** for code formatting
 - Configuration in `frontend/eslint.config.js` and `frontend/.prettierrc`
 - The `src/api/` directory is excluded from linting (auto-generated code)
-- Run `pnpm run lint` from frontend directory to check
-- Run `pnpm run format` from frontend directory to fix formatting
+- Run `pnpm run lint:frontend` to check
+- Run `pnpm run format:frontend` to fix formatting
 
 ### Svelte-specific Linting Notes
 
@@ -94,6 +100,32 @@ pnpm run generate
   <!-- eslint-disable-next-line svelte/no-at-html-tags -->
   {@html safeContent}
   ```
+- The ESLint rule `svelte/no-navigation-without-resolve` is disabled globally (redundant with svelte-check typed routes). `resolve()` usage is enforced at the type level instead.
+
+## Type Checking
+
+### Frontend (svelte-check)
+
+- Uses **svelte-check** with TypeScript for full type validation of Svelte components
+- Run `pnpm run check:frontend` to check for type errors (matches CI behavior)
+- Run `pnpm run check` to lint + type-check everything
+- This catches errors that ESLint does not: missing imports, wrong prop types, invalid typed routes, etc.
+- CI runs `pnpm --prefix frontend run check` which invokes `svelte-kit sync && svelte-check --tsconfig ./tsconfig.json`
+- **Always run after making significant changes** — IDE may not catch all Svelte-specific type errors
+
+### Common svelte-check Error Patterns
+
+- **`resolve()` typed routes**: SvelteKit enforces typed route strings. Dynamic query params must be appended separately:
+  ```typescript
+  // Good
+  goto(resolve('/chat') + `?game_id=${id}`);
+  // Bad — typed routes don't accept query strings
+  goto(resolve(`/chat?game_id=${id}`));
+  ```
+- **Missing type exports from `$lib`**: All API types used in components must be re-exported from `frontend/src/lib/index.ts`
+- **`$derived` vs `$derived.by`**: Use `$derived.by()` when the derivation needs a function body (statements), use `$derived()` for simple expressions
+- **Svelte 5 event handling**: Use callback props (`onUploaded`, `onDeleted`) not Svelte 4 `on:event` syntax
+- **ErrorResult type**: Access HTTP status via `result.response.status`, not `result.statusCode`
 
 ## Backend Architecture
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { api, type GameSummary, type RulesInfoResponse, type UploadResponse } from '$lib';
 	import { Button, GameBox, LoadingSpinner } from '$lib/components/ui';
 	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
@@ -107,7 +108,7 @@
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function handleUploadSuccess(event: CustomEvent<UploadResponse>) {
+	function handleUploadSuccess(_response: UploadResponse) {
 		uploadSuccess = true;
 		if (selectedGameId) {
 			selectGame(selectedGameId);
@@ -120,17 +121,17 @@
 		}
 	}
 
-	function handleUploadError(event: CustomEvent<string>) {
-		error = event.detail;
+	function handleUploadError(errorMsg: string) {
+		error = errorMsg;
 	}
 
 	function goToGame(gameId: number) {
-		goto(`/games/${gameId}`);
+		goto(resolve(`/games/${gameId}`));
 	}
 
 	function goToChat() {
 		if (selectedGame) {
-			goto(`/chat?game_id=${selectedGame.id}`);
+			goto(resolve('/chat') + `?game_id=${selectedGame.id}`);
 		}
 	}
 
@@ -285,9 +286,9 @@
 					gameId={selectedGame.id}
 					gameName={selectedGame.name}
 					existingRulesInfo={rulesInfo}
-					on:uploaded={handleUploadSuccess}
-					on:deleted={handleUploadDeleted}
-					on:error={handleUploadError}
+					onUploaded={handleUploadSuccess}
+					onDeleted={handleUploadDeleted}
+					onError={handleUploadError}
 				/>
 
 				{#if uploadSuccess}

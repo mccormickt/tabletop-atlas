@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { useAuth, type AuthState } from '$lib/stores/auth';
 	import { api } from '$lib';
 	import { Button } from '$lib/components/ui/button';
-	import type { ChallengeStats, Challenge } from '$api/Api';
+	import type { ChallengeStats, Challenge } from '$lib';
 
 	const auth = useAuth();
 
@@ -18,7 +19,7 @@
 		const unsubscribe = auth.subscribe((state) => {
 			authState = state;
 			if (!state.isLoading && !state.user) {
-				goto('/auth/login');
+				goto(resolve('/auth/login'));
 			} else if (state.user && $page.params.id) {
 				loadData();
 			}
@@ -40,13 +41,13 @@
 
 			if (statsResult.type === 'success') {
 				stats = statsResult.data;
-			} else if (statsResult.statusCode === 401) {
-				goto('/auth/login');
+			} else if (statsResult.response.status === 401) {
+				goto(resolve('/auth/login'));
 				return;
-			} else if (statsResult.statusCode === 403) {
+			} else if (statsResult.response.status === 403) {
 				error = 'You are not a participant in this challenge';
 				return;
-			} else if (statsResult.statusCode === 404) {
+			} else if (statsResult.response.status === 404) {
 				error = 'Challenge not found';
 				return;
 			} else {
@@ -88,7 +89,7 @@
 		<!-- Header -->
 		<div class="mb-8">
 			<a
-				href="/challenges/{$page.params.id}"
+				href={resolve(`/challenges/${$page.params.id}`)}
 				class="text-muted-foreground hover:text-foreground text-sm"
 			>
 				&larr; Back to Challenge
@@ -194,7 +195,7 @@
 
 		<!-- Back Button -->
 		<div class="mt-8 text-center">
-			<Button href="/challenges/{$page.params.id}">Back to Challenge Grid</Button>
+			<Button href={resolve(`/challenges/${$page.params.id}`)}>Back to Challenge Grid</Button>
 		</div>
 	{/if}
 </div>
