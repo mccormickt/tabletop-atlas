@@ -1,19 +1,31 @@
 # Release Workflow
 #
-# Triggered when a GitHub release is published. Builds APK packages and
-# container image, then attaches artifacts to the release.
+# Builds APK packages and container image, pushes to GHCR.
+#
+# Triggers:
+#   - release: Automatically on GitHub release publish
+#   - workflow_dispatch: Manual trigger with optional tag input
 #
 # Flow:
-#   1. Release published → Extract version from tag
+#   1. Extract version (from release tag or manual input)
 #   2. Build APK packages for x86_64 and aarch64
 #   3. Build and push container image to GHCR
-#   4. Attach APK artifacts to the GitHub release
+#   4. Attach APK artifacts to the GitHub release (release events only)
 
 name: Release
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag/version to build (leave empty to use ref)'
+        required: false
+      push_latest:
+        description: 'Also tag as :latest'
+        type: boolean
+        default: true
 
 env:
   REGISTRY: ghcr.io
@@ -29,20 +41,33 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'mccormickt'
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      image_tag: ${{ steps.tag.outputs.image_tag }}
     steps:
-      - name: Extract version from release tag
-        id: version
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]] || { echo "::error::Invalid version: $VERSION"; exit 1; }
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
       - uses: actions/checkout@v4
 
+      - name: Determine image tag
+        id: tag
+        run: |
+          set -euo pipefail
+
+          if [ -n "${{ inputs.tag }}" ]; then
+            VERSION="${{ inputs.tag }}"
+            VERSION="${VERSION#v}"
+          else
+            # Use ref name (tag for releases, or manually selected ref)
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+
+          # Validate semver for release events, allow any tag for manual runs
+          if [ "${{ github.event_name }}" = "release" ]; then
+            [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]] || { echo "::error::Invalid version: $VERSION"; exit 1; }
+          fi
+
+          [ -n "$VERSION" ] || { echo "::error::No version/tag specified"; exit 1; }
+          echo "image_tag=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Setup melange
-        uses: chainguard-dev/actions/setup-melange@v1
+        uses: chainguard-dev/actions/setup-melange@v1.5.14
 
       - name: Ensure cache directories exist
         run: |
@@ -114,7 +139,7 @@ jobs:
           path: .
 
       - name: Setup apko
-        uses: chainguard-dev/actions/setup-apko@v1
+        uses: chainguard-dev/actions/setup-apko@v1.5.14
 
       - name: Ensure cache directory exists
         run: mkdir -p "$HOME/.apk-cache"
@@ -136,16 +161,25 @@ jobs:
 
       - name: Build and push image
         run: |
+          set -euo pipefail
+          TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-apk.outputs.image_tag }}"
+
+          # Add :latest tag for release events, or if explicitly requested for manual runs
+          if [ "${{ github.event_name }}" = "release" ] || [ "${{ inputs.push_latest }}" = "true" ]; then
+            TAGS="$TAGS ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          fi
+
           apko publish apko.yaml \
             --cache-dir "$HOME/.apk-cache" \
             --keyring-append melange.rsa.pub \
-            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-apk.outputs.version }}" \
-            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+            $TAGS
 
   release:
     name: Attach Release Artifacts
     runs-on: ubuntu-latest
     needs: [build-apk, build-image]
+    # Only attach artifacts when triggered by an actual release
+    if: github.event_name == 'release'
     steps:
       - name: Download APK packages
         uses: actions/download-artifact@v4
@@ -156,7 +190,7 @@ jobs:
       - name: Prepare release assets
         run: |
           set -euo pipefail
-          VERSION="${{ needs.build-apk.outputs.version }}"
+          VERSION="${{ needs.build-apk.outputs.image_tag }}"
           for arch in x86_64 aarch64; do
             apk=$(find "packages/${arch}" -name "*.apk" -type f)
             [[ -n "$apk" ]] || { echo "::error::No APK found for ${arch}"; exit 1; }
@@ -167,5 +201,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            tabletop-atlas-${{ needs.build-apk.outputs.version }}-x86_64.apk
-            tabletop-atlas-${{ needs.build-apk.outputs.version }}-aarch64.apk
+            tabletop-atlas-${{ needs.build-apk.outputs.image_tag }}-x86_64.apk
+            tabletop-atlas-${{ needs.build-apk.outputs.image_tag }}-aarch64.apk
