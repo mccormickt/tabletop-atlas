@@ -18,6 +18,7 @@ use crate::{
 
 /// Embed a house rule into the vector database
 async fn embed_house_rule(
+    log: &slog::Logger,
     embedder: &Embedder,
     db: &crate::db::Database,
     house_rule: &HouseRule,
@@ -26,20 +27,15 @@ async fn embed_house_rule(
     embeddings::delete_embeddings_for_house_rule(db, house_rule.id)
         .await
         .map_err(|e| {
-            tracing::error!(
-                "Failed to delete existing embeddings for house rule {}: {}",
-                house_rule.id,
-                e
-            );
+            slog::error!(log, "Failed to delete existing embeddings for house rule";
+                "house_rule_id" => house_rule.id, "error" => %e);
             internal_error("Failed to update house rule embeddings".to_string())
         })?;
 
     // If the house rule is not active, we're done (don't embed inactive rules)
     if !house_rule.is_active {
-        tracing::info!(
-            "House rule {} is inactive, skipping embedding",
-            house_rule.id
-        );
+        slog::info!(log, "House rule is inactive, skipping embedding";
+            "house_rule_id" => house_rule.id);
         return Ok(());
     }
 
@@ -60,11 +56,8 @@ async fn embed_house_rule(
         .generate_embedding(&embedding_text)
         .await
         .map_err(|e| {
-            tracing::error!(
-                "Failed to generate embedding for house rule {}: {}",
-                house_rule.id,
-                e
-            );
+            slog::error!(log, "Failed to generate embedding for house rule";
+                "house_rule_id" => house_rule.id, "error" => %e);
             internal_error("Failed to generate embedding for house rule".to_string())
         })?;
 
@@ -88,19 +81,13 @@ async fn embed_house_rule(
     embeddings::create_embedding(db, create_request)
         .await
         .map_err(|e| {
-            tracing::error!(
-                "Failed to store embedding for house rule {}: {}",
-                house_rule.id,
-                e
-            );
+            slog::error!(log, "Failed to store embedding for house rule";
+                "house_rule_id" => house_rule.id, "error" => %e);
             internal_error("Failed to store house rule embedding".to_string())
         })?;
 
-    tracing::info!(
-        "Successfully embedded house rule {} for game {}",
-        house_rule.id,
-        house_rule.game_id
-    );
+    slog::info!(log, "Successfully embedded house rule";
+        "house_rule_id" => house_rule.id, "game_id" => house_rule.game_id);
 
     Ok(())
 }
@@ -142,7 +129,7 @@ pub async fn list_house_rules(
     match house_rules::list_house_rules(&db, query.game_id, query.page, query.limit).await {
         Ok(result) => success_response(result),
         Err(e) => {
-            tracing::error!("Failed to list house rules: {}", e);
+            slog::error!(rqctx.log, "Failed to list house rules"; "error" => %e);
             Err(internal_error("Failed to list house rules".to_string()))
         }
     }
@@ -168,7 +155,7 @@ pub async fn get_house_rule(
             house_rule_id
         ))),
         Err(e) => {
-            tracing::error!("Failed to get house rule {}: {}", house_rule_id, e);
+            slog::error!(rqctx.log, "Failed to get house rule"; "house_rule_id" => house_rule_id, "error" => %e);
             Err(internal_error("Failed to get house rule".to_string()))
         }
     }
@@ -203,17 +190,14 @@ pub async fn create_house_rule(
     match house_rules::create_house_rule(&db, create_request).await {
         Ok(house_rule) => {
             // Embed the house rule asynchronously (don't block on embedding errors)
-            if let Err(e) = embed_house_rule(embedder, &db, &house_rule).await {
-                tracing::warn!(
-                    "Failed to embed house rule {}, continuing: {:?}",
-                    house_rule.id,
-                    e
-                );
+            if let Err(e) = embed_house_rule(&rqctx.log, embedder, &db, &house_rule).await {
+                slog::warn!(rqctx.log, "Failed to embed house rule, continuing";
+                    "house_rule_id" => house_rule.id, "error" => ?e);
             }
             created_response(house_rule)
         }
         Err(e) => {
-            tracing::error!("Failed to create house rule: {}", e);
+            slog::error!(rqctx.log, "Failed to create house rule"; "error" => %e);
             Err(internal_error("Failed to create house rule".to_string()))
         }
     }
@@ -254,12 +238,9 @@ pub async fn update_house_rule(
     match house_rules::update_house_rule(&db, house_rule_id, update_request).await {
         Ok(Some(house_rule)) => {
             // Re-embed the house rule (handles active state changes)
-            if let Err(e) = embed_house_rule(embedder, &db, &house_rule).await {
-                tracing::warn!(
-                    "Failed to re-embed house rule {}, continuing: {:?}",
-                    house_rule.id,
-                    e
-                );
+            if let Err(e) = embed_house_rule(&rqctx.log, embedder, &db, &house_rule).await {
+                slog::warn!(rqctx.log, "Failed to re-embed house rule, continuing";
+                    "house_rule_id" => house_rule.id, "error" => ?e);
             }
             success_response(house_rule)
         }
@@ -268,7 +249,7 @@ pub async fn update_house_rule(
             house_rule_id
         ))),
         Err(e) => {
-            tracing::error!("Failed to update house rule {}: {}", house_rule_id, e);
+            slog::error!(rqctx.log, "Failed to update house rule"; "house_rule_id" => house_rule_id, "error" => %e);
             Err(internal_error("Failed to update house rule".to_string()))
         }
     }
@@ -289,11 +270,8 @@ pub async fn delete_house_rule(
 
     // Delete embeddings for this house rule first
     if let Err(e) = embeddings::delete_embeddings_for_house_rule(&db, house_rule_id).await {
-        tracing::warn!(
-            "Failed to delete embeddings for house rule {}, continuing: {}",
-            house_rule_id,
-            e
-        );
+        slog::warn!(rqctx.log, "Failed to delete embeddings for house rule, continuing";
+            "house_rule_id" => house_rule_id, "error" => %e);
     }
 
     match house_rules::delete_house_rule(&db, house_rule_id).await {
@@ -303,7 +281,7 @@ pub async fn delete_house_rule(
             house_rule_id
         ))),
         Err(e) => {
-            tracing::error!("Failed to delete house rule {}: {}", house_rule_id, e);
+            slog::error!(rqctx.log, "Failed to delete house rule"; "house_rule_id" => house_rule_id, "error" => %e);
             Err(internal_error("Failed to delete house rule".to_string()))
         }
     }

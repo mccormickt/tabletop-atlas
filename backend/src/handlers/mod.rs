@@ -75,7 +75,7 @@ fn add_cors_headers(error: HttpError) -> HttpError {
         .and_then(|e| e.with_header("Access-Control-Allow-Methods", &cors_headers.methods))
         .and_then(|e| e.with_header("Access-Control-Allow-Headers", &cors_headers.headers))
         .unwrap_or_else(|e| {
-            tracing::warn!("Failed to add CORS headers: {:?}", e);
+            eprintln!("WARN: Failed to add CORS headers: {:?}", e);
             e.into()
         })
 }

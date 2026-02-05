@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow};
-use async_openai::{Client, config::OpenAIConfig, types::CreateEmbeddingRequestArgs};
+use async_openai::{Client, config::OpenAIConfig, types::embeddings::CreateEmbeddingRequestArgs};
 
 const DEFAULT_EMBEDDING_MODEL: &str = "nomic-embed-text:latest";
 
