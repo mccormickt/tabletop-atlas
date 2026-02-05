@@ -41,11 +41,42 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Run release-plz
+        id: release-plz
         uses: release-plz/action@v0.5
         with:
           command: release-pr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync frontend version
+        if: steps.release-plz.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Get PR info and branch name
+          PR_NUMBER="${{ steps.release-plz.outputs.pr }}"
+          BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q '.headRefName')
+
+          # Checkout the release branch
+          git fetch origin "$BRANCH"
+          git checkout "$BRANCH"
+
+          # Extract version from Cargo.toml
+          VERSION=$(grep -m1 '^version' backend/Cargo.toml | sed 's/.*"\(.*\)"/\1/')
+
+          # Update frontend package.json
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" frontend/package.json
+
+          # Commit and push if changed
+          if ! git diff --quiet frontend/package.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add frontend/package.json
+            git commit -m "chore: sync frontend version to $VERSION"
+            git push origin "$BRANCH"
+          fi
 
   release-plz-release:
     name: Create Release
