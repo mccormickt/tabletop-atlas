@@ -1,9 +1,19 @@
+# Release Workflow
+#
+# Triggered when a GitHub release is published. Builds APK packages and
+# container image, then attaches artifacts to the release.
+#
+# Flow:
+#   1. Release published → Extract version from tag
+#   2. Build APK packages for x86_64 and aarch64
+#   3. Build and push container image to GHCR
+#   4. Attach APK artifacts to the GitHub release
+
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
 
 env:
   REGISTRY: ghcr.io
@@ -17,21 +27,19 @@ jobs:
   build-apk:
     name: Build APK
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'mccormickt'
     outputs:
-      version: ${{ steps.version.outputs.VERSION }}
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Get version from tag
+      - name: Extract version from release tag
         id: version
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
-          if [ -z "$VERSION" ] || ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
-            echo "::error::Invalid version '$VERSION' from tag '${GITHUB_REF_NAME}'"
-            exit 1
-          fi
-          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]] || { echo "::error::Invalid version: $VERSION"; exit 1; }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
 
       - name: Setup melange
         uses: chainguard-dev/actions/setup-melange@v1
@@ -63,6 +71,7 @@ jobs:
 
       - name: Build APK
         run: |
+          set -euo pipefail
           melange build melange.yaml \
             --signing-key melange.rsa \
             --cache-dir "$HOME/.melange-cache" \
@@ -130,8 +139,8 @@ jobs:
           apko publish apko.yaml \
             --cache-dir "$HOME/.apk-cache" \
             --keyring-append melange.rsa.pub \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-apk.outputs.version }} \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-apk.outputs.version }}" \
+            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
 
   release:
     name: Attach Release Artifacts
@@ -149,18 +158,9 @@ jobs:
           set -euo pipefail
           VERSION="${{ needs.build-apk.outputs.version }}"
           for arch in x86_64 aarch64; do
-            mapfile -t apk_files < <(find "packages/${arch}" -name "*.apk" -type f)
-            count=${#apk_files[@]}
-            if [ "$count" -eq 0 ]; then
-              echo "::error::No APK found for ${arch} in packages/${arch}/"
-              ls -la "packages/${arch}/" 2>/dev/null || echo "Directory does not exist"
-              exit 1
-            elif [ "$count" -gt 1 ]; then
-              echo "::error::Expected exactly 1 APK for ${arch}, found ${count}:"
-              printf '  %s\n' "${apk_files[@]}"
-              exit 1
-            fi
-            cp "${apk_files[0]}" "tabletop-atlas-${VERSION}-${arch}.apk"
+            apk=$(find "packages/${arch}" -name "*.apk" -type f)
+            [[ -n "$apk" ]] || { echo "::error::No APK found for ${arch}"; exit 1; }
+            cp "$apk" "tabletop-atlas-${VERSION}-${arch}.apk"
           done
 
       - name: Attach release artifacts

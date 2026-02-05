@@ -1,40 +1,30 @@
+# Release-plz Workflow
+#
+# This workflow manages the release PR creation and release publishing.
+#
+# Flow:
+#   1. Manual trigger (workflow_dispatch) → Creates/updates release PR
+#   2. PR merge (release-plz/* branch) → Creates Git tag and GitHub release
+#
+# The release-plz-release job uses the 'release' environment which requires
+# manual approval before creating tags and releases.
+
 name: Release-plz
 
 on:
-  push:
+  workflow_dispatch:  # Manual trigger for creating release PRs
+  pull_request:
+    types: [closed]
     branches: [main]
 
 jobs:
-  release-plz-release:
-    name: Release-plz release
-    runs-on: ubuntu-latest
-    environment: release # Requires manual approval before releasing
-    if: github.repository_owner == 'mccormickt'
-    permissions:
-      contents: write
-    concurrency:
-      group: release-plz-release
-      cancel-in-progress: false
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Run release-plz
-        uses: release-plz/action@v0.5
-        with:
-          command: release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   release-plz-pr:
-    name: Release-plz PR
+    name: Create Release PR
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'mccormickt'
+    # Only run on manual workflow dispatch
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository_owner == 'mccormickt'
     permissions:
       pull-requests: write
       contents: write
@@ -54,5 +44,36 @@ jobs:
         uses: release-plz/action@v0.5
         with:
           command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-plz-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    environment: release
+    # Only run when a release-plz PR is merged
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release-plz/') &&
+      github.repository_owner == 'mccormickt'
+    permissions:
+      contents: write
+    concurrency:
+      group: release-plz-release
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run release-plz
+        uses: release-plz/action@v0.5
+        with:
+          command: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
