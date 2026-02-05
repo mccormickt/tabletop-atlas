@@ -1,6 +1,7 @@
 /target
 /node_modules
-/uploads
+/uploads/*
+!/uploads/.gitkeep
 *.db
 /.playwright
 /.playwright-mcp
