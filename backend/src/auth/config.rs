@@ -31,7 +31,7 @@ impl AuthConfig {
                     .take(32)
                     .map(char::from)
                     .collect();
-                tracing::warn!("JWT_SECRET not set, using randomly generated secret. Set JWT_SECRET for production.");
+                eprintln!("WARN: JWT_SECRET not set, using randomly generated secret. Set JWT_SECRET for production.");
                 secret
             });
         let jwt_access_expiry: i64 = std::env::var("JWT_ACCESS_EXPIRY")

@@ -60,7 +60,7 @@ pub async fn list_games(
     {
         Ok(result) => success_response(result),
         Err(e) => {
-            tracing::error!("Failed to list games: {}", e);
+            slog::error!(rqctx.log, "Failed to list games"; "error" => %e);
             Err(internal_error("Failed to list games".to_string()))
         }
     }
@@ -86,7 +86,7 @@ pub async fn get_game(
             game_id
         ))),
         Err(e) => {
-            tracing::error!("Failed to get game {}: {}", game_id, e);
+            slog::error!(rqctx.log, "Failed to get game"; "game_id" => game_id, "error" => %e);
             Err(internal_error("Failed to get game".to_string()))
         }
     }
@@ -124,7 +124,7 @@ pub async fn create_game(
     match games::create_game(&db, create_request).await {
         Ok(game) => created_response(game),
         Err(e) => {
-            tracing::error!("Failed to create game: {}", e);
+            slog::error!(rqctx.log, "Failed to create game"; "error" => %e);
             Err(internal_error("Failed to create game".to_string()))
         }
     }
@@ -170,7 +170,7 @@ pub async fn update_game(
             game_id
         ))),
         Err(e) => {
-            tracing::error!("Failed to update game {}: {}", game_id, e);
+            slog::error!(rqctx.log, "Failed to update game"; "game_id" => game_id, "error" => %e);
             Err(internal_error("Failed to update game".to_string()))
         }
     }
@@ -199,7 +199,7 @@ pub async fn delete_game(
             game_id
         ))),
         Err(e) => {
-            tracing::error!("Failed to delete game {}: {}", game_id, e);
+            slog::error!(rqctx.log, "Failed to delete game"; "game_id" => game_id, "error" => %e);
             Err(internal_error("Failed to delete game".to_string()))
         }
     }

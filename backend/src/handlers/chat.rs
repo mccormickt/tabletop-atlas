@@ -73,7 +73,7 @@ pub async fn list_chat_sessions(
     match chat::list_chat_sessions(&db, game_id, query.page, query.limit).await {
         Ok(result) => success_response(result),
         Err(e) => {
-            tracing::error!("Failed to list chat sessions: {}", e);
+            slog::error!(rqctx.log, "Failed to list chat sessions"; "error" => %e);
             Err(internal_error("Failed to list chat sessions".to_string()))
         }
     }
@@ -99,7 +99,7 @@ pub async fn get_chat_session(
             session_id
         ))),
         Err(e) => {
-            tracing::error!("Failed to get chat session {}: {}", session_id, e);
+            slog::error!(rqctx.log, "Failed to get chat session"; "session_id" => session_id, "error" => %e);
             Err(internal_error("Failed to get chat session".to_string()))
         }
     }
@@ -121,7 +121,7 @@ pub async fn create_chat_session(
     match chat::create_chat_session(&db, create_request).await {
         Ok(session) => created_response(session),
         Err(e) => {
-            tracing::error!("Failed to create chat session: {}", e);
+            slog::error!(rqctx.log, "Failed to create chat session"; "error" => %e);
             Err(internal_error("Failed to create chat session".to_string()))
         }
     }
@@ -149,7 +149,7 @@ pub async fn update_chat_session(
             session_id
         ))),
         Err(e) => {
-            tracing::error!("Failed to update chat session {}: {}", session_id, e);
+            slog::error!(rqctx.log, "Failed to update chat session"; "session_id" => session_id, "error" => %e);
             Err(internal_error("Failed to update chat session".to_string()))
         }
     }
@@ -235,11 +235,8 @@ pub async fn chat_with_rules(
     let session_history = chat::get_chat_history(&db, chat_request.session_id)
         .await
         .map_err(|e| {
-            tracing::error!(
-                "Failed to get chat session {}: {}",
-                chat_request.session_id,
-                e
-            );
+            slog::error!(rqctx.log, "Failed to get chat session";
+                "session_id" => chat_request.session_id, "error" => %e);
             internal_error("Failed to access chat session".to_string())
         })?
         .ok_or_else(|| {
@@ -262,7 +259,7 @@ pub async fn chat_with_rules(
     )
     .await
     .map_err(|e| {
-        tracing::error!("Failed to save user message: {}", e);
+        slog::error!(rqctx.log, "Failed to save user message"; "error" => %e);
         internal_error("Failed to save message".to_string())
     })?;
 
@@ -272,7 +269,7 @@ pub async fn chat_with_rules(
         .generate_embedding(&chat_request.message)
         .await
         .map_err(|e| {
-            tracing::error!("Failed to generate query embedding: {}", e);
+            slog::error!(rqctx.log, "Failed to generate query embedding"; "error" => %e);
             internal_error("Failed to process question".to_string())
         })?;
 
@@ -291,7 +288,7 @@ pub async fn chat_with_rules(
     )
     .await
     .map_err(|e| {
-        tracing::error!("Failed to search embeddings: {}", e);
+        slog::error!(rqctx.log, "Failed to search embeddings"; "error" => %e);
         internal_error("Failed to search rules".to_string())
     })?;
 
@@ -372,7 +369,7 @@ Instructions:
         )
         .await
         .map_err(|e| {
-            tracing::error!("Failed to generate LLM response: {}", e);
+            slog::error!(rqctx.log, "Failed to generate LLM response"; "error" => %e);
             internal_error("Failed to generate response".to_string())
         })?;
 
@@ -387,7 +384,7 @@ Instructions:
     )
     .await
     .map_err(|e| {
-        tracing::error!("Failed to save assistant message: {}", e);
+        slog::error!(rqctx.log, "Failed to save assistant message"; "error" => %e);
         internal_error("Failed to save response".to_string())
     })?;
 

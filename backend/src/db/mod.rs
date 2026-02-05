@@ -18,10 +18,10 @@ pub mod users;
 /// Helper function to handle mutex poisoning errors with proper logging
 fn handle_mutex_poison<T>(err: PoisonError<T>) -> rusqlite::Error {
     // This is a critical error - a thread panicked while holding the database lock
-    tracing::error!(
-        "Database mutex poisoned - previous thread panicked. Application may be in inconsistent state."
+    eprintln!(
+        "ERROR: Database mutex poisoned - previous thread panicked. Application may be in inconsistent state."
     );
-    tracing::debug!("PoisonError details: {:?}", err);
+    eprintln!("DEBUG: PoisonError details: {:?}", err);
     rusqlite::Error::SqliteFailure(
         rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_LOCKED),
         Some("Database connection mutex poisoned".to_string()),

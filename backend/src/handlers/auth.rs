@@ -251,7 +251,8 @@ pub async fn logout(
     if let Some(user) = extract_auth(&rqctx) {
         let db = rqctx.context().db();
         if let Err(e) = sessions::delete_user_sessions(&db, user.user_id).await {
-            tracing::error!(user_id = user.user_id, error = %e, "Failed to delete user sessions during logout");
+            slog::error!(rqctx.log, "Failed to delete user sessions during logout";
+                "user_id" => user.user_id, "error" => %e);
         }
     }
 

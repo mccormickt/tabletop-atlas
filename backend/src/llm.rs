@@ -2,9 +2,10 @@ use anyhow::{Context, Result};
 use async_openai::{
     Client,
     config::OpenAIConfig,
-    types::{
-        ChatCompletionRequestAssistantMessage, ChatCompletionRequestMessage,
-        ChatCompletionRequestSystemMessage, ChatCompletionRequestUserMessage,
+    types::chat::{
+        ChatCompletionRequestAssistantMessage, ChatCompletionRequestAssistantMessageContent,
+        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
+        ChatCompletionRequestSystemMessageContent, ChatCompletionRequestUserMessage,
         CreateChatCompletionRequestArgs,
     },
 };
@@ -99,7 +100,7 @@ impl LLMClient {
         if let Some(system_content) = system_prompt {
             request_messages.push(ChatCompletionRequestMessage::System(
                 ChatCompletionRequestSystemMessage {
-                    content: system_content,
+                    content: ChatCompletionRequestSystemMessageContent::Text(system_content),
                     name: None,
                 },
             ));
@@ -114,7 +115,9 @@ impl LLMClient {
                 }),
                 "assistant" => {
                     ChatCompletionRequestMessage::Assistant(ChatCompletionRequestAssistantMessage {
-                        content: Some(message.content),
+                        content: Some(ChatCompletionRequestAssistantMessageContent::Text(
+                            message.content,
+                        )),
                         name: None,
                         tool_calls: None,
                         ..Default::default()
@@ -122,7 +125,7 @@ impl LLMClient {
                 }
                 "system" => {
                     ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage {
-                        content: message.content,
+                        content: ChatCompletionRequestSystemMessageContent::Text(message.content),
                         name: None,
                     })
                 }

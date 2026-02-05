@@ -21,7 +21,6 @@ environment:
       - https://packages.wolfi.dev/os
     packages:
       - build-base
-      - openssl-dev
       - rust
       - nodejs-22
       - pnpm
