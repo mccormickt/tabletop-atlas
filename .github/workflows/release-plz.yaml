@@ -52,12 +52,13 @@ jobs:
         if: steps.release-plz.outputs.pr != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_OUTPUT: ${{ steps.release-plz.outputs.pr }}
         run: |
           set -euo pipefail
 
-          # Get PR info and branch name
-          PR_NUMBER="${{ steps.release-plz.outputs.pr }}"
-          BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q '.headRefName')
+          # Parse PR output JSON to get branch name
+          # release-plz outputs a JSON object with number, head_branch, etc.
+          BRANCH=$(echo "$PR_OUTPUT" | jq -r '.head_branch')
 
           # Checkout the release branch
           git fetch origin "$BRANCH"
