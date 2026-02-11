@@ -48,8 +48,15 @@ jobs:
           NO_BUILD_FRONTEND: "1"
 
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
 
@@ -58,6 +65,8 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ matrix.arch }}
 
       - name: Run tests
         run: cargo test --all-features
