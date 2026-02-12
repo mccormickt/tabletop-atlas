@@ -73,6 +73,10 @@
 	let customTotalPages = $state(1);
 	let customTotal = $state(0);
 
+	// Track whether each tab has attempted its initial fetch (prevents infinite loop on empty data)
+	let collectionFetched = $state(false);
+	let customFetched = $state(false);
+
 	// Shared state
 	let limit = $state(24);
 	let searchQuery = $state('');
@@ -101,15 +105,12 @@
 
 	// Load data when tab changes
 	$effect(() => {
-		if (
-			initialized &&
-			activeTab === 'collection' &&
-			collectionItems.length === 0 &&
-			authState.user
-		) {
+		if (initialized && activeTab === 'collection' && !collectionFetched && authState.user) {
+			collectionFetched = true;
 			loadCollection(1);
 		}
-		if (initialized && activeTab === 'custom' && customGames.length === 0 && authState.user) {
+		if (initialized && activeTab === 'custom' && !customFetched && authState.user) {
+			customFetched = true;
 			loadCustomGames(1);
 		}
 		// Clear selection when tab changes
