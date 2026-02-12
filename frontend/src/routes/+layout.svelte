@@ -31,13 +31,23 @@
 		isLoading: true
 	});
 
+	async function initMocking() {
+		if (
+			typeof window !== 'undefined' &&
+			(window as unknown as Record<string, unknown>).__MSW_ENABLED__
+		) {
+			const { worker } = await import('../mocks/browser');
+			await worker.start({ onUnhandledRequest: 'bypass', quiet: true });
+		}
+	}
+
 	// Check auth on mount
 	let initialized = $state(false);
 
 	$effect(() => {
 		if (!initialized) {
 			initialized = true;
-			authStore.checkAuth();
+			initMocking().then(() => authStore.checkAuth());
 		}
 	});
 

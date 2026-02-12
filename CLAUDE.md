@@ -39,8 +39,21 @@ pnpm --prefix frontend run dev
 # Build everything
 pnpm run build
 
-# Run tests
+# Run tests (unit + e2e)
 pnpm run test
+
+# Run E2E tests only
+pnpm --prefix frontend run test:e2e
+
+# Run E2E tests for a specific file
+pnpm --prefix frontend exec playwright test auth.test.ts
+
+# Run E2E tests for a specific project (desktop/mobile)
+pnpm --prefix frontend exec playwright test --project=desktop-chrome
+pnpm --prefix frontend exec playwright test --project=mobile-chrome
+
+# Install Playwright browsers (first time or after upgrade)
+pnpm --prefix frontend run test:e2e:install
 
 # Lint all code (backend + frontend)
 pnpm run lint
@@ -302,6 +315,41 @@ async function loadGames(search?: string) {
 ## Feature Areas
 
 The application covers: games & collections, PDF rules & embeddings, AI chat (RAG), rules search, authentication (OIDC/JWT), challenges (multiplayer grids), tools & scoring calculators, admin (BGG import/enrichment), and house rules. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed API endpoints, file mappings, and configuration values for each area.
+
+## E2E Testing
+
+The frontend has a comprehensive Playwright E2E test suite covering all pages in both desktop and mobile viewports.
+
+### Architecture
+
+- **Test framework**: Playwright with custom fixtures (`frontend/e2e/fixtures.ts`)
+- **API mocking**: Single `page.route('**/api/**')` catch-all handler that dispatches by pathname and HTTP method
+- **Mock data**: `frontend/src/mocks/data.ts` — all mock API responses (snake_case matching backend format, camelCase for tools endpoints)
+- **MSW handlers**: `frontend/src/mocks/handlers.ts` — MSW handler definitions (used in dev, not in E2E tests)
+- **Per-test overrides**: `overrideHandler()` in `frontend/e2e/helpers.ts` pushes to a shared override array checked before defaults
+- **Projects**: Desktop Chrome + Mobile Chrome (Pixel 5) — 63 tests per project
+
+### Key Files
+
+- `frontend/e2e/fixtures.ts` — Playwright fixture with catch-all API route handler + override mechanism
+- `frontend/e2e/helpers.ts` — `overrideHandler()`, `setupUnauthenticated()`, `setupAdmin()`
+- `frontend/src/mocks/data.ts` — Mock data for all API endpoints
+- `frontend/playwright.config.ts` — Playwright config (both desktop and mobile projects)
+
+### Writing New E2E Tests
+
+1. Import `{ test, expect }` from `'./fixtures'` (not from `@playwright/test`)
+2. Default state: authenticated user with populated mock data
+3. Override endpoints per-test using `overrideHandler(page, method, path, { status?, body })`
+4. For unauthenticated tests: call `setupUnauthenticated(page)` before `page.goto()`
+5. For admin tests: call `setupAdmin(page)` before `page.goto()`
+6. Handle mobile viewports: use `page.viewportSize().width < 768` for responsive checks
+
+### Adding New API Endpoints to Mocks
+
+1. Add mock data to `frontend/src/mocks/data.ts`
+2. Add route handler in `frontend/e2e/fixtures.ts` (in the `setupDefaultRoutes` catch-all)
+3. Add MSW handler in `frontend/src/mocks/handlers.ts` (for dev mode consistency)
 
 ## Database
 
