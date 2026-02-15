@@ -11,6 +11,7 @@ use sqlite_vec::sqlite3_vec_init;
 
 mod auth;
 mod bgg;
+mod config;
 mod db;
 mod embeddings;
 mod handlers;
@@ -19,6 +20,7 @@ mod models;
 mod pdf;
 mod tools;
 
+use config::OllamaConfig;
 use db::Database;
 use embeddings::Embedder;
 use handlers::static_files;
@@ -32,7 +34,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(path: impl AsRef<Path>) -> Result<Self> {
+    pub fn new(path: impl AsRef<Path>, ollama_config: &OllamaConfig) -> Result<Self> {
         // Initialize sqlite-vec extension
         unsafe {
             sqlite3_auto_extension(Some(std::mem::transmute::<
@@ -95,8 +97,16 @@ impl AppState {
 
         Ok(Self {
             db: Database::new(db),
-            embeddings: Embedder::new(),
-            llm: LLMClient::new(),
+            embeddings: Embedder::with_config(
+                &ollama_config.api_base,
+                &ollama_config.api_key,
+                &ollama_config.embedding_model,
+            ),
+            llm: LLMClient::with_config(
+                &ollama_config.api_base,
+                &ollama_config.api_key,
+                &ollama_config.llm_model,
+            ),
         })
     }
 
@@ -115,6 +125,9 @@ impl AppState {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Load .env file early so all config readers see the values
+    dotenvy::dotenv().ok();
+
     let matches = Command::new("tabletop-atlas-backend")
         .version("0.1.0")
         .author("Tabletop Atlas Team")
@@ -140,6 +153,108 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("Port to bind the server to (binds to 127.0.0.1)")
                 .value_name("PORT"),
         )
+        .arg(
+            Arg::new("ollama-url")
+                .short('u')
+                .long("ollama-url")
+                .env("OLLAMA_URL")
+                .default_value("http://localhost:11434/v1")
+                .help("Ollama-compatible API base URL")
+                .value_name("URL"),
+        )
+        .arg(
+            Arg::new("ollama-api-key")
+                .long("ollama-api-key")
+                .env("OLLAMA_API_KEY")
+                .default_value("ollama")
+                .hide_env_values(true)
+                .help("API key for the Ollama-compatible API")
+                .value_name("KEY"),
+        )
+        .arg(
+            Arg::new("llm-model")
+                .long("llm-model")
+                .env("LLM_MODEL")
+                .default_value("gpt-oss:latest")
+                .help("Chat completion model name")
+                .value_name("MODEL"),
+        )
+        .arg(
+            Arg::new("embedding-model")
+                .long("embedding-model")
+                .env("EMBEDDING_MODEL")
+                .default_value("nomic-embed-text:latest")
+                .help("Embedding model name")
+                .value_name("MODEL"),
+        )
+        // Auth configuration
+        .arg(
+            Arg::new("google-client-id")
+                .long("google-client-id")
+                .env("GOOGLE_CLIENT_ID")
+                .help("Google OAuth client ID")
+                .value_name("ID")
+                .required_unless_present("openapi"),
+        )
+        .arg(
+            Arg::new("google-client-secret")
+                .long("google-client-secret")
+                .env("GOOGLE_CLIENT_SECRET")
+                .hide_env_values(true)
+                .help("Google OAuth client secret")
+                .value_name("SECRET")
+                .required_unless_present("openapi"),
+        )
+        .arg(
+            Arg::new("google-redirect-uri")
+                .long("google-redirect-uri")
+                .env("GOOGLE_REDIRECT_URI")
+                .default_value("http://localhost:8080/api/auth/callback")
+                .help("Google OAuth redirect URI")
+                .value_name("URI"),
+        )
+        .arg(
+            Arg::new("jwt-secret")
+                .long("jwt-secret")
+                .env("JWT_SECRET")
+                .hide_env_values(true)
+                .help("Secret key for signing JWT tokens")
+                .value_name("SECRET")
+                .required_unless_present("openapi"),
+        )
+        .arg(
+            Arg::new("jwt-access-expiry")
+                .long("jwt-access-expiry")
+                .env("JWT_ACCESS_EXPIRY")
+                .default_value("900")
+                .help("JWT access token expiry in seconds")
+                .value_name("SECONDS"),
+        )
+        .arg(
+            Arg::new("jwt-refresh-expiry")
+                .long("jwt-refresh-expiry")
+                .env("JWT_REFRESH_EXPIRY")
+                .default_value("604800")
+                .help("JWT refresh token expiry in seconds")
+                .value_name("SECONDS"),
+        )
+        .arg(
+            Arg::new("frontend-url")
+                .long("frontend-url")
+                .env("FRONTEND_URL")
+                .default_value("http://localhost:8080")
+                .help("Frontend URL for redirects after auth")
+                .value_name("URL"),
+        )
+        // BGG configuration
+        .arg(
+            Arg::new("bgg-api-token")
+                .long("bgg-api-token")
+                .env("BGG_API_TOKEN")
+                .hide_env_values(true)
+                .help("BoardGameGeek API token for authenticated requests")
+                .value_name("TOKEN"),
+        )
         .get_matches();
 
     // Check if --openapi flag is provided
@@ -148,9 +263,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // Initialize auth configuration
-    auth::AuthConfig::init().map_err(|e| format!("Failed to init auth config: {}", e))?;
+    // Initialize auth configuration from clap-resolved values
+    let auth_config = auth::AuthConfig::from_matches(&matches);
+    auth::AuthConfig::init_with(auth_config)
+        .map_err(|e| format!("Failed to init auth config: {}", e))?;
     auth::OidcClient::init().map_err(|e| format!("Failed to init OIDC client: {}", e))?;
+
+    // Build Ollama/LLM config (clap resolves CLI arg > env var > default)
+    let ollama_config = OllamaConfig::from_matches(&matches);
 
     // Determine bind address with priority: --bind-address > --port > PORT env var > default
     let bind_address = if let Some(addr) = matches.get_one::<String>("bind-address") {
@@ -182,12 +302,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create API description
     let api = create_api_description()?;
 
-    let app_state = AppState::new("atlas.db")?;
+    let app_state = AppState::new("atlas.db", &ollama_config)?;
     let server = HttpServerStarter::new(&config_dropshot, api, app_state, &log)
         .map_err(|error| format!("failed to create server: {}", error))?
         .start();
 
-    println!("🎲 Tabletop Atlas Server running on {}", bind_address);
+    slog::info!(log, "Ollama API configured";
+        "api_base" => &ollama_config.api_base,
+        "llm_model" => &ollama_config.llm_model,
+        "embedding_model" => &ollama_config.embedding_model,
+    );
     server.await?;
     Ok(())
 }

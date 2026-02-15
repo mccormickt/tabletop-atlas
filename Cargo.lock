@@ -237,7 +237,6 @@ dependencies = [
  "mime_guess",
  "pdf-extract",
  "quick-xml",
- "rand 0.8.5",
  "reqwest",
  "rusqlite",
  "rusqlite_migration",
