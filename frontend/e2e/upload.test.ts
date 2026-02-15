@@ -1,8 +1,10 @@
 import { test, expect } from './fixtures';
+import { setupAdmin } from './helpers';
 
 test.describe('Upload Page', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/upload');
+		await setupAdmin(page);
+		await page.goto('/admin/upload');
 		await expect(page.getByRole('heading', { name: /upload rules/i })).toBeVisible({
 			timeout: 10_000
 		});

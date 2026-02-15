@@ -29,10 +29,6 @@
 		goto(resolve('/games/add'));
 	}
 
-	function navigateToUpload() {
-		goto(resolve('/upload'));
-	}
-
 	function navigateToSearch() {
 		goto(resolve('/search'));
 	}
@@ -117,7 +113,7 @@
 	</div>
 
 	<!-- Quick Actions - Game Box Lids -->
-	<div class="mb-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+	<div class="mb-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
 		<button onclick={navigateToAddGame} class="group text-left">
 			<GameBox
 				variant="default"
@@ -132,25 +128,6 @@
 					<h3 class="font-display mb-2 text-lg font-semibold">Add New Game</h3>
 					<p class="text-muted-foreground font-body text-sm">
 						Add a new board game to your collection
-					</p>
-				</div>
-			</GameBox>
-		</button>
-
-		<button onclick={navigateToUpload} class="group text-left">
-			<GameBox
-				variant="default"
-				class="h-full transition-all group-hover:-translate-y-1 group-hover:shadow-xl"
-			>
-				<div class="flex flex-col items-center p-4 text-center">
-					<div
-						class="bg-game-orange/10 group-hover:bg-game-orange/20 mb-4 flex h-16 w-16 items-center justify-center rounded-full transition-colors"
-					>
-						<Rulebook size={32} class="text-game-orange" />
-					</div>
-					<h3 class="font-display mb-2 text-lg font-semibold">Upload Rules</h3>
-					<p class="text-muted-foreground font-body text-sm">
-						Upload PDF rule books for easy access
 					</p>
 				</div>
 			</GameBox>
@@ -281,7 +258,6 @@
 						<p class="font-display font-medium">Upload rule books</p>
 						<p class="text-muted-foreground text-sm">We'll index the content for you</p>
 					</div>
-					<Button variant="ghost" size="sm" onclick={navigateToUpload}>Upload</Button>
 				</div>
 
 				<div

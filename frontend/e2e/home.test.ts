@@ -13,15 +13,16 @@ test.describe('Home Page', () => {
 		).toBeVisible();
 	});
 
-	test('five quick action cards are visible', async ({ page }) => {
+	test('four quick action cards are visible', async ({ page }) => {
 		// The h3 headings inside the quick action cards
 		await expect(page.getByRole('heading', { name: 'Add New Game' })).toBeVisible({
 			timeout: 5_000
 		});
-		await expect(page.getByRole('heading', { name: 'Upload Rules' })).toBeVisible();
 		await expect(page.getByRole('heading', { name: 'Search Rules' })).toBeVisible();
 		await expect(page.getByRole('heading', { name: 'Ask Questions' })).toBeVisible();
 		await expect(page.getByRole('heading', { name: '8x8 Challenge' })).toBeVisible();
+		// Upload card was moved to admin — should not appear here
+		await expect(page.getByRole('heading', { name: 'Upload Rules' })).not.toBeVisible();
 	});
 
 	test('collection stats show game count from API', async ({ page }) => {

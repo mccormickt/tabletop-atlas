@@ -19,6 +19,25 @@ test.describe('Admin Dashboard', () => {
 		await expect(page).not.toHaveURL(/\/admin/);
 	});
 
+	test('upload rules card is visible', async ({ page }) => {
+		await setupAdmin(page);
+		await page.goto('/admin');
+		await expect(page.getByRole('heading', { name: /admin dashboard/i })).toBeVisible({
+			timeout: 10_000
+		});
+		await expect(page.getByText('Upload Rules', { exact: true })).toBeVisible({ timeout: 5_000 });
+		const uploadLink = page.getByRole('link', { name: 'Upload Rules PDF' });
+		await expect(uploadLink).toBeVisible();
+		await expect(uploadLink).toHaveAttribute('href', /\/admin\/upload/);
+	});
+
+	test('non-admin user is redirected away from /admin/upload', async ({ page }) => {
+		// Default user has role 'user' — admin layout redirects to home
+		await page.goto('/admin/upload');
+		await page.waitForURL('**/', { timeout: 10_000 });
+		await expect(page).not.toHaveURL(/\/admin/);
+	});
+
 	test('enrichment stats display', async ({ page }) => {
 		await setupAdmin(page);
 		await page.goto('/admin');

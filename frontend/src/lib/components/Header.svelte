@@ -29,7 +29,6 @@
 		{ path: '/games', label: 'Games' },
 		{ path: '/challenges', label: 'Challenges' },
 		{ path: '/tools', label: 'Tools' },
-		{ path: '/upload', label: 'Upload' },
 		{ path: '/search', label: 'Search' },
 		{ path: '/chat', label: 'Chat' }
 	];
