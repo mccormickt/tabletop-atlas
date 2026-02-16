@@ -84,3 +84,45 @@ pub fn verify_refresh_token(token: &str) -> Result<RefreshClaims, String> {
     .map(|data| data.claims)
     .map_err(|e| format!("Failed to verify refresh token: {}", e))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Initialize AuthConfig for tests using init_with().
+    fn init_test_config() {
+        let _ = AuthConfig::init_with(AuthConfig {
+            google_client_id: String::new(),
+            google_client_secret: String::new(),
+            google_redirect_uri: String::new(),
+            jwt_secret: "test-secret-key-for-jwt-tests".to_string(),
+            jwt_access_expiry: 900,
+            jwt_refresh_expiry: 604800,
+            frontend_url: String::new(),
+        });
+    }
+
+    #[test]
+    fn test_access_token_roundtrip() {
+        init_test_config();
+
+        let token = create_access_token(42, "user@example.com", "user")
+            .expect("should create access token");
+        let claims = verify_access_token(&token).expect("should verify access token");
+
+        assert_eq!(claims.sub, 42);
+        assert_eq!(claims.email, "user@example.com");
+        assert_eq!(claims.role, "user");
+    }
+
+    #[test]
+    fn test_refresh_token_roundtrip() {
+        init_test_config();
+
+        let token = create_refresh_token(42, "session-abc").expect("should create refresh token");
+        let claims = verify_refresh_token(&token).expect("should verify refresh token");
+
+        assert_eq!(claims.sub, 42);
+        assert_eq!(claims.session_id, "session-abc");
+    }
+}
