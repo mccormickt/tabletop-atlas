@@ -30,7 +30,7 @@ pdf-extract = "0.7"
 # Vector embeddings for SQLite
 sqlite-vec = "0.1"
 # Auth dependencies
-jsonwebtoken = "10.3"
+jsonwebtoken = { version = "10.3", features = ["rust_crypto"] }
 sha2 = "0.10"
 hex = "0.4"
 cookie = { version = "0.18", features = ["secure"] }
