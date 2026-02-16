@@ -26,7 +26,6 @@ sqlite-vec.workspace = true
 # OpenAI-compatible API client (Ollama) - only chat-completion and embedding APIs
 async-openai = { version = "0.32", default-features = false, features = ["rustls", "chat-completion", "embedding"] }
 jsonwebtoken.workspace = true
-rand.workspace = true
 sha2.workspace = true
 hex.workspace = true
 cookie.workspace = true

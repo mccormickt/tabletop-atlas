@@ -24,14 +24,13 @@ slog = "2.7"
 mime_guess = "2.0"
 include_dir = "0.7"
 # Command line argument parsing
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.5", features = ["derive", "env"] }
 # PDF text extraction
 pdf-extract = "0.7"
 # Vector embeddings for SQLite
 sqlite-vec = "0.1"
 # Auth dependencies
 jsonwebtoken = "10.3"
-rand = "0.8"
 sha2 = "0.10"
 hex = "0.4"
 cookie = { version = "0.18", features = ["secure"] }

@@ -5,6 +5,9 @@
 *.db
 /.playwright
 /.playwright-mcp
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
 .env
 
 # Melange build artifacts

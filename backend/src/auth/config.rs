@@ -14,54 +14,45 @@ pub struct AuthConfig {
 }
 
 impl AuthConfig {
-    pub fn from_env() -> Result<Self, String> {
-        dotenvy::dotenv().ok();
-
-        let google_client_id =
-            std::env::var("GOOGLE_CLIENT_ID").map_err(|_| "GOOGLE_CLIENT_ID must be set")?;
-        let google_client_secret = std::env::var("GOOGLE_CLIENT_SECRET")
-            .map_err(|_| "GOOGLE_CLIENT_SECRET must be set")?;
-        let google_redirect_uri = std::env::var("GOOGLE_REDIRECT_URI")
-            .unwrap_or_else(|_| "http://localhost:8080/api/auth/callback".to_string());
-        let jwt_secret = std::env::var("JWT_SECRET")
-            .unwrap_or_else(|_| {
-                use rand::Rng;
-                let secret: String = rand::thread_rng()
-                    .sample_iter(&rand::distributions::Alphanumeric)
-                    .take(32)
-                    .map(char::from)
-                    .collect();
-                eprintln!("WARN: JWT_SECRET not set, using randomly generated secret. Set JWT_SECRET for production.");
-                secret
-            });
-        let jwt_access_expiry: i64 = std::env::var("JWT_ACCESS_EXPIRY")
-            .unwrap_or_else(|_| "900".to_string())
+    /// Extract resolved values from clap matches.
+    /// Safe to unwrap — clap enforces required args and defaults.
+    pub fn from_matches(matches: &clap::ArgMatches) -> Self {
+        let jwt_access_expiry: i64 = matches
+            .get_one::<String>("jwt-access-expiry")
+            .unwrap()
             .parse()
-            .map_err(|_| "JWT_ACCESS_EXPIRY must be a number")?;
-        let jwt_refresh_expiry: i64 = std::env::var("JWT_REFRESH_EXPIRY")
-            .unwrap_or_else(|_| "604800".to_string())
+            .expect("jwt-access-expiry must be a valid number");
+        let jwt_refresh_expiry: i64 = matches
+            .get_one::<String>("jwt-refresh-expiry")
+            .unwrap()
             .parse()
-            .map_err(|_| "JWT_REFRESH_EXPIRY must be a number")?;
-        let frontend_url =
-            std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:8080".to_string());
+            .expect("jwt-refresh-expiry must be a valid number");
 
-        Ok(Self {
-            google_client_id,
-            google_client_secret,
-            google_redirect_uri,
-            jwt_secret,
+        Self {
+            google_client_id: matches
+                .get_one::<String>("google-client-id")
+                .unwrap()
+                .clone(),
+            google_client_secret: matches
+                .get_one::<String>("google-client-secret")
+                .unwrap()
+                .clone(),
+            google_redirect_uri: matches
+                .get_one::<String>("google-redirect-uri")
+                .unwrap()
+                .clone(),
+            jwt_secret: matches.get_one::<String>("jwt-secret").unwrap().clone(),
             jwt_access_expiry,
             jwt_refresh_expiry,
-            frontend_url,
-        })
+            frontend_url: matches.get_one::<String>("frontend-url").unwrap().clone(),
+        }
     }
 
-    pub fn init() -> Result<&'static Self, String> {
+    pub fn init_with(config: AuthConfig) -> Result<&'static Self, String> {
         if AUTH_CONFIG.get().is_some() {
             return Ok(AUTH_CONFIG.get().unwrap());
         }
 
-        let config = Self::from_env()?;
         AUTH_CONFIG
             .set(config)
             .map_err(|_| "AuthConfig already initialized".to_string())?;
