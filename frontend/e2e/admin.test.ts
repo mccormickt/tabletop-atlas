@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { setupAdmin } from './helpers';
+import { setupAdmin, setupUnauthenticated } from './helpers';
 
 test.describe('Admin Dashboard', () => {
 	test('dashboard with Master Games count (admin auth)', async ({ page }) => {
@@ -58,5 +58,19 @@ test.describe('Admin Dashboard', () => {
 		await setupAdmin(page);
 		await page.goto('/admin/games/enrich');
 		await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 });
+	});
+
+	test('unauthenticated user is redirected from /admin to login', async ({ page }) => {
+		setupUnauthenticated(page);
+		await page.goto('/admin');
+		await page.waitForURL('**/auth/login**', { timeout: 10_000 });
+		await expect(page).toHaveURL(/\/auth\/login/);
+	});
+
+	test('unauthenticated user is redirected from /admin/upload to login', async ({ page }) => {
+		setupUnauthenticated(page);
+		await page.goto('/admin/upload');
+		await page.waitForURL('**/auth/login**', { timeout: 10_000 });
+		await expect(page).toHaveURL(/\/auth\/login/);
 	});
 });

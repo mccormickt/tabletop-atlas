@@ -3,9 +3,7 @@ use crate::{
     auth::middleware::require_admin,
     bgg::BggClient,
     db::admin as admin_db,
-    handlers::{
-        bad_request_error, forbidden_error, internal_error, not_found_error, success_response,
-    },
+    handlers::{bad_request_error, internal_error, not_found_error, success_response},
     models::Game,
     models::admin::{
         BggEnrichError, BggEnrichPreviewResponse, BggEnrichRequest, BggGameEnrichPreview,
@@ -39,7 +37,7 @@ pub async fn get_admin_stats(
     rqctx: RequestContext<AppState>,
 ) -> Result<HttpOk<AdminDashboardStats>, HttpError> {
     // Verify admin access
-    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+    require_admin(&rqctx)?;
 
     let app_state = rqctx.context();
     let db = app_state.db();
@@ -61,7 +59,7 @@ pub async fn preview_bgg_import(
     body: UntypedBody,
 ) -> Result<HttpOk<BggImportPreviewResponse>, HttpError> {
     // Verify admin access
-    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+    require_admin(&rqctx)?;
 
     let body_bytes = body.as_bytes();
 
@@ -141,7 +139,7 @@ pub async fn execute_bgg_import(
     body: UntypedBody,
 ) -> Result<HttpOk<BggImportResponse>, HttpError> {
     // Verify admin access
-    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+    require_admin(&rqctx)?;
 
     let body_bytes = body.as_bytes();
 
@@ -444,7 +442,7 @@ pub async fn get_enrichment_stats(
     rqctx: RequestContext<AppState>,
 ) -> Result<HttpOk<EnrichmentStats>, HttpError> {
     // Verify admin access
-    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+    require_admin(&rqctx)?;
 
     let app_state = rqctx.context();
     let db = app_state.db();
@@ -466,7 +464,7 @@ pub async fn preview_bgg_enrich(
     path: Path<GameIdPath>,
 ) -> Result<HttpOk<BggEnrichPreviewResponse>, HttpError> {
     // Verify admin access
-    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+    require_admin(&rqctx)?;
 
     let game_id = path.into_inner().id;
     let app_state = rqctx.context();
@@ -535,7 +533,7 @@ pub async fn execute_bgg_enrich(
     body: TypedBody<BggEnrichRequest>,
 ) -> Result<HttpOk<Game>, HttpError> {
     // Verify admin access
-    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+    require_admin(&rqctx)?;
 
     let game_id = path.into_inner().id;
     let request = body.into_inner();
@@ -585,7 +583,7 @@ pub async fn preview_bulk_enrich(
     body: TypedBody<BulkEnrichRequest>,
 ) -> Result<HttpOk<BulkEnrichPreviewResponse>, HttpError> {
     // Verify admin access
-    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+    require_admin(&rqctx)?;
 
     let request = body.into_inner();
     let limit = request.limit.unwrap_or(50).min(200); // Cap at 200 for preview
@@ -673,7 +671,7 @@ pub async fn execute_bulk_enrich(
     body: TypedBody<BulkEnrichRequest>,
 ) -> Result<HttpOk<BulkEnrichResponse>, HttpError> {
     // Verify admin access
-    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+    require_admin(&rqctx)?;
 
     let request = body.into_inner();
     let limit = request.limit.unwrap_or(50).min(200);

@@ -5,9 +5,7 @@ use dropshot::{Path, RequestContext, UntypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::{
-    bad_request_error, forbidden_error, internal_error, not_found_error, success_response,
-};
+use super::{bad_request_error, internal_error, not_found_error, success_response};
 use crate::{
     AppState,
     auth::middleware::require_admin,
@@ -40,7 +38,7 @@ pub async fn upload_rules_pdf(
     path: Path<UploadPathParam>,
     body: UntypedBody,
 ) -> Result<HttpOk<UploadResponse>, HttpError> {
-    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+    require_admin(&rqctx)?;
 
     let app_state = rqctx.context();
     let game_id = path.into_inner().id;
@@ -195,7 +193,7 @@ pub async fn delete_rules(
     rqctx: RequestContext<AppState>,
     path: Path<UploadPathParam>,
 ) -> Result<HttpOk<DeleteRulesResponse>, HttpError> {
-    require_admin(&rqctx).map_err(|e| forbidden_error(e.external_message.clone()))?;
+    require_admin(&rqctx)?;
 
     let app_state = rqctx.context();
     let game_id = path.into_inner().id;

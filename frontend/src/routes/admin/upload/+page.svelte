@@ -104,6 +104,7 @@
 			}
 		} catch {
 			rulesInfo = null;
+			error = 'Failed to load rules info';
 		}
 	}
 
