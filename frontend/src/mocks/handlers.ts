@@ -46,7 +46,7 @@ export const handlers = [
 	http.post('/api/house-rules', () =>
 		HttpResponse.json(data.mockHouseRulesPage.items[0], { status: 201 })
 	),
-	http.put('/api/house-rules/:id', () => HttpResponse.json(data.mockHouseRulesPage.items[0])),
+	http.patch('/api/house-rules/:id', () => HttpResponse.json(data.mockHouseRulesPage.items[0])),
 	http.delete('/api/house-rules/:id', () => new HttpResponse(null, { status: 204 })),
 
 	// --- Chat ---

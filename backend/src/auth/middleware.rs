@@ -24,11 +24,40 @@ fn parse_cookies(cookie_header: &str) -> HashMap<String, String> {
 
 pub fn extract_auth(rqctx: &RequestContext<AppState>) -> Option<AuthenticatedUser> {
     let request = &rqctx.request;
-    let cookie_header = request.headers().get("cookie")?.to_str().ok()?;
-    let cookies = parse_cookies(cookie_header);
-    let access_token = cookies.get("access_token")?;
 
-    let claims = jwt::verify_access_token(access_token).ok()?;
+    let cookie_header = match request.headers().get("cookie") {
+        Some(h) => h,
+        None => {
+            slog::debug!(rqctx.log, "extract_auth: no cookie header");
+            return None;
+        }
+    };
+
+    let cookie_str = match cookie_header.to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            slog::debug!(rqctx.log, "extract_auth: invalid UTF-8 in cookie header");
+            return None;
+        }
+    };
+
+    let cookies = parse_cookies(cookie_str);
+
+    let access_token = match cookies.get("access_token") {
+        Some(t) => t,
+        None => {
+            slog::debug!(rqctx.log, "extract_auth: no access_token cookie");
+            return None;
+        }
+    };
+
+    let claims = match jwt::verify_access_token(access_token) {
+        Ok(c) => c,
+        Err(e) => {
+            slog::debug!(rqctx.log, "extract_auth: JWT verification failed"; "error" => %e);
+            return None;
+        }
+    };
 
     Some(AuthenticatedUser {
         user_id: claims.sub,

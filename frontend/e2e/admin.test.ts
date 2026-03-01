@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { setupAdmin } from './helpers';
+import { setupAdmin, setupUnauthenticated } from './helpers';
 
 test.describe('Admin Dashboard', () => {
 	test('dashboard with Master Games count (admin auth)', async ({ page }) => {
@@ -15,6 +15,25 @@ test.describe('Admin Dashboard', () => {
 	test('non-admin user is redirected away from admin', async ({ page }) => {
 		// Default user has role 'user' — admin layout redirects to home
 		await page.goto('/admin');
+		await page.waitForURL('**/', { timeout: 10_000 });
+		await expect(page).not.toHaveURL(/\/admin/);
+	});
+
+	test('upload rules card is visible', async ({ page }) => {
+		await setupAdmin(page);
+		await page.goto('/admin');
+		await expect(page.getByRole('heading', { name: /admin dashboard/i })).toBeVisible({
+			timeout: 10_000
+		});
+		await expect(page.getByText('Upload Rules', { exact: true })).toBeVisible({ timeout: 5_000 });
+		const uploadLink = page.getByRole('link', { name: 'Upload Rules PDF' });
+		await expect(uploadLink).toBeVisible();
+		await expect(uploadLink).toHaveAttribute('href', /\/admin\/upload/);
+	});
+
+	test('non-admin user is redirected away from /admin/upload', async ({ page }) => {
+		// Default user has role 'user' — admin layout redirects to home
+		await page.goto('/admin/upload');
 		await page.waitForURL('**/', { timeout: 10_000 });
 		await expect(page).not.toHaveURL(/\/admin/);
 	});
@@ -39,5 +58,19 @@ test.describe('Admin Dashboard', () => {
 		await setupAdmin(page);
 		await page.goto('/admin/games/enrich');
 		await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 });
+	});
+
+	test('unauthenticated user is redirected from /admin to login', async ({ page }) => {
+		setupUnauthenticated(page);
+		await page.goto('/admin');
+		await page.waitForURL('**/auth/login**', { timeout: 10_000 });
+		await expect(page).toHaveURL(/\/auth\/login/);
+	});
+
+	test('unauthenticated user is redirected from /admin/upload to login', async ({ page }) => {
+		setupUnauthenticated(page);
+		await page.goto('/admin/upload');
+		await page.waitForURL('**/auth/login**', { timeout: 10_000 });
+		await expect(page).toHaveURL(/\/auth\/login/);
 	});
 });

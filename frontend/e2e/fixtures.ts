@@ -105,7 +105,7 @@ async function setupDefaultRoutes(page: Page) {
 		if (path === '/api/house-rules' && method === 'POST')
 			return route.fulfill(json(data.mockHouseRulesPage.items[0], 201));
 		if (/^\/api\/house-rules\/\d+$/.test(path)) {
-			if (method === 'PUT') return route.fulfill(json(data.mockHouseRulesPage.items[0]));
+			if (method === 'PATCH') return route.fulfill(json(data.mockHouseRulesPage.items[0]));
 			if (method === 'DELETE') return route.fulfill(json(null, 204));
 		}
 

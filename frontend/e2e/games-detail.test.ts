@@ -49,4 +49,13 @@ test.describe('Game Detail Page', () => {
 			page.getByRole('button', { name: /add to collection|in collection/i })
 		).toBeVisible({ timeout: 5_000 });
 	});
+
+	test('admin does not see upload or replace buttons on game detail', async ({ page }) => {
+		await setupAdmin(page);
+		await page.goto('/games/1');
+		await expect(page.getByRole('heading', { name: 'Catan' })).toBeVisible({ timeout: 10_000 });
+		// Upload was moved to admin panel — no upload/replace buttons should appear here
+		await expect(page.getByRole('button', { name: /upload/i })).not.toBeVisible();
+		await expect(page.getByRole('button', { name: /replace/i })).not.toBeVisible();
+	});
 });

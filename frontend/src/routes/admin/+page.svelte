@@ -93,6 +93,17 @@
 				</Card.Content>
 			</Card.Root>
 
+			<!-- Upload Rules Card -->
+			<Card.Root>
+				<Card.Header>
+					<Card.Title>Upload Rules</Card.Title>
+					<Card.Description>Upload PDF rule books for games</Card.Description>
+				</Card.Header>
+				<Card.Content>
+					<Button href="/admin/upload">Upload Rules PDF</Button>
+				</Card.Content>
+			</Card.Root>
+
 			<!-- BGG Enrichment Card -->
 			{#if enrichmentStats}
 				<Card.Root>

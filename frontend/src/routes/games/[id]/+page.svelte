@@ -2,18 +2,10 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import {
-		api,
-		type Game,
-		type RulesInfoResponse,
-		type UploadResponse,
-		type HouseRule,
-		formatDate
-	} from '$lib';
+	import { api, type Game, type RulesInfoResponse, type HouseRule, formatDate } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Badge } from '$lib/components/ui';
-	import PDFUpload from '$lib/components/PDFUpload.svelte';
 	import HouseRulesList from '$lib/components/HouseRulesList.svelte';
 	import BggEnrichModal from '$lib/components/admin/BggEnrichModal.svelte';
 
@@ -50,7 +42,6 @@
 	let error = $state<string | null>(null);
 	let deleting = $state(false);
 	let rulesInfo = $state<RulesInfoResponse | null>(null);
-	let showUpload = $state(false);
 	let activeTab = $state<TabType>('details');
 	let showBggEnrichModal = $state(false);
 
@@ -290,26 +281,6 @@
 
 	function handleBack() {
 		goto(resolve('/games'));
-	}
-
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	function handleUploadSuccess(response: UploadResponse) {
-		// Refresh game and rules info
-		loadGame();
-		showUpload = false;
-	}
-
-	function handleUploadDeleted() {
-		// Refresh game and rules info
-		loadGame();
-	}
-
-	function handleUploadError(errorMsg: string) {
-		error = errorMsg;
-	}
-
-	function toggleUpload() {
-		showUpload = !showUpload;
 	}
 
 	function navigateToSearch() {
@@ -575,50 +546,27 @@
 												{/if}
 											</div>
 										</div>
-										<div class="flex space-x-2">
-											<Button size="sm" variant="outline" onclick={toggleUpload}>
-												{showUpload ? 'Cancel' : 'Replace'}
-											</Button>
-										</div>
 									</div>
 								{:else}
-									<div
-										class="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-3"
-									>
-										<div class="flex items-center">
-											<svg
-												class="mr-2 h-5 w-5 text-gray-400"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-												></path>
-											</svg>
-											<span class="text-sm text-gray-600">No PDF rules uploaded</span>
-										</div>
-										<Button size="sm" onclick={toggleUpload}>Upload Rules</Button>
+									<div class="flex items-center rounded-md border border-gray-200 bg-gray-50 p-3">
+										<svg
+											class="mr-2 h-5 w-5 text-gray-400"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+											></path>
+										</svg>
+										<span class="text-sm text-gray-600">No PDF rules uploaded</span>
 									</div>
 								{/if}
 
-								{#if showUpload}
-									<div class="mt-4">
-										<PDFUpload
-											gameId={game.id}
-											gameName={game.name}
-											existingRulesInfo={rulesInfo}
-											onUploaded={handleUploadSuccess}
-											onDeleted={handleUploadDeleted}
-											onError={handleUploadError}
-										/>
-									</div>
-								{/if}
-
-								{#if game.rulesText && !showUpload}
+								{#if game.rulesText}
 									<div>
 										<h3 class="mb-2 text-sm font-medium text-gray-500">Extracted Rules Text</h3>
 										<div
@@ -679,9 +627,7 @@
 								<Button class="w-full" variant="outline" onclick={navigateToChat}>
 									Start Chat Session
 								</Button>
-								{#if !rulesInfo?.hasRulesPdf}
-									<Button class="w-full" onclick={toggleUpload}>Upload Rules PDF</Button>
-								{:else}
+								{#if rulesInfo?.hasRulesPdf}
 									<Button class="w-full" variant="outline" onclick={navigateToSearch}>
 										Search Rules
 									</Button>

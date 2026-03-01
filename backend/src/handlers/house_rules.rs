@@ -4,6 +4,7 @@ use serde::Deserialize;
 
 use crate::{
     AppState,
+    auth::middleware::require_auth,
     db::{embeddings, house_rules},
     embeddings::Embedder,
     handlers::{
@@ -170,6 +171,8 @@ pub async fn create_house_rule(
     rqctx: RequestContext<AppState>,
     body: TypedBody<CreateHouseRuleRequest>,
 ) -> Result<HttpCreated<HouseRule>, HttpError> {
+    require_auth(&rqctx)?;
+
     let app_state = rqctx.context();
     let create_request = body.into_inner();
     let db = app_state.db();
@@ -213,6 +216,8 @@ pub async fn update_house_rule(
     path: Path<HouseRulePathParam>,
     body: TypedBody<UpdateHouseRuleRequest>,
 ) -> Result<HttpOk<HouseRule>, HttpError> {
+    require_auth(&rqctx)?;
+
     let app_state = rqctx.context();
     let house_rule_id = path.into_inner().id;
     let update_request = body.into_inner();
@@ -264,6 +269,8 @@ pub async fn delete_house_rule(
     rqctx: RequestContext<AppState>,
     path: Path<HouseRulePathParam>,
 ) -> Result<HttpDeleted, HttpError> {
+    require_auth(&rqctx)?;
+
     let app_state = rqctx.context();
     let house_rule_id = path.into_inner().id;
     let db = app_state.db();

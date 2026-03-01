@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { Home, GameBoxIcon, Upload, SearchGlass, ChatBubble } from './icons';
+	import { Home, GameBoxIcon, SearchGlass, ChatBubble } from './icons';
 
 	let currentPath = $derived(page.url.pathname);
 
@@ -12,7 +12,6 @@
 	const navItems = [
 		{ path: '/', label: 'Home', icon: Home },
 		{ path: '/games', label: 'Games', icon: GameBoxIcon },
-		{ path: '/upload', label: 'Upload', icon: Upload },
 		{ path: '/search', label: 'Search', icon: SearchGlass },
 		{ path: '/chat', label: 'Chat', icon: ChatBubble }
 	] as const;

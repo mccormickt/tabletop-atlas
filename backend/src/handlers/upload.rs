@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 
 use super::{bad_request_error, internal_error, not_found_error, success_response};
 use crate::{
-    AppState, db,
+    AppState,
+    auth::middleware::require_admin,
+    db,
     handlers::{HttpError, HttpOk},
     models::{CreateEmbeddingRequest, EmbeddingSourceType, GameId, RulesInfoResponse},
     pdf::{Processor, generate_pdf_filename, validate_pdf_file},
@@ -36,6 +38,8 @@ pub async fn upload_rules_pdf(
     path: Path<UploadPathParam>,
     body: UntypedBody,
 ) -> Result<HttpOk<UploadResponse>, HttpError> {
+    require_admin(&rqctx)?;
+
     let app_state = rqctx.context();
     let game_id = path.into_inner().id;
     let body_bytes = body.as_bytes();
@@ -189,6 +193,8 @@ pub async fn delete_rules(
     rqctx: RequestContext<AppState>,
     path: Path<UploadPathParam>,
 ) -> Result<HttpOk<DeleteRulesResponse>, HttpError> {
+    require_admin(&rqctx)?;
+
     let app_state = rqctx.context();
     let game_id = path.into_inner().id;
 
