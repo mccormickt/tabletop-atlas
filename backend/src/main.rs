@@ -9,6 +9,7 @@ use rusqlite::{Connection, ffi::sqlite3_auto_extension};
 use rusqlite_migration::{M, Migrations};
 use sqlite_vec::sqlite3_vec_init;
 
+mod agents;
 mod auth;
 mod bgg;
 mod config;
@@ -20,6 +21,7 @@ mod models;
 mod pdf;
 mod tools;
 
+use agents::RulesChatAgent;
 use config::OllamaConfig;
 use db::Database;
 use embeddings::Embedder;
@@ -31,6 +33,7 @@ pub struct AppState {
     db: Database,
     embeddings: Embedder,
     llm: LLMClient,
+    rules_agent: RulesChatAgent,
 }
 
 impl AppState {
@@ -95,18 +98,20 @@ impl AppState {
 
         migrations.to_latest(&mut db)?;
 
+        let llm_client = LLMClient::with_config(&ollama_config.api_base, &ollama_config.llm_model);
+        let rules_agent = RulesChatAgent::new(
+            llm_client.ollama_client().clone(),
+            ollama_config.llm_model.clone(),
+        );
+
         Ok(Self {
             db: Database::new(db),
             embeddings: Embedder::with_config(
                 &ollama_config.api_base,
-                &ollama_config.api_key,
                 &ollama_config.embedding_model,
             ),
-            llm: LLMClient::with_config(
-                &ollama_config.api_base,
-                &ollama_config.api_key,
-                &ollama_config.llm_model,
-            ),
+            llm: llm_client,
+            rules_agent,
         })
     }
 
@@ -120,6 +125,10 @@ impl AppState {
 
     pub fn llm(&self) -> &LLMClient {
         &self.llm
+    }
+
+    pub fn rules_agent(&self) -> &RulesChatAgent {
+        &self.rules_agent
     }
 }
 
@@ -158,18 +167,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .short('u')
                 .long("ollama-url")
                 .env("OLLAMA_URL")
-                .default_value("http://localhost:11434/v1")
-                .help("Ollama-compatible API base URL")
+                .default_value("http://localhost:11434")
+                .help("Ollama API base URL")
                 .value_name("URL"),
-        )
-        .arg(
-            Arg::new("ollama-api-key")
-                .long("ollama-api-key")
-                .env("OLLAMA_API_KEY")
-                .default_value("ollama")
-                .hide_env_values(true)
-                .help("API key for the Ollama-compatible API")
-                .value_name("KEY"),
         )
         .arg(
             Arg::new("llm-model")

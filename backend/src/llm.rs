@@ -1,57 +1,38 @@
 use anyhow::{Context, Result};
-use async_openai::{
-    Client,
-    config::OpenAIConfig,
-    types::chat::{
-        ChatCompletionRequestAssistantMessage, ChatCompletionRequestAssistantMessageContent,
-        ChatCompletionRequestMessage, ChatCompletionRequestSystemMessage,
-        ChatCompletionRequestSystemMessageContent, ChatCompletionRequestUserMessage,
-        CreateChatCompletionRequestArgs,
-    },
-};
+use rig::client::Nothing;
+use rig::completion::{Chat, Prompt};
+use rig::message::Message;
+use rig::prelude::CompletionClient;
+use rig::providers::ollama;
 use serde::{Deserialize, Serialize};
 
+const DEFAULT_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MODEL: &str = "gpt-oss:latest";
 
-/// Service for generating chat completions using OpenAI-compatible APIs (like Ollama)
+/// Service for generating chat completions using Ollama via the Rig framework.
 pub struct LLMClient {
-    client: Client<OpenAIConfig>,
+    client: ollama::Client,
     model: String,
 }
 
-/// Initialize a new LLM client configured for Ollama
 impl Default for LLMClient {
     fn default() -> Self {
-        // Configure for local Ollama instance
-        let api_base = "http://localhost:11434/v1";
-        let api_key = "ollama"; // Required but ignored by Ollama
-
-        let config = OpenAIConfig::new()
-            .with_api_key(api_key)
-            .with_api_base(api_base);
-
-        let client = Client::with_config(config);
-
-        Self {
-            client,
-            model: DEFAULT_MODEL.to_string(),
-        }
+        Self::with_config(DEFAULT_API_BASE, DEFAULT_MODEL)
     }
 }
 
 impl LLMClient {
-    /// Create a new LLM client configured for Ollama by default
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Create a new LLM client with custom configuration
-    pub fn with_config(api_base: &str, api_key: &str, model: &str) -> Self {
-        let config = OpenAIConfig::new()
-            .with_api_key(api_key)
-            .with_api_base(api_base);
-
-        let client = Client::with_config(config);
+    /// Create a new LLM client with custom Ollama URL and model.
+    pub fn with_config(api_base: &str, model: &str) -> Self {
+        let client = ollama::Client::builder()
+            .api_key(Nothing)
+            .base_url(api_base)
+            .build()
+            .expect("failed to build Ollama client");
 
         Self {
             client,
@@ -59,34 +40,27 @@ impl LLMClient {
         }
     }
 
-    /// Get the current model name
+    /// Get the current model name.
     pub fn get_model(&self) -> &str {
         &self.model
     }
 
-    /// Test connection to the LLM service
-    pub async fn test_connection(&self) -> Result<()> {
-        let request = CreateChatCompletionRequestArgs::default()
-            .model(self.model.clone())
-            .messages(vec![ChatCompletionRequestMessage::User(
-                ChatCompletionRequestUserMessage {
-                    content: "Hello".into(),
-                    name: None,
-                },
-            )])
-            .build()
-            .context("Failed to build test chat completion request")?;
+    /// Get a reference to the underlying Ollama client for sharing with agents.
+    pub fn ollama_client(&self) -> &ollama::Client {
+        &self.client
+    }
 
-        self.client
-            .chat()
-            .create(request)
+    /// Test connection to the LLM service.
+    pub async fn test_connection(&self) -> Result<()> {
+        let agent = self.client.agent(&self.model).build();
+        let _: String = agent
+            .prompt("Hello")
             .await
             .context("Failed to connect to LLM service")?;
-
         Ok(())
     }
 
-    /// Generate a chat completion with context
+    /// Generate a chat completion with context.
     pub async fn chat_completion(
         &self,
         messages: Vec<ChatMessage>,
@@ -94,74 +68,31 @@ impl LLMClient {
         _max_tokens: Option<u16>,
         _temperature: Option<f32>,
     ) -> Result<String> {
-        let mut request_messages = Vec::new();
-
-        // Add system message if provided
-        if let Some(system_content) = system_prompt {
-            request_messages.push(ChatCompletionRequestMessage::System(
-                ChatCompletionRequestSystemMessage {
-                    content: ChatCompletionRequestSystemMessageContent::Text(system_content),
-                    name: None,
-                },
-            ));
+        let mut builder = self.client.agent(&self.model);
+        if let Some(ref preamble) = system_prompt {
+            builder = builder.preamble(preamble);
         }
+        let agent = builder.build();
 
-        // Convert our messages to OpenAI format
-        for message in messages {
-            let request_message = match message.role.as_str() {
-                "user" => ChatCompletionRequestMessage::User(ChatCompletionRequestUserMessage {
-                    content: message.content.into(),
-                    name: None,
-                }),
-                "assistant" => {
-                    ChatCompletionRequestMessage::Assistant(ChatCompletionRequestAssistantMessage {
-                        content: Some(ChatCompletionRequestAssistantMessageContent::Text(
-                            message.content,
-                        )),
-                        name: None,
-                        tool_calls: None,
-                        ..Default::default()
-                    })
-                }
-                "system" => {
-                    ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage {
-                        content: ChatCompletionRequestSystemMessageContent::Text(message.content),
-                        name: None,
-                    })
-                }
-                _ => {
-                    return Err(anyhow::anyhow!(
-                        "Unsupported message role: {}",
-                        message.role
-                    ));
-                }
-            };
-            request_messages.push(request_message);
+        // Separate the last user message as the prompt; everything before is history.
+        let (history, prompt) = split_history_and_prompt(messages)?;
+
+        if history.is_empty() {
+            let response: String = agent
+                .prompt(prompt)
+                .await
+                .context("Failed to generate chat completion")?;
+            Ok(response)
+        } else {
+            let response: String = agent
+                .chat(prompt, history)
+                .await
+                .context("Failed to generate chat completion")?;
+            Ok(response)
         }
-
-        let request = CreateChatCompletionRequestArgs::default()
-            .model(self.model.clone())
-            .messages(request_messages)
-            .build()
-            .context("Failed to build chat completion request")?;
-
-        let response = self
-            .client
-            .chat()
-            .create(request)
-            .await
-            .context("Failed to generate chat completion")?;
-
-        let content = response
-            .choices
-            .first()
-            .and_then(|choice| choice.message.content.as_ref())
-            .context("No content in chat completion response")?;
-
-        Ok(content.clone())
     }
 
-    /// Generate a simple completion for a single prompt
+    /// Generate a simple completion for a single prompt.
     pub async fn simple_completion(&self, prompt: &str, max_tokens: Option<u16>) -> Result<String> {
         let messages = vec![ChatMessage {
             role: "user".to_string(),
@@ -171,7 +102,7 @@ impl LLMClient {
         self.chat_completion(messages, None, max_tokens, None).await
     }
 
-    /// Generate a completion with context and system prompt
+    /// Generate a completion with context and system prompt.
     pub async fn completion_with_context(
         &self,
         user_message: &str,
@@ -198,11 +129,34 @@ impl LLMClient {
     }
 }
 
-/// Simple message structure for LLM interactions
+/// Split a list of ChatMessages into Rig Message history and a final prompt Message.
+fn split_history_and_prompt(messages: Vec<ChatMessage>) -> Result<(Vec<Message>, Message)> {
+    if messages.is_empty() {
+        return Err(anyhow::anyhow!("No messages provided"));
+    }
+
+    let mut rig_messages: Vec<Message> = messages.iter().map(|m| m.into()).collect();
+    let prompt = rig_messages.pop().unwrap();
+
+    Ok((rig_messages, prompt))
+}
+
+/// Simple message structure for LLM interactions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
+}
+
+impl From<&ChatMessage> for Message {
+    fn from(msg: &ChatMessage) -> Self {
+        match msg.role.as_str() {
+            "assistant" => Message::assistant(&msg.content),
+            // Map both "user" and "system" to user messages since Rig handles
+            // system content via the agent preamble, not as chat history.
+            _ => Message::user(&msg.content),
+        }
+    }
 }
 
 impl From<&crate::models::ChatMessage> for ChatMessage {
@@ -226,9 +180,44 @@ mod tests {
 
     #[test]
     fn test_custom_config() {
-        let client =
-            LLMClient::with_config("http://localhost:11434/v1", "test-key", "custom-model");
+        let client = LLMClient::with_config("http://localhost:11434", "custom-model");
         assert_eq!(client.get_model(), "custom-model");
+    }
+
+    #[test]
+    fn test_split_history_single_message() {
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: "Hello".to_string(),
+        }];
+        let (history, _prompt) = split_history_and_prompt(messages).unwrap();
+        assert!(history.is_empty());
+    }
+
+    #[test]
+    fn test_split_history_multiple_messages() {
+        let messages = vec![
+            ChatMessage {
+                role: "user".to_string(),
+                content: "First".to_string(),
+            },
+            ChatMessage {
+                role: "assistant".to_string(),
+                content: "Response".to_string(),
+            },
+            ChatMessage {
+                role: "user".to_string(),
+                content: "Follow up".to_string(),
+            },
+        ];
+        let (history, _prompt) = split_history_and_prompt(messages).unwrap();
+        assert_eq!(history.len(), 2);
+    }
+
+    #[test]
+    fn test_split_history_empty() {
+        let messages: Vec<ChatMessage> = vec![];
+        assert!(split_history_and_prompt(messages).is_err());
     }
 
     // Note: These tests require a running Ollama instance with gpt-oss:latest

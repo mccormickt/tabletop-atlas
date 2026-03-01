@@ -1,122 +1,92 @@
 use anyhow::{Result, anyhow};
-use async_openai::{Client, config::OpenAIConfig, types::embeddings::CreateEmbeddingRequestArgs};
+use rig::client::Nothing;
+use rig::embeddings::EmbeddingModel;
+use rig::prelude::EmbeddingsClient;
+use rig::providers::ollama;
 
+const DEFAULT_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_EMBEDDING_MODEL: &str = "nomic-embed-text:latest";
+const NOMIC_EMBED_DIMS: usize = 768;
 
-/// Service for generating embeddings using OpenAI-compatible APIs (like Ollama)
+/// Service for generating embeddings using Ollama via the Rig framework.
 pub struct Embedder {
-    client: Client<OpenAIConfig>,
-    embedding_model: String,
+    model: ollama::EmbeddingModel,
+    model_name: String,
 }
 
-/// Initialize a new embedding service configured for Ollama
 impl Default for Embedder {
     fn default() -> Self {
-        // Configure for local Ollama instance
-        let api_base = "http://localhost:11434/v1";
-        let api_key = "ollama"; // Required but ignored by Ollama
-
-        let config = OpenAIConfig::new()
-            .with_api_key(api_key)
-            .with_api_base(api_base);
-
-        let client = Client::with_config(config);
-
-        Self {
-            client,
-            embedding_model: DEFAULT_EMBEDDING_MODEL.to_string(),
-        }
+        Self::with_config(DEFAULT_API_BASE, DEFAULT_EMBEDDING_MODEL)
     }
 }
 
 impl Embedder {
-    /// Create a new embedding service configured for Ollama by default
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Create a new embedding service with custom configuration
-    pub fn with_config(api_base: &str, api_key: &str, embedding_model: &str) -> Self {
-        let config = OpenAIConfig::new()
-            .with_api_key(api_key)
-            .with_api_base(api_base);
+    /// Create a new embedding service with custom Ollama URL and model.
+    pub fn with_config(api_base: &str, embedding_model: &str) -> Self {
+        let client = ollama::Client::builder()
+            .api_key(Nothing)
+            .base_url(api_base)
+            .build()
+            .expect("failed to build Ollama client");
 
-        let client = Client::with_config(config);
+        let model = client.embedding_model_with_ndims(embedding_model, NOMIC_EMBED_DIMS);
 
         Self {
-            client,
-            embedding_model: embedding_model.to_string(),
+            model,
+            model_name: embedding_model.to_string(),
         }
     }
 
-    /// Generate an embedding for a single text
+    /// Generate an embedding for a single text.
     pub async fn generate_embedding(&self, text: &str) -> Result<Vec<f32>> {
-        let request = CreateEmbeddingRequestArgs::default()
-            .model(&self.embedding_model)
-            .input([text])
-            .build()
-            .map_err(|e| anyhow!("Failed to build embedding request: {}", e))?;
-
-        let response = self
-            .client
-            .embeddings()
-            .create(request)
+        let embedding = self
+            .model
+            .embed_text(text)
             .await
             .map_err(|e| anyhow!("Failed to create embedding: {}", e))?;
 
-        if response.data.is_empty() {
-            return Err(anyhow!("No embedding data returned"));
-        }
-
-        Ok(response.data[0].embedding.clone())
+        Ok(embedding.vec.into_iter().map(|v| v as f32).collect())
     }
 
-    /// Generate embeddings for multiple texts in a single request
+    /// Generate embeddings for multiple texts in a single request.
     pub async fn generate_embeddings(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
         if texts.is_empty() {
             return Ok(vec![]);
         }
 
-        // Convert Vec<String> to Vec<&str> for compatibility
-        let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
-
-        let request = CreateEmbeddingRequestArgs::default()
-            .model(&self.embedding_model)
-            .input(text_refs)
-            .build()
-            .map_err(|e| anyhow!("Failed to build embedding request: {}", e))?;
-
-        let response = self
-            .client
-            .embeddings()
-            .create(request)
+        let embeddings = self
+            .model
+            .embed_texts(texts.to_vec())
             .await
             .map_err(|e| anyhow!("Failed to create embeddings: {}", e))?;
 
-        if response.data.len() != texts.len() {
+        if embeddings.len() != texts.len() {
             return Err(anyhow!(
                 "Expected {} embeddings, got {}",
                 texts.len(),
-                response.data.len()
+                embeddings.len()
             ));
         }
 
-        // Sort by index to ensure correct order
-        let mut data = response.data;
-        data.sort_by_key(|d| d.index);
-
-        Ok(data.into_iter().map(|d| d.embedding).collect())
+        Ok(embeddings
+            .into_iter()
+            .map(|e| e.vec.into_iter().map(|v| v as f32).collect())
+            .collect())
     }
 
-    /// Test the connection to the embedding service
+    /// Test the connection to the embedding service.
     pub async fn test_connection(&self) -> Result<()> {
         self.generate_embedding("test").await?;
         Ok(())
     }
 
-    /// Get the embedding model being used
+    /// Get the embedding model being used.
     pub fn get_model(&self) -> &str {
-        &self.embedding_model
+        &self.model_name
     }
 }
 
@@ -132,8 +102,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_custom_config() {
-        let service =
-            Embedder::with_config("http://localhost:11434/v1", "test-key", "custom-model");
+        let service = Embedder::with_config("http://localhost:11434", "custom-model");
         assert_eq!(service.get_model(), "custom-model");
     }
 
@@ -155,9 +124,8 @@ mod tests {
             Ok(embedding) => {
                 assert!(!embedding.is_empty());
                 assert!(embedding.len() > 100); // nomic-embed-text has 768 dimensions
-                println!("✅ Generated embedding with {} dimensions", embedding.len());
+                println!("Generated embedding with {} dimensions", embedding.len());
 
-                // Check if vector is normalized (common for embedding models)
                 let magnitude: f32 = embedding.iter().map(|&x| x * x).sum::<f32>().sqrt();
                 assert!(magnitude > 0.0);
                 println!("   Vector magnitude: {:.6}", magnitude);
@@ -194,12 +162,10 @@ mod tests {
                     println!("   Embedding {}: {} dimensions", i, embedding.len());
                 }
 
-                // Test similarity between related concepts
                 if embeddings.len() >= 2 {
-                    let emb1 = &embeddings[0]; // Combat rules
-                    let emb2 = &embeddings[1]; // Movement mechanics
+                    let emb1 = &embeddings[0];
+                    let emb2 = &embeddings[1];
 
-                    // Simple cosine similarity
                     let dot_product: f32 = emb1.iter().zip(emb2.iter()).map(|(a, b)| a * b).sum();
                     let norm1: f32 = emb1.iter().map(|x| x * x).sum::<f32>().sqrt();
                     let norm2: f32 = emb2.iter().map(|x| x * x).sum::<f32>().sqrt();
@@ -209,11 +175,10 @@ mod tests {
                         "   Similarity between 'combat' and 'movement': {:.4}",
                         similarity
                     );
-                    // Should have some similarity since both are game mechanics
                     assert!(similarity > 0.0);
                 }
 
-                println!("✅ Generated {} embeddings successfully", embeddings.len());
+                println!("Generated {} embeddings successfully", embeddings.len());
             }
             Err(e) => {
                 panic!("Multiple embeddings generation failed: {}", e);
@@ -233,9 +198,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_service_configuration() {
-        let custom_service =
-            Embedder::with_config("http://localhost:11434/v1", "test-key", "custom-model");
-
+        let custom_service = Embedder::with_config("http://localhost:11434", "custom-model");
         assert_eq!(custom_service.get_model(), "custom-model");
     }
 }

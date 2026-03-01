@@ -7,11 +7,10 @@ use crate::{
     AppState,
     db::chat,
     handlers::{HttpCreated, HttpError, HttpOk},
-    llm::ChatMessage,
     models::{
         ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionId, ChatSessionSummary,
-        ContextSource, CreateChatSessionRequest, GameId, MessageRole, PaginatedResponse,
-        SimilaritySearchRequest, UpdateChatSessionRequest,
+        ContextSource, CreateChatSessionRequest, EmbeddingSourceType, GameId, MessageRole,
+        PaginatedResponse, SimilaritySearchRequest, UpdateChatSessionRequest,
     },
 };
 
@@ -304,69 +303,30 @@ pub async fn chat_with_rules(
         })
         .collect();
 
-    let context_text = if search_results.is_empty() {
-        "No specific rules found for this question.".to_string()
-    } else {
-        search_results
-            .iter()
-            .map(|result| {
-                let source_label =
-                    if result.source_type == crate::models::EmbeddingSourceType::HouseRule {
-                        "House Rule"
-                    } else {
-                        "Official Rule"
-                    };
-                format!("[{}]: {}", source_label, result.chunk_text)
-            })
-            .collect::<Vec<_>>()
-            .join("\n\n")
-    };
+    // Build context chunks for the agent
+    let context_chunks: Vec<_> = search_results
+        .iter()
+        .map(|result| crate::agents::ContextChunk {
+            text: result.chunk_text.clone(),
+            source_label: if result.source_type == EmbeddingSourceType::HouseRule {
+                "House Rule"
+            } else {
+                "Official Rule"
+            },
+        })
+        .collect();
 
-    // Get recent message history for better context
-    let recent_messages = session_history
+    // Build chat history as (role, content) pairs
+    let chat_history: Vec<(String, String)> = session_history
         .messages
         .iter()
-        .rev()
-        .take(6) // Last 6 messages (3 exchanges)
-        .rev()
-        .map(|msg| {
-            let chat_msg = crate::llm::ChatMessage::from(msg);
-            format!("{}: {}", chat_msg.role, chat_msg.content)
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+        .map(|msg| (msg.role.as_str().to_string(), msg.content.clone()))
+        .collect();
 
-    // 6. Send to LLM API with context
-    let system_prompt = format!(
-        "You are a helpful assistant that explains board game rules. Use the following game rules to answer questions accurately and clearly. If the rules don't contain enough information to answer the question, say so honestly.
-
-Game Rules Context:
-{}
-
-Conversation History:
-{}
-
-Instructions:
-- Answer based on the provided rules context
-- Be concise but thorough
-- If rules are unclear or missing, acknowledge this
-- Use examples when helpful
-- Focus on practical gameplay guidance",
-        context_text,
-        recent_messages,
-    );
-
+    // 6. Delegate to the rules chat agent
     let assistant_response = app_state
-        .llm()
-        .chat_completion(
-            vec![ChatMessage {
-                role: "user".to_string(),
-                content: chat_request.message.clone(),
-            }],
-            Some(system_prompt),
-            Some(512), // Reasonable response length
-            Some(0.7), // Balanced creativity/consistency
-        )
+        .rules_agent()
+        .answer(&chat_request.message, &context_chunks, &chat_history)
         .await
         .map_err(|e| {
             slog::error!(rqctx.log, "Failed to generate LLM response"; "error" => %e);
