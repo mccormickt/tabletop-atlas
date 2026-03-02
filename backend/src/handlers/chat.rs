@@ -9,8 +9,8 @@ use crate::{
     handlers::{HttpCreated, HttpError, HttpOk},
     models::{
         ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionId, ChatSessionSummary,
-        ContextSource, CreateChatSessionRequest, EmbeddingSourceType, GameId, MessageRole,
-        PaginatedResponse, SimilaritySearchRequest, UpdateChatSessionRequest,
+        ContextSource, CreateChatSessionRequest, GameId, MessageRole, PaginatedResponse,
+        SimilaritySearchRequest, UpdateChatSessionRequest,
     },
 };
 
@@ -63,7 +63,6 @@ pub async fn list_chat_sessions(
     let query = query.into_inner();
     let db = app_state.db();
 
-    // Parse game_id from string
     let game_id: GameId = query
         .game_id
         .parse()
@@ -184,7 +183,6 @@ pub async fn search_rules(
         .await
         .map_err(|e| internal_error(format!("Failed to generate query embedding: {}", e)))?;
 
-    // Search using database layer directly
     let similarity_request = SimilaritySearchRequest {
         game_id,
         query_embedding,
@@ -262,22 +260,51 @@ pub async fn chat_with_rules(
         internal_error("Failed to save message".to_string())
     })?;
 
-    // 3. Generate embedding for user's question
+    // 3. Build GameRulesIndex for dynamic_context retrieval
+    let index = crate::agents::GameRulesIndex::new(
+        app_state.embedder().model_arc(),
+        db.clone(),
+        game_id,
+        include_house_rules,
+    );
+
+    // 4. Build chat history, truncated to last 6 messages
+    let messages = &session_history.messages;
+    let truncated = if messages.len() > 6 {
+        &messages[messages.len() - 6..]
+    } else {
+        messages
+    };
+    let chat_history: Vec<(MessageRole, String)> = truncated
+        .iter()
+        .map(|msg| (msg.role.clone(), msg.content.clone()))
+        .collect();
+
+    // 5. Agent handles retrieval + response via dynamic_context
+    let assistant_response = app_state
+        .rules_agent()
+        .answer(&chat_request.message, index, &chat_history)
+        .await
+        .map_err(|e| {
+            slog::error!(rqctx.log, "Failed to generate LLM response"; "error" => %e);
+            internal_error("Failed to generate response".to_string())
+        })?;
+
+    // 6. Separate search for context_sources (API response metadata)
     let query_embedding = app_state
         .embedder()
         .generate_embedding(&chat_request.message)
         .await
         .map_err(|e| {
-            slog::error!(rqctx.log, "Failed to generate query embedding"; "error" => %e);
-            internal_error("Failed to process question".to_string())
+            slog::error!(rqctx.log, "Failed to generate query embedding for context"; "error" => %e);
+            internal_error("Failed to generate context sources".to_string())
         })?;
 
-    // 4. Search for relevant rule chunks using similarity search (filtered by house rules setting)
     let similarity_request = SimilaritySearchRequest {
         game_id,
         query_embedding,
         similarity_threshold: 0.0,
-        limit: 10, // Get top 10 most relevant chunks
+        limit: 10,
     };
 
     let search_results = crate::db::embeddings::similarity_search_filtered(
@@ -287,11 +314,10 @@ pub async fn chat_with_rules(
     )
     .await
     .map_err(|e| {
-        slog::error!(rqctx.log, "Failed to search embeddings"; "error" => %e);
+        slog::error!(rqctx.log, "Failed to search embeddings for context"; "error" => %e);
         internal_error("Failed to search rules".to_string())
     })?;
 
-    // 5. Prepare context with relevant rules
     let context_sources: Vec<ContextSource> = search_results
         .iter()
         .map(|result| ContextSource {
@@ -302,36 +328,6 @@ pub async fn chat_with_rules(
             metadata: result.metadata.clone(),
         })
         .collect();
-
-    // Build context chunks for the agent
-    let context_chunks: Vec<_> = search_results
-        .iter()
-        .map(|result| crate::agents::ContextChunk {
-            text: result.chunk_text.clone(),
-            source_label: if result.source_type == EmbeddingSourceType::HouseRule {
-                "House Rule"
-            } else {
-                "Official Rule"
-            },
-        })
-        .collect();
-
-    // Build chat history as (role, content) pairs
-    let chat_history: Vec<(String, String)> = session_history
-        .messages
-        .iter()
-        .map(|msg| (msg.role.as_str().to_string(), msg.content.clone()))
-        .collect();
-
-    // 6. Delegate to the rules chat agent
-    let assistant_response = app_state
-        .rules_agent()
-        .answer(&chat_request.message, &context_chunks, &chat_history)
-        .await
-        .map_err(|e| {
-            slog::error!(rqctx.log, "Failed to generate LLM response"; "error" => %e);
-            internal_error("Failed to generate response".to_string())
-        })?;
 
     // 7. Save assistant response to database
     let context_chunk_ids: Vec<i64> = search_results.iter().map(|r| r.id).collect();

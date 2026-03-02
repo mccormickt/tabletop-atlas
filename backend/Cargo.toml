@@ -21,9 +21,8 @@ http.workspace = true
 mime_guess.workspace = true
 include_dir.workspace = true
 clap.workspace = true
-pdf-extract.workspace = true
 sqlite-vec.workspace = true
-rig-core = "0.31"
+rig-core = { version = "0.31", features = ["derive", "pdf"] }
 jsonwebtoken.workspace = true
 sha2.workspace = true
 hex.workspace = true

@@ -1,3 +1,7 @@
+use anyhow::{Context, Result};
+use rig::client::Nothing;
+use rig::providers::ollama;
+
 /// Configuration for Ollama LLM and embedding services.
 ///
 /// Resolved by clap with priority: CLI arg > env var > hardcoded default.
@@ -18,5 +22,14 @@ impl OllamaConfig {
                 .unwrap()
                 .clone(),
         }
+    }
+
+    /// Build a shared Ollama client from this configuration.
+    pub fn build_client(&self) -> Result<ollama::Client> {
+        ollama::Client::builder()
+            .api_key(Nothing)
+            .base_url(&self.api_base)
+            .build()
+            .context("failed to build Ollama client")
     }
 }

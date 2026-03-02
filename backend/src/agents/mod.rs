@@ -1,3 +1,5 @@
+mod game_rules_index;
 mod rules_chat;
 
-pub use rules_chat::{ContextChunk, RulesChatAgent};
+pub use game_rules_index::GameRulesIndex;
+pub use rules_chat::RulesChatAgent;

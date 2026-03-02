@@ -1,44 +1,37 @@
+use std::sync::Arc;
+
 use anyhow::{Result, anyhow};
-use rig::client::Nothing;
 use rig::embeddings::EmbeddingModel;
-use rig::prelude::EmbeddingsClient;
-use rig::providers::ollama;
 
-const DEFAULT_API_BASE: &str = "http://localhost:11434";
-const DEFAULT_EMBEDDING_MODEL: &str = "nomic-embed-text:latest";
-const NOMIC_EMBED_DIMS: usize = 768;
-
-/// Service for generating embeddings using Ollama via the Rig framework.
-pub struct Embedder {
-    model: ollama::EmbeddingModel,
+/// Service for generating embeddings via the Rig framework.
+///
+/// Generic over `M` so callers can swap in test doubles. In production,
+/// `M = ollama::EmbeddingModel`.
+pub struct Embedder<M: EmbeddingModel> {
+    model: Arc<M>,
     model_name: String,
 }
 
-impl Default for Embedder {
-    fn default() -> Self {
-        Self::with_config(DEFAULT_API_BASE, DEFAULT_EMBEDDING_MODEL)
-    }
-}
-
-impl Embedder {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Create a new embedding service with custom Ollama URL and model.
-    pub fn with_config(api_base: &str, embedding_model: &str) -> Self {
-        let client = ollama::Client::builder()
-            .api_key(Nothing)
-            .base_url(api_base)
-            .build()
-            .expect("failed to build Ollama client");
-
-        let model = client.embedding_model_with_ndims(embedding_model, NOMIC_EMBED_DIMS);
-
+impl<M: EmbeddingModel> Embedder<M> {
+    pub fn new(model: M, model_name: String) -> Self {
         Self {
-            model,
-            model_name: embedding_model.to_string(),
+            model: Arc::new(model),
+            model_name,
         }
+    }
+
+    /// Shared reference to the underlying model.
+    pub fn model(&self) -> &M {
+        &self.model
+    }
+
+    /// Arc-wrapped model for sharing with GameRulesIndex and EmbeddingsBuilder.
+    pub fn model_arc(&self) -> Arc<M> {
+        self.model.clone()
+    }
+
+    pub fn model_name(&self) -> &str {
+        &self.model_name
     }
 
     /// Generate an embedding for a single text.
@@ -47,12 +40,12 @@ impl Embedder {
             .model
             .embed_text(text)
             .await
-            .map_err(|e| anyhow!("Failed to create embedding: {}", e))?;
+            .map_err(|e| anyhow!("Failed to create embedding: {e}"))?;
 
         Ok(embedding.vec.into_iter().map(|v| v as f32).collect())
     }
 
-    /// Generate embeddings for multiple texts in a single request.
+    /// Generate embeddings for multiple texts in a single call.
     pub async fn generate_embeddings(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
         if texts.is_empty() {
             return Ok(vec![]);
@@ -62,7 +55,7 @@ impl Embedder {
             .model
             .embed_texts(texts.to_vec())
             .await
-            .map_err(|e| anyhow!("Failed to create embeddings: {}", e))?;
+            .map_err(|e| anyhow!("Failed to create embeddings: {e}"))?;
 
         if embeddings.len() != texts.len() {
             return Err(anyhow!(
@@ -83,36 +76,50 @@ impl Embedder {
         self.generate_embedding("test").await?;
         Ok(())
     }
-
-    /// Get the embedding model being used.
-    pub fn get_model(&self) -> &str {
-        &self.model_name
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::OllamaConfig;
+    use rig::prelude::EmbeddingsClient;
+
+    fn test_config() -> OllamaConfig {
+        OllamaConfig {
+            api_base: "http://localhost:11434".to_string(),
+            llm_model: "gpt-oss:latest".to_string(),
+            embedding_model: "nomic-embed-text:latest".to_string(),
+        }
+    }
+
+    const NOMIC_EMBED_DIMS: usize = 768;
 
     #[tokio::test]
     async fn test_embedding_service_creation() {
-        let service = Embedder::new();
-        assert_eq!(service.get_model(), "nomic-embed-text:latest");
+        let config = test_config();
+        let client = config.build_client().unwrap();
+        let model = client.embedding_model_with_ndims(&config.embedding_model, NOMIC_EMBED_DIMS);
+        let service = Embedder::new(model, config.embedding_model.clone());
+        assert_eq!(service.model_name(), "nomic-embed-text:latest");
     }
 
     #[tokio::test]
-    async fn test_custom_config() {
-        let service = Embedder::with_config("http://localhost:11434", "custom-model");
-        assert_eq!(service.get_model(), "custom-model");
+    async fn test_custom_model() {
+        let config = test_config();
+        let client = config.build_client().unwrap();
+        let model = client.embedding_model_with_ndims("custom-model", NOMIC_EMBED_DIMS);
+        let service = Embedder::new(model, "custom-model".to_string());
+        assert_eq!(service.model_name(), "custom-model");
     }
 
     // Note: These tests require a running Ollama instance
-    // They will be skipped if Ollama is not available
     #[tokio::test]
     async fn test_generate_single_embedding() {
-        let service = Embedder::new();
+        let config = test_config();
+        let client = config.build_client().unwrap();
+        let model = client.embedding_model_with_ndims(&config.embedding_model, NOMIC_EMBED_DIMS);
+        let service = Embedder::new(model, config.embedding_model.clone());
 
-        // Test connection first
         if service.test_connection().await.is_err() {
             println!("Skipping embedding test - Ollama not available");
             return;
@@ -123,7 +130,7 @@ mod tests {
         match result {
             Ok(embedding) => {
                 assert!(!embedding.is_empty());
-                assert!(embedding.len() > 100); // nomic-embed-text has 768 dimensions
+                assert!(embedding.len() > 100);
                 println!("Generated embedding with {} dimensions", embedding.len());
 
                 let magnitude: f32 = embedding.iter().map(|&x| x * x).sum::<f32>().sqrt();
@@ -138,9 +145,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_generate_multiple_embeddings() {
-        let service = Embedder::new();
+        let config = test_config();
+        let client = config.build_client().unwrap();
+        let model = client.embedding_model_with_ndims(&config.embedding_model, NOMIC_EMBED_DIMS);
+        let service = Embedder::new(model, config.embedding_model.clone());
 
-        // Test connection first
         if service.test_connection().await.is_err() {
             println!("Skipping embedding test - Ollama not available");
             return;
@@ -188,17 +197,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_empty_input() {
-        let service = Embedder::new();
+        let config = test_config();
+        let client = config.build_client().unwrap();
+        let model = client.embedding_model_with_ndims(&config.embedding_model, NOMIC_EMBED_DIMS);
+        let service = Embedder::new(model, config.embedding_model.clone());
         let empty_texts: Vec<String> = vec![];
 
         let result = service.generate_embeddings(&empty_texts).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap().len(), 0);
-    }
-
-    #[tokio::test]
-    async fn test_service_configuration() {
-        let custom_service = Embedder::with_config("http://localhost:11434", "custom-model");
-        assert_eq!(custom_service.get_model(), "custom-model");
     }
 }

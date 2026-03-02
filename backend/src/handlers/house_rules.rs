@@ -2,6 +2,8 @@ use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
+use rig::embeddings::EmbeddingModel;
+
 use crate::{
     AppState,
     auth::middleware::require_auth,
@@ -18,9 +20,9 @@ use crate::{
 };
 
 /// Embed a house rule into the vector database
-async fn embed_house_rule(
+async fn embed_house_rule<M: EmbeddingModel>(
     log: &slog::Logger,
-    embedder: &Embedder,
+    embedder: &Embedder<M>,
     db: &crate::db::Database,
     house_rule: &HouseRule,
 ) -> Result<(), HttpError> {
