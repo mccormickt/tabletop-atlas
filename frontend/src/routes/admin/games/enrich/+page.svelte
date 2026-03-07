@@ -166,8 +166,8 @@
 					</p>
 					{#if enrichResult.errors.length > 0}
 						<p class="text-destructive">
-							<span class="font-semibold">{enrichResult.errors.length.toLocaleString()}</span> games
-							had errors
+							<span class="font-semibold">{enrichResult.errors.length.toLocaleString()}</span> games had
+							errors
 						</p>
 						<div class="bg-destructive/10 mt-2 max-h-48 overflow-auto rounded p-2">
 							{#each enrichResult.errors as err (err.gameId)}
