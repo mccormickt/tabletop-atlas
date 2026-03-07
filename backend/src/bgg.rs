@@ -133,7 +133,7 @@ impl BggClient {
             request = request.header("Authorization", format!("Bearer {}", token));
         }
 
-        let response = request
+        let response: reqwest::Response = request
             .send()
             .await
             .map_err(|e| BggApiError::NetworkError(e.to_string()))?;
@@ -176,7 +176,7 @@ impl Default for BggClient {
 /// Parse BGG XML API response into BggGameData structs
 fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
     let mut reader = Reader::from_str(xml);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
 
     let mut games = Vec::new();
     let mut current_game: Option<BggGameDataBuilder> = None;
@@ -293,7 +293,7 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
             }
             Ok(Event::Text(e)) => {
                 if let Some(ref mut game) = current_game {
-                    let text = e.unescape().unwrap_or_default().to_string();
+                    let text = e.decode().unwrap_or_default().to_string();
                     // We need to track which element we're in
                     // This is handled by the element stack approach below
                     if !text.is_empty() {

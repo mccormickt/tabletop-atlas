@@ -3,8 +3,9 @@
 /uploads/*
 !/uploads/.gitkeep
 *.db
-/.playwright
-/.playwright-mcp
+**/.playwright
+**/.playwright-mcp
+**/.playwright-cli
 frontend/playwright-report/
 frontend/test-results/
 frontend/blob-report/

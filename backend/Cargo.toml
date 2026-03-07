@@ -22,7 +22,7 @@ mime_guess.workspace = true
 include_dir.workspace = true
 clap.workspace = true
 sqlite-vec.workspace = true
-rig-core = { version = "0.31", features = ["derive", "pdf"] }
+rig-core = { version = "0.32", features = ["derive", "pdf"] }
 jsonwebtoken.workspace = true
 sha2.workspace = true
 hex.workspace = true
