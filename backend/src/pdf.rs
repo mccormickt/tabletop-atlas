@@ -1,6 +1,5 @@
 use anyhow::{Result, anyhow};
-use pdf_extract::extract_text;
-use std::path::Path;
+use rig::loaders::PdfFileLoader;
 
 /// Configuration for text chunking
 const CHUNK_SIZE: usize = 1000; // characters per chunk
@@ -17,10 +16,20 @@ impl Processor {
         Self
     }
 
-    /// Extract text from a PDF file
-    pub async fn extract_text_from_pdf(&self, pdf_path: &Path) -> Result<String> {
-        let text = extract_text(pdf_path)
-            .map_err(|e| anyhow!("Failed to extract text from PDF: {}", e))?;
+    /// Extract text directly from PDF bytes using rig's PdfFileLoader.
+    pub fn extract_text_from_bytes(&self, pdf_bytes: &[u8]) -> Result<String> {
+        let text: String = PdfFileLoader::from_bytes(pdf_bytes.to_vec())
+            .load()
+            .ignore_errors()
+            .by_page()
+            .ignore_errors()
+            .into_iter()
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        if text.trim().is_empty() {
+            return Err(anyhow!("No text could be extracted from the PDF"));
+        }
 
         Ok(text)
     }
@@ -263,13 +272,9 @@ impl Processor {
         overlap
     }
 
-    /// Process a PDF file and return extracted text and chunks
-    /// This is a pure processing function that doesn't touch the database or embeddings
-    pub async fn process_pdf(&self, pdf_path: &Path) -> Result<ProcessedPdf> {
-        // Extract text from PDF
-        let text = self.extract_text_from_pdf(pdf_path).await?;
-
-        // Chunk the text
+    /// Process PDF bytes and return extracted text and chunks.
+    pub fn process_pdf_bytes(&self, pdf_bytes: &[u8]) -> Result<ProcessedPdf> {
+        let text = self.extract_text_from_bytes(pdf_bytes)?;
         let chunks = self.chunk_text(&text);
 
         Ok(ProcessedPdf {
@@ -349,21 +354,6 @@ mod tests {
 
         assert!(filename.starts_with("game_123_"));
         assert!(filename.ends_with(".pdf"));
-    }
-
-    #[tokio::test]
-    async fn test_process_pdf_with_nonexistent_file() {
-        let service = Processor::new();
-
-        // Test with nonexistent file should return error
-        match service.process_pdf(Path::new("nonexistent.pdf")).await {
-            Ok(_) => {
-                panic!("Expected error for nonexistent file");
-            }
-            Err(_) => {
-                // Expected - file doesn't exist
-            }
-        }
     }
 
     #[test]

@@ -79,9 +79,9 @@ pub async fn upload_rules_pdf(
     fs::write(&file_path, body_bytes)
         .map_err(|e| internal_error(format!("Failed to save file: {}", e)))?;
 
-    // Process PDF: extract text and create chunks
+    // Extract text directly from bytes (no disk read needed for extraction)
     let pdf_service = Processor::new();
-    let processed_pdf = pdf_service.process_pdf(&file_path).await.map_err(|e| {
+    let processed_pdf = pdf_service.process_pdf_bytes(body_bytes).map_err(|e| {
         let _ = fs::remove_file(&file_path);
         internal_error(format!("Failed to extract PDF text: {}", e))
     })?;
@@ -108,7 +108,7 @@ pub async fn upload_rules_pdf(
                 "chunk_size": chunk.len(),
                 "total_chunks": processed_pdf.chunks.len(),
                 "processing_timestamp": chrono::Utc::now().to_rfc3339(),
-                "embedding_model": app_state.embedder().get_model()
+                "embedding_model": app_state.embedder().model_name()
             });
 
             CreateEmbeddingRequest {

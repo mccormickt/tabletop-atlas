@@ -21,10 +21,8 @@ http.workspace = true
 mime_guess.workspace = true
 include_dir.workspace = true
 clap.workspace = true
-pdf-extract.workspace = true
 sqlite-vec.workspace = true
-# OpenAI-compatible API client (Ollama) - only chat-completion and embedding APIs
-async-openai = { version = "0.32", default-features = false, features = ["rustls", "chat-completion", "embedding"] }
+rig-core = { version = "0.31", features = ["derive", "pdf"] }
 jsonwebtoken.workspace = true
 sha2.workspace = true
 hex.workspace = true

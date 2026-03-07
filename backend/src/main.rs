@@ -9,28 +9,32 @@ use rusqlite::{Connection, ffi::sqlite3_auto_extension};
 use rusqlite_migration::{M, Migrations};
 use sqlite_vec::sqlite3_vec_init;
 
+mod agents;
 mod auth;
 mod bgg;
 mod config;
 mod db;
 mod embeddings;
 mod handlers;
-mod llm;
 mod models;
 mod pdf;
 mod tools;
 
+use agents::RulesChatAgent;
 use config::OllamaConfig;
 use db::Database;
 use embeddings::Embedder;
 use handlers::static_files;
 use handlers::*;
-use llm::LLMClient;
+use rig::prelude::{CompletionClient as _, EmbeddingsClient};
+use rig::providers::ollama;
+
+const NOMIC_EMBED_DIMS: usize = 768;
 
 pub struct AppState {
     db: Database,
-    embeddings: Embedder,
-    llm: LLMClient,
+    embeddings: Embedder<ollama::EmbeddingModel>,
+    rules_agent: RulesChatAgent<ollama::CompletionModel>,
 }
 
 impl AppState {
@@ -95,18 +99,18 @@ impl AppState {
 
         migrations.to_latest(&mut db)?;
 
+        // Build a single shared Ollama client for all LLM/embedding services
+        let client = ollama_config.build_client()?;
+
+        // Create models from the client (client is borrowed, not moved)
+        let embedding_model =
+            client.embedding_model_with_ndims(&ollama_config.embedding_model, NOMIC_EMBED_DIMS);
+        let completion_model = client.completion_model(&ollama_config.llm_model);
+
         Ok(Self {
             db: Database::new(db),
-            embeddings: Embedder::with_config(
-                &ollama_config.api_base,
-                &ollama_config.api_key,
-                &ollama_config.embedding_model,
-            ),
-            llm: LLMClient::with_config(
-                &ollama_config.api_base,
-                &ollama_config.api_key,
-                &ollama_config.llm_model,
-            ),
+            embeddings: Embedder::new(embedding_model, ollama_config.embedding_model.clone()),
+            rules_agent: RulesChatAgent::new(completion_model),
         })
     }
 
@@ -114,12 +118,12 @@ impl AppState {
         self.db.clone()
     }
 
-    pub fn embedder(&self) -> &Embedder {
+    pub fn embedder(&self) -> &Embedder<ollama::EmbeddingModel> {
         &self.embeddings
     }
 
-    pub fn llm(&self) -> &LLMClient {
-        &self.llm
+    pub fn rules_agent(&self) -> &RulesChatAgent<ollama::CompletionModel> {
+        &self.rules_agent
     }
 }
 
@@ -158,18 +162,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .short('u')
                 .long("ollama-url")
                 .env("OLLAMA_URL")
-                .default_value("http://localhost:11434/v1")
-                .help("Ollama-compatible API base URL")
+                .default_value("http://localhost:11434")
+                .help("Ollama API base URL")
                 .value_name("URL"),
-        )
-        .arg(
-            Arg::new("ollama-api-key")
-                .long("ollama-api-key")
-                .env("OLLAMA_API_KEY")
-                .default_value("ollama")
-                .hide_env_values(true)
-                .help("API key for the Ollama-compatible API")
-                .value_name("KEY"),
         )
         .arg(
             Arg::new("llm-model")
@@ -303,15 +298,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api = create_api_description()?;
 
     let app_state = AppState::new("atlas.db", &ollama_config)?;
+
+    // Best-effort connectivity check — server starts regardless, but log reflects reality
+    match app_state.embedder().test_connection().await {
+        Ok(()) => slog::info!(log, "Ollama API connected";
+            "api_base" => &ollama_config.api_base,
+            "llm_model" => &ollama_config.llm_model,
+            "embedding_model" => &ollama_config.embedding_model,
+        ),
+        Err(e) => slog::warn!(log, "Ollama API configured but not reachable";
+            "api_base" => &ollama_config.api_base,
+            "llm_model" => &ollama_config.llm_model,
+            "embedding_model" => &ollama_config.embedding_model,
+            "error" => %e,
+        ),
+    }
+
     let server = HttpServerStarter::new(&config_dropshot, api, app_state, &log)
         .map_err(|error| format!("failed to create server: {}", error))?
         .start();
-
-    slog::info!(log, "Ollama API configured";
-        "api_base" => &ollama_config.api_base,
-        "llm_model" => &ollama_config.llm_model,
-        "embedding_model" => &ollama_config.embedding_model,
-    );
     server.await?;
     Ok(())
 }
