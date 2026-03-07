@@ -94,7 +94,7 @@ impl OidcClient {
             ("grant_type", "authorization_code"),
         ];
 
-        let response = self
+        let response: reqwest::Response = self
             .http_client
             .post("https://oauth2.googleapis.com/token")
             .form(&params)
@@ -114,7 +114,7 @@ impl OidcClient {
     }
 
     pub async fn get_user_info(&self, access_token: &str) -> Result<GoogleUserInfo, String> {
-        let response = self
+        let response: reqwest::Response = self
             .http_client
             .get("https://www.googleapis.com/oauth2/v3/userinfo")
             .bearer_auth(access_token)
