@@ -36,4 +36,15 @@ test.describe('Tools Page', () => {
 		await expect(page.getByText('Game Setup')).toBeVisible({ timeout: 5_000 });
 		await expect(page.getByText('Number of Players')).toBeVisible();
 	});
+
+	test('new calculators appear in catalog', async ({ page }) => {
+		await page.goto('/tools');
+		await expect(page.getByRole('heading', { name: /game tools/i })).toBeVisible({
+			timeout: 10_000
+		});
+		await expect(page.getByText('Ticket to Ride Score Calculator')).toBeVisible({
+			timeout: 5_000
+		});
+		await expect(page.getByText('Wingspan Score Calculator')).toBeVisible();
+	});
 });

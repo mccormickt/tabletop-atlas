@@ -1,6 +1,7 @@
 <script lang="ts">
 	import IntegerInput from './inputs/IntegerInput.svelte';
 	import CounterInput from './inputs/CounterInput.svelte';
+	import SelectInput from './inputs/SelectInput.svelte';
 	import ScienceInput from './inputs/ScienceInput.svelte';
 	import type { ScoringCategory } from '$lib';
 
@@ -33,6 +34,8 @@
 		step={category.step ?? 1}
 		{onChange}
 	/>
+{:else if typeof category.inputType === 'object' && 'select' in category.inputType}
+	<SelectInput options={category.inputType.select.options} {value} {onChange} />
 {:else if category.inputType === 'science_symbols'}
 	<ScienceInput {onScienceChange} />
 {:else}

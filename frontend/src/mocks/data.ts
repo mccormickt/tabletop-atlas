@@ -435,6 +435,18 @@ export const mockToolsList = [
 		displayName: 'Carcassonne Score Calculator',
 		toolType: 'score_calculator',
 		playerRange: { min: 2, max: 5 }
+	},
+	{
+		id: 'ticket-to-ride-scorer',
+		displayName: 'Ticket to Ride Score Calculator',
+		toolType: 'score_calculator',
+		playerRange: { min: 2, max: 5 }
+	},
+	{
+		id: 'wingspan-scorer',
+		displayName: 'Wingspan Score Calculator',
+		toolType: 'score_calculator',
+		playerRange: { min: 1, max: 5 }
 	}
 ];
 
