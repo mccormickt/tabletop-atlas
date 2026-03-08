@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4](https://github.com/mccormickt/tabletop-atlas/compare/v0.1.3...v0.1.4) - 2026-03-08
+
+### Added
+
+- add Ticket to Ride and Wingspan score calculators ([#51](https://github.com/mccormickt/tabletop-atlas/pull/51))
+- migrate from async-openai to Rig framework ([#47](https://github.com/mccormickt/tabletop-atlas/pull/47))
+- move PDF upload to admin panel and add auth guards ([#41](https://github.com/mccormickt/tabletop-atlas/pull/41))
+- consolidate all env vars into clap CLI args ([#42](https://github.com/mccormickt/tabletop-atlas/pull/42))
+- consolidate all env vars into clap CLI args ([#40](https://github.com/mccormickt/tabletop-atlas/pull/40))
+
+### Other
+
+- *(deps)* update typescript and cargo packages ([#50](https://github.com/mccormickt/tabletop-atlas/pull/50))
+
 ## [0.1.3](https://github.com/mccormickt/tabletop-atlas/compare/v0.1.2...v0.1.3) - 2026-02-11
 
 ### Added
