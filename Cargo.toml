@@ -14,7 +14,7 @@ rusqlite = { version = "0.38.0", features = ["bundled"] }
 rusqlite_migration = "2.4.1"
 anyhow = "1.0.98"
 semver = "1.0"
-# HTTP client for API calls (using rustls to avoid OpenSSL dependency)
+# HTTP client for API calls (rustls with aws-lc-rs, the ecosystem default)
 reqwest = { version = "0.13", default-features = false, features = ["json", "form", "rustls"] }
 # JSON handling
 serde_json = "1.0"
