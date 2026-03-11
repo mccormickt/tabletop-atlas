@@ -86,14 +86,18 @@ pub async fn upload_rules_pdf(
         internal_error(format!("Failed to extract PDF text: {}", e))
     })?;
 
-    // Generate embeddings for all chunks
+    // Generate embeddings for all chunks (batched with retries)
     let embeddings = app_state
         .embedder()
         .generate_embeddings(&processed_pdf.chunks)
         .await
         .map_err(|e| {
             let _ = fs::remove_file(&file_path);
-            internal_error(format!("Failed to generate embeddings: {}", e))
+            internal_error(format!(
+                "Failed to generate embeddings for {} chunks: {}",
+                processed_pdf.chunks.len(),
+                e
+            ))
         })?;
 
     // Create embedding requests for database storage

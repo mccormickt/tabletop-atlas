@@ -306,7 +306,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "llm_model" => &ollama_config.llm_model,
             "embedding_model" => &ollama_config.embedding_model,
         ),
-        Err(e) => slog::warn!(log, "Ollama API configured but not reachable";
+        Err(e) => slog::warn!(log, "Ollama API not reachable — PDF uploads and chat will fail. \
+            Check that the Ollama server is running and accessible at the configured URL. \
+            Note: OLLAMA_URL should NOT include a /v1 suffix (e.g. http://host:11434, not http://host:11434/v1).";
             "api_base" => &ollama_config.api_base,
             "llm_model" => &ollama_config.llm_model,
             "embedding_model" => &ollama_config.embedding_model,

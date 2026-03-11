@@ -1,7 +1,15 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{Result, anyhow};
 use rig::embeddings::EmbeddingModel;
+
+/// Maximum number of texts to embed in a single API call.
+/// Keeps request/response sizes manageable for the Ollama server.
+const EMBED_BATCH_SIZE: usize = 50;
+
+/// Maximum retry attempts for transient failures.
+const MAX_RETRIES: u32 = 3;
 
 /// Service for generating embeddings via the Rig framework.
 ///
@@ -45,30 +53,80 @@ impl<M: EmbeddingModel> Embedder<M> {
         Ok(embedding.vec.into_iter().map(|v| v as f32).collect())
     }
 
-    /// Generate embeddings for multiple texts in a single call.
+    /// Embed a batch of texts with retry logic for transient failures.
+    async fn embed_batch_with_retry(&self, batch: Vec<String>) -> Result<Vec<Vec<f32>>> {
+        let mut last_err = None;
+
+        for attempt in 0..=MAX_RETRIES {
+            if attempt > 0 {
+                let backoff = Duration::from_secs(1 << attempt); // 2s, 4s, 8s
+                tokio::time::sleep(backoff).await;
+            }
+
+            match self.model.embed_texts(batch.clone()).await {
+                Ok(embeddings) => {
+                    return Ok(embeddings
+                        .into_iter()
+                        .map(|e| e.vec.into_iter().map(|v| v as f32).collect())
+                        .collect());
+                }
+                Err(e) => {
+                    let err_str = e.to_string();
+                    let is_transient = err_str.contains("error sending request")
+                        || err_str.contains("connection")
+                        || err_str.contains("timed out")
+                        || err_str.contains("reset by peer");
+
+                    if !is_transient || attempt == MAX_RETRIES {
+                        last_err = Some(e);
+                        break;
+                    }
+                    last_err = Some(e);
+                }
+            }
+        }
+
+        Err(anyhow!(
+            "Failed to create embeddings after {} retries: {}. \
+             Verify that the Ollama server is reachable and the embedding model is available.",
+            MAX_RETRIES,
+            last_err.unwrap()
+        ))
+    }
+
+    /// Generate embeddings for multiple texts, processing in batches with retries.
     pub async fn generate_embeddings(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
         if texts.is_empty() {
             return Ok(vec![]);
         }
 
-        let embeddings = self
-            .model
-            .embed_texts(texts.to_vec())
-            .await
-            .map_err(|e| anyhow!("Failed to create embeddings: {e}"))?;
+        let mut all_embeddings = Vec::with_capacity(texts.len());
 
-        if embeddings.len() != texts.len() {
-            return Err(anyhow!(
-                "Expected {} embeddings, got {}",
-                texts.len(),
-                embeddings.len()
-            ));
+        for (batch_idx, chunk) in texts.chunks(EMBED_BATCH_SIZE).enumerate() {
+            let batch_embeddings =
+                self.embed_batch_with_retry(chunk.to_vec())
+                    .await
+                    .map_err(|e| {
+                        anyhow!(
+                            "Embedding batch {}/{} failed: {e}",
+                            batch_idx + 1,
+                            texts.len().div_ceil(EMBED_BATCH_SIZE),
+                        )
+                    })?;
+
+            if batch_embeddings.len() != chunk.len() {
+                return Err(anyhow!(
+                    "Batch {}: expected {} embeddings, got {}",
+                    batch_idx + 1,
+                    chunk.len(),
+                    batch_embeddings.len()
+                ));
+            }
+
+            all_embeddings.extend(batch_embeddings);
         }
 
-        Ok(embeddings
-            .into_iter()
-            .map(|e| e.vec.into_iter().map(|v| v as f32).collect())
-            .collect())
+        Ok(all_embeddings)
     }
 
     /// Test the connection to the embedding service.
