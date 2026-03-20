@@ -126,6 +126,10 @@ export type {
 	BggParseError,
 	BggImportPreviewResponse,
 	BggImportResponse,
+	// User management types
+	UserListItem,
+	UpdateUserRoleRequest,
+	PaginatedResponse_for_UserListItem,
 	// Pagination types
 	PaginatedResponse_for_GameSummary,
 	PaginatedResponse_for_HouseRule,

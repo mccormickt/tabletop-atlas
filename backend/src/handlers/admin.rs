@@ -3,7 +3,10 @@ use crate::{
     auth::middleware::require_admin,
     bgg::BggClient,
     db::admin as admin_db,
-    handlers::{bad_request_error, internal_error, not_found_error, success_response},
+    db::users,
+    handlers::{
+        bad_request_error, forbidden_error, internal_error, not_found_error, success_response,
+    },
     models::Game,
     models::admin::{
         BggEnrichError, BggEnrichPreviewResponse, BggEnrichRequest, BggGameEnrichPreview,
@@ -11,8 +14,9 @@ use crate::{
         BggImportResponse, BggParseError, BulkEnrichPreviewResponse, BulkEnrichRequest,
         BulkEnrichResponse, EnrichmentStats, FieldChange, ParsedBggGame,
     },
+    models::{PaginatedResponse, UpdateUserRoleRequest, UserListItem},
 };
-use dropshot::{Path, RequestContext, TypedBody, UntypedBody, endpoint};
+use dropshot::{Path, Query, RequestContext, TypedBody, UntypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -48,6 +52,123 @@ pub async fn get_admin_stats(
 
     success_response(AdminDashboardStats { master_games_count })
 }
+
+// ============================================================================
+// User Management Endpoints
+// ============================================================================
+
+fn default_page() -> u32 {
+    1
+}
+fn default_limit() -> u32 {
+    20
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct UserSearchParams {
+    #[serde(default = "default_page")]
+    pub page: u32,
+    #[serde(default = "default_limit")]
+    pub limit: u32,
+    pub search: Option<String>,
+    pub role: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct UserIdPath {
+    pub id: i64,
+}
+
+/// List users with pagination, search, and role filter (admin only)
+#[endpoint {
+    method = GET,
+    path = "/api/admin/users"
+}]
+pub async fn list_admin_users(
+    rqctx: RequestContext<AppState>,
+    query: Query<UserSearchParams>,
+) -> Result<HttpOk<PaginatedResponse<UserListItem>>, HttpError> {
+    require_admin(&rqctx)?;
+
+    let params = query.into_inner();
+    let app_state = rqctx.context();
+    let db = app_state.db();
+
+    // Validate role filter if provided
+    if let Some(ref role) = params.role
+        && role != "admin"
+        && role != "user"
+    {
+        return Err(bad_request_error(format!(
+            "Invalid role filter: '{}'. Must be 'admin' or 'user'",
+            role
+        )));
+    }
+
+    let limit = params.limit.min(100);
+    let result = users::list_users(
+        &db,
+        params.page,
+        limit,
+        params.search.as_deref(),
+        params.role.as_deref(),
+    )
+    .await
+    .map_err(|e| internal_error(format!("Failed to list users: {}", e)))?;
+
+    success_response(result)
+}
+
+/// Update a user's role (admin only)
+#[endpoint {
+    method = PUT,
+    path = "/api/admin/users/{id}/role"
+}]
+pub async fn update_user_role(
+    rqctx: RequestContext<AppState>,
+    path: Path<UserIdPath>,
+    body: TypedBody<UpdateUserRoleRequest>,
+) -> Result<HttpOk<UserListItem>, HttpError> {
+    let admin = require_admin(&rqctx)?;
+
+    let target_user_id = path.into_inner().id;
+    let request = body.into_inner();
+    let app_state = rqctx.context();
+    let db = app_state.db();
+
+    // Validate role value
+    if request.role != "admin" && request.role != "user" {
+        return Err(bad_request_error(format!(
+            "Invalid role: '{}'. Must be 'admin' or 'user'",
+            request.role
+        )));
+    }
+
+    // Cannot change own role
+    if admin.user_id == target_user_id {
+        return Err(forbidden_error("Cannot change your own role".to_string()));
+    }
+
+    // The last-admin check is done atomically inside the transaction
+    let check_last_admin = request.role == "user";
+    let updated = users::update_user_role(&db, target_user_id, &request.role, check_last_admin)
+        .await
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Cannot demote the last remaining admin") {
+                bad_request_error("Cannot demote the last remaining admin".to_string())
+            } else {
+                internal_error(format!("Failed to update user role: {}", e))
+            }
+        })?
+        .ok_or_else(|| not_found_error(format!("User {} not found", target_user_id)))?;
+
+    success_response(updated)
+}
+
+// ============================================================================
+// BGG Import Endpoints
+// ============================================================================
 
 /// Preview BGG CSV import (shows what will be inserted/updated)
 #[endpoint {

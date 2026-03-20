@@ -90,5 +90,7 @@ export const handlers = [
 
 	// --- Admin ---
 	http.get('/api/admin/stats', () => HttpResponse.json(data.mockAdminStats)),
-	http.get('/api/admin/bgg/stats', () => HttpResponse.json(data.mockEnrichmentStats))
+	http.get('/api/admin/bgg/stats', () => HttpResponse.json(data.mockEnrichmentStats)),
+	http.get('/api/admin/users', () => HttpResponse.json(data.mockUsersPage)),
+	http.put('/api/admin/users/:id/role', () => HttpResponse.json(data.mockUsersPage.items[0]))
 ];

@@ -595,6 +595,22 @@ export type PaginatedResponse_for_HouseRule = {
 	totalPages: number;
 };
 
+export type UserListItem = {
+	createdAt: Date;
+	displayName?: string | null;
+	email: string;
+	id: number;
+	role: string;
+};
+
+export type PaginatedResponse_for_UserListItem = {
+	items: UserListItem[];
+	limit: number;
+	page: number;
+	total: number;
+	totalPages: number;
+};
+
 export type PlayParticipantInput = { isWinner: boolean; score?: number | null; userId: number };
 
 export type PlayerRange = { max: number; min: number };
@@ -739,6 +755,8 @@ export type UpdatePlayRequest = {
 	playedAt?: string | null;
 };
 
+export type UpdateUserRoleRequest = { role: string };
+
 export type UploadResponse = {
 	chunksProcessed?: number | null;
 	filePath?: string | null;
@@ -751,6 +769,17 @@ export interface ExecuteBggEnrichPathParams {
 }
 
 export interface PreviewBggEnrichPathParams {
+	id: number;
+}
+
+export interface ListAdminUsersQueryParams {
+	limit?: number;
+	page?: number;
+	role?: string | null;
+	search?: string | null;
+}
+
+export interface UpdateUserRolePathParams {
 	id: number;
 }
 
@@ -1065,6 +1094,34 @@ export class Api {
 			return this.request<AdminDashboardStats>({
 				path: `/api/admin/stats`,
 				method: 'GET',
+				...params
+			});
+		},
+		/**
+		 * List users with pagination, search, and role filter (admin only)
+		 */
+		listAdminUsers: (
+			{ query = {} }: { query?: ListAdminUsersQueryParams },
+			params: FetchParams = {}
+		) => {
+			return this.request<PaginatedResponse_for_UserListItem>({
+				path: `/api/admin/users`,
+				method: 'GET',
+				query,
+				...params
+			});
+		},
+		/**
+		 * Update a user's role (admin only)
+		 */
+		updateUserRole: (
+			{ path, body }: { path: UpdateUserRolePathParams; body: UpdateUserRoleRequest },
+			params: FetchParams = {}
+		) => {
+			return this.request<UserListItem>({
+				path: `/api/admin/users/${path.id}/role`,
+				method: 'PUT',
+				body,
 				...params
 			});
 		},
