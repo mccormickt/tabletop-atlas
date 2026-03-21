@@ -113,3 +113,10 @@ pub fn deleted_response() -> Result<HttpDeleted, HttpError> {
     let headers = default_cors_headers();
     Ok(HttpResponseHeaders::new(HttpResponseDeleted(), headers))
 }
+
+/// Shared path parameter for endpoints that take a single `{id}`.
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[allow(dead_code)]
+pub struct IdPath {
+    pub id: i64,
+}

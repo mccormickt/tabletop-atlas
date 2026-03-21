@@ -14,7 +14,7 @@ use crate::{
         BggImportResponse, BggParseError, BulkEnrichPreviewResponse, BulkEnrichRequest,
         BulkEnrichResponse, EnrichmentStats, FieldChange, ParsedBggGame,
     },
-    models::{PaginatedResponse, UpdateUserRoleRequest, UserListItem},
+    models::{PaginatedResponse, UpdateUserRoleRequest, UserListItem, default_limit, default_page},
 };
 use dropshot::{Path, Query, RequestContext, TypedBody, UntypedBody, endpoint};
 use schemars::JsonSchema;
@@ -56,13 +56,6 @@ pub async fn get_admin_stats(
 // ============================================================================
 // User Management Endpoints
 // ============================================================================
-
-fn default_page() -> u32 {
-    1
-}
-fn default_limit() -> u32 {
-    20
-}
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct UserSearchParams {

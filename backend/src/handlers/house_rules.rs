@@ -15,7 +15,7 @@ use crate::{
     },
     models::{
         CreateEmbeddingRequest, CreateHouseRuleRequest, EmbeddingSourceType, GameId, HouseRule,
-        HouseRuleId, PaginatedResponse, UpdateHouseRuleRequest,
+        HouseRuleId, PaginatedResponse, UpdateHouseRuleRequest, default_limit, default_page,
     },
 };
 
@@ -98,13 +98,6 @@ async fn embed_house_rule<M: EmbeddingModel>(
 #[derive(Deserialize, JsonSchema)]
 pub struct HouseRulePathParam {
     pub id: HouseRuleId,
-}
-
-fn default_page() -> u32 {
-    1
-}
-fn default_limit() -> u32 {
-    20
 }
 
 #[derive(Deserialize, JsonSchema)]

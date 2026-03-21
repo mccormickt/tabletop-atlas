@@ -6,7 +6,10 @@ use crate::{
         HttpCreated, HttpDeleted, HttpError, HttpOk, bad_request_error, created_response,
         deleted_response, internal_error, not_found_error, success_response,
     },
-    models::{CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, UpdateGameRequest},
+    models::{
+        CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, UpdateGameRequest,
+        default_limit, default_page,
+    },
 };
 use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
@@ -15,13 +18,6 @@ use serde::Deserialize;
 #[derive(Deserialize, JsonSchema)]
 pub struct GamePathParam {
     pub id: GameId,
-}
-
-fn default_page() -> u32 {
-    1
-}
-fn default_limit() -> u32 {
-    20
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

@@ -40,10 +40,10 @@ pub struct PaginationParams {
     pub limit: u32,
 }
 
-fn default_page() -> u32 {
+pub fn default_page() -> u32 {
     1
 }
-fn default_limit() -> u32 {
+pub fn default_limit() -> u32 {
     20
 }
 
