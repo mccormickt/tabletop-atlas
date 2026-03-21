@@ -108,6 +108,20 @@ pub fn format_datetime_for_db(dt: chrono::DateTime<Utc>) -> String {
     dt.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
+/// Escape LIKE metacharacters (`%`, `_`) in a search term so they match literally.
+/// The caller must add `ESCAPE '\'` to the LIKE clause.
+pub fn escape_like(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
+}
+
+/// Build a LIKE search pattern from user input, with metacharacters escaped.
+/// Returns a pattern like `%escaped_term%` for use with `LIKE ? ESCAPE '\'`.
+pub fn like_pattern(term: &str) -> String {
+    format!("%{}%", escape_like(&term.to_lowercase()))
+}
+
 /// Convert a query result to Option, treating QueryReturnedNoRows as None
 pub fn query_row_optional<T>(result: SqliteResult<T>) -> SqliteResult<Option<T>> {
     match result {

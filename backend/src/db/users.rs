@@ -1,4 +1,6 @@
-use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
+use super::{
+    Database, PaginationInfo, format_now_for_db, like_pattern, parse_datetime, query_row_optional,
+};
 use crate::models::{CreateUserRequest, PaginatedResponse, User, UserId, UserListItem};
 use rusqlite::{Result as SqliteResult, Row, params};
 
@@ -94,13 +96,15 @@ pub async fn list_users(
     let pagination = PaginationInfo::new(page, limit);
 
     db.with_connection(|conn| {
-        let search_pattern = search.map(|s| format!("%{}%", s.to_lowercase()));
+        let search_pattern = search.map(like_pattern);
         let mut where_conditions: Vec<String> = Vec::new();
         let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
         if search_pattern.is_some() {
-            where_conditions
-                .push("(LOWER(email) LIKE ? OR LOWER(display_name) LIKE ?)".to_string());
+            where_conditions.push(
+                "(LOWER(email) LIKE ? ESCAPE '\\' OR LOWER(display_name) LIKE ? ESCAPE '\\')"
+                    .to_string(),
+            );
         }
 
         if role.is_some() {

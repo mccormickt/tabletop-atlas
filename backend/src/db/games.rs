@@ -1,4 +1,6 @@
-use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
+use super::{
+    Database, PaginationInfo, format_now_for_db, like_pattern, parse_datetime, query_row_optional,
+};
 use crate::models::{
     CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, RulesInfoResponse,
     UpdateGameRequest,
@@ -50,11 +52,11 @@ pub async fn list_games(
 
     db.with_connection(|conn| {
         // Build WHERE clauses
-        let search_pattern = search.map(|s| format!("%{}%", s.to_lowercase()));
+        let search_pattern = search.map(like_pattern);
         let mut where_conditions: Vec<String> = Vec::new();
 
         if search_pattern.is_some() {
-            where_conditions.push("LOWER(g.name) LIKE ?".to_string());
+            where_conditions.push("LOWER(g.name) LIKE ? ESCAPE '\\'".to_string());
         }
 
         if let Some(has_pdf) = has_rules_pdf {
