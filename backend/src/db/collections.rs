@@ -1,4 +1,4 @@
-use super::{Database, PaginationInfo, format_now_for_db, parse_datetime};
+use super::{Database, PaginatedQuery, format_now_for_db, parse_datetime};
 use crate::models::{
     AddToCollectionRequest, CollectionEntry, CollectionEntryId, CollectionEntryWithGame,
     PaginatedResponse, UpdateCollectionRequest,
@@ -24,28 +24,20 @@ pub async fn list_user_collection(
     page: u32,
     limit: u32,
 ) -> SqliteResult<PaginatedResponse<CollectionEntryWithGame>> {
-    let pagination = PaginationInfo::new(page, limit);
-
     db.with_connection(|conn| {
-        let total: u32 = conn.query_row(
-            "SELECT COUNT(*) FROM user_collections WHERE user_id = ?",
-            params![user_id],
-            |row| row.get(0),
-        )?;
+        let mut q = PaginatedQuery::new();
+        q.filter("uc.user_id = ?", user_id);
 
-        let mut stmt = conn.prepare(
-            r#"
-            SELECT uc.id, uc.master_game_id, mg.name, uc.notes, uc.rating, uc.play_count, uc.added_at
-            FROM user_collections uc
-            JOIN master_games mg ON uc.master_game_id = mg.id
-            WHERE uc.user_id = ?
-            ORDER BY uc.added_at DESC
-            LIMIT ? OFFSET ?
-            "#,
-        )?;
-
-        let entries = stmt
-            .query_map(params![user_id, pagination.limit, pagination.offset], |row| {
+        q.execute(
+            conn,
+            "user_collections uc",
+            "uc.id, uc.master_game_id, mg.name, uc.notes, uc.rating, uc.play_count, uc.added_at",
+            "user_collections uc JOIN master_games mg ON uc.master_game_id = mg.id",
+            "uc.added_at DESC",
+            None,
+            page,
+            limit,
+            |row| {
                 Ok(CollectionEntryWithGame {
                     id: row.get(0)?,
                     master_game_id: row.get(1)?,
@@ -55,10 +47,8 @@ pub async fn list_user_collection(
                     play_count: row.get(5)?,
                     added_at: parse_datetime(row, "added_at")?,
                 })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(PaginatedResponse::new(entries, total, page, limit))
+            },
+        )
     })
 }
 

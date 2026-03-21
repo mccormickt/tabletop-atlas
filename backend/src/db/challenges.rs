@@ -1,9 +1,9 @@
-use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
+use super::{Database, PaginatedQuery, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
     AddParticipantRequest, AssignGameRequest, Challenge, ChallengeGame, ChallengeParticipant,
     ChallengePlay, ChallengePlayWithParticipants, ChallengeStats, ChallengeStatus,
-    ChallengeSummary, CreateChallengeRequest, GameType, LeaderboardEntry, ParticipantRole,
-    PlayParticipant, RecordPlayRequest, UpdateChallengeRequest, UpdatePlayRequest,
+    ChallengeSummary, CreateChallengeRequest, GameType, LeaderboardEntry, PaginatedResponse,
+    ParticipantRole, PlayParticipant, RecordPlayRequest, UpdateChallengeRequest, UpdatePlayRequest,
 };
 use chrono::{NaiveDate, Utc};
 use rusqlite::{Result as SqliteResult, Row, params};
@@ -93,41 +93,21 @@ pub async fn list_user_challenges(
     user_id: i64,
     page: u32,
     limit: u32,
-) -> SqliteResult<(Vec<ChallengeSummary>, u32)> {
+) -> SqliteResult<PaginatedResponse<ChallengeSummary>> {
     db.with_connection(|conn| {
-        let pagination = PaginationInfo::new(page, limit);
+        let mut q = PaginatedQuery::new();
+        q.filter("cp.user_id = ?", user_id);
 
-        // Get total count
-        let total: u32 = conn.query_row(
-            r#"
-            SELECT COUNT(DISTINCT c.id)
-            FROM challenges c
-            JOIN challenge_participants cp ON c.id = cp.challenge_id
-            WHERE cp.user_id = ?
-            "#,
-            params![user_id],
-            |row| row.get(0),
-        )?;
-
-        // Get challenges with summary info
-        let mut stmt = conn.prepare(
-            r#"
-            SELECT
-                c.id, c.name, c.description, c.owner_id, c.grid_rows, c.grid_cols,
-                c.status, c.start_date, c.end_date, c.created_at,
-                (SELECT COUNT(*) FROM challenge_participants WHERE challenge_id = c.id) as participant_count,
-                (SELECT COUNT(*) FROM challenge_plays WHERE challenge_id = c.id) as plays_count
-            FROM challenges c
-            JOIN challenge_participants cp ON c.id = cp.challenge_id
-            WHERE cp.user_id = ?
-            GROUP BY c.id
-            ORDER BY c.updated_at DESC
-            LIMIT ? OFFSET ?
-            "#,
-        )?;
-
-        let summaries = stmt
-            .query_map(params![user_id, pagination.limit, pagination.offset], |row| {
+        q.execute(
+            conn,
+            "challenges c JOIN challenge_participants cp ON c.id = cp.challenge_id",
+            "c.id, c.name, c.description, c.owner_id, c.grid_rows, c.grid_cols, c.status, c.start_date, c.end_date, c.created_at, (SELECT COUNT(*) FROM challenge_participants WHERE challenge_id = c.id) as participant_count, (SELECT COUNT(*) FROM challenge_plays WHERE challenge_id = c.id) as plays_count",
+            "challenges c JOIN challenge_participants cp ON c.id = cp.challenge_id",
+            "c.updated_at DESC",
+            Some("c.id"),
+            page,
+            limit,
+            |row| {
                 let grid_rows: i32 = row.get(4)?;
                 let grid_cols: i32 = row.get(5)?;
                 let plays_count: i32 = row.get(11)?;
@@ -152,10 +132,8 @@ pub async fn list_user_challenges(
                     completion_percentage,
                     created_at: parse_datetime(row, "created_at")?,
                 })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok((summaries, total))
+            },
+        )
     })
 }
 

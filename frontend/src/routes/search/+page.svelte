@@ -2,7 +2,13 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { api, unwrapResult, createDebouncedAction, type GameSummary, type SearchResult } from '$lib';
+	import {
+		api,
+		unwrapResult,
+		createDebouncedAction,
+		type GameSummary,
+		type SearchResult
+	} from '$lib';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import {
 		Button,

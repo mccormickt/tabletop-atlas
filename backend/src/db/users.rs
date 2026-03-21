@@ -1,6 +1,4 @@
-use super::{
-    Database, PaginationInfo, format_now_for_db, like_pattern, parse_datetime, query_row_optional,
-};
+use super::{Database, PaginatedQuery, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{CreateUserRequest, PaginatedResponse, User, UserListItem};
 use rusqlite::{Result as SqliteResult, Row, params};
 
@@ -93,61 +91,27 @@ pub async fn list_users(
     search: Option<&str>,
     role: Option<&str>,
 ) -> SqliteResult<PaginatedResponse<UserListItem>> {
-    let pagination = PaginationInfo::new(page, limit);
-
     db.with_connection(|conn| {
-        let search_pattern = search.map(like_pattern);
-        let mut where_conditions: Vec<String> = Vec::new();
-        let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+        let mut q = PaginatedQuery::new();
 
-        if search_pattern.is_some() {
-            where_conditions.push(
-                "(LOWER(email) LIKE ? ESCAPE '\\' OR LOWER(display_name) LIKE ? ESCAPE '\\')"
-                    .to_string(),
-            );
-        }
-
-        if role.is_some() {
-            where_conditions.push("role = ?".to_string());
-        }
-
-        let where_clause = if where_conditions.is_empty() {
-            String::new()
-        } else {
-            format!("WHERE {}", where_conditions.join(" AND "))
-        };
-
-        // Build params for count query
-        if let Some(ref pattern) = search_pattern {
-            params_vec.push(Box::new(pattern.clone()));
-            params_vec.push(Box::new(pattern.clone()));
+        if let Some(term) = search {
+            q.filter_like_any(&["LOWER(email)", "LOWER(display_name)"], term);
         }
         if let Some(r) = role {
-            params_vec.push(Box::new(r.to_string()));
+            q.filter("role = ?", r.to_string());
         }
 
-        let count_query = format!("SELECT COUNT(*) FROM users {}", where_clause);
-        let count_refs: Vec<&dyn rusqlite::ToSql> =
-            params_vec.iter().map(|p| p.as_ref()).collect();
-        let total: u32 = conn.query_row(&count_query, count_refs.as_slice(), |row| row.get(0))?;
-
-        // Add pagination params
-        params_vec.push(Box::new(pagination.limit));
-        params_vec.push(Box::new(pagination.offset));
-
-        let query = format!(
-            "SELECT id, email, display_name, role, created_at FROM users {} ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            where_clause
-        );
-        let all_refs: Vec<&dyn rusqlite::ToSql> =
-            params_vec.iter().map(|p| p.as_ref()).collect();
-
-        let mut stmt = conn.prepare(&query)?;
-        let items: Vec<UserListItem> = stmt
-            .query_map(all_refs.as_slice(), row_to_user_list_item)?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(PaginatedResponse::new(items, total, page, limit))
+        q.execute(
+            conn,
+            "users",
+            "id, email, display_name, role, created_at",
+            "users",
+            "created_at DESC",
+            None,
+            page,
+            limit,
+            row_to_user_list_item,
+        )
     })
 }
 

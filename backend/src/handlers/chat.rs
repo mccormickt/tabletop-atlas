@@ -2,10 +2,11 @@ use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::{created_response, internal_error, not_found_error, success_response};
+use super::{IdPath, created_response, internal_error, not_found_error, success_response};
 use crate::{
     AppState,
     db::chat,
+    error::{DbResultExt, OptionExt},
     handlers::{HttpCreated, HttpError, HttpOk},
     models::{
         ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionSummary, ContextSource,
@@ -13,11 +14,6 @@ use crate::{
         UpdateChatSessionRequest,
     },
 };
-
-#[derive(Deserialize, JsonSchema)]
-pub struct ChatSessionPathParam {
-    pub id: i64,
-}
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ChatSessionsByGameQuery {

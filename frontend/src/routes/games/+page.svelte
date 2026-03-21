@@ -15,6 +15,7 @@
 	import BulkActionsBar from '$lib/components/BulkActionsBar.svelte';
 	import { GameBoxIcon, Rulebook } from '$lib/components/icons';
 	import { useHeader } from '$lib/stores/header';
+	import { useAuth } from '$lib/stores/auth';
 	import { createAuthState } from '$lib/stores/auth.svelte';
 
 	type TabType = 'library' | 'collection' | 'custom';
@@ -25,6 +26,7 @@
 		currentGame: null
 	});
 
+	const authStore = useAuth();
 	const auth = createAuthState();
 	let isAdmin = $derived(auth.isAdmin);
 
@@ -558,7 +560,7 @@
 								Sign in to create and manage your custom games.
 							{/if}
 						</p>
-						<Button variant="game-accent" onclick={() => auth.login()} class="gap-2">
+						<Button variant="game-accent" onclick={() => authStore.login()} class="gap-2">
 							Sign In
 						</Button>
 					</div>

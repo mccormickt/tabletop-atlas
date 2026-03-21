@@ -1,4 +1,4 @@
-use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
+use super::{Database, PaginatedQuery, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{CreateHouseRuleRequest, HouseRule, PaginatedResponse, UpdateHouseRuleRequest};
 use rusqlite::{Result as SqliteResult, Row, params};
 
@@ -22,36 +22,21 @@ pub async fn list_house_rules(
     page: u32,
     limit: u32,
 ) -> SqliteResult<PaginatedResponse<HouseRule>> {
-    let pagination = PaginationInfo::new(page, limit);
-
     db.with_connection(|conn| {
-        // Get total count for the specific game
-        let total: u32 = conn.query_row(
-            "SELECT COUNT(*) FROM house_rules WHERE game_id = ?",
-            params![game_id],
-            |row| row.get(0),
-        )?;
+        let mut q = PaginatedQuery::new();
+        q.filter("game_id = ?", game_id);
 
-        // Get house rules for the game
-        let mut stmt = conn.prepare(
-            r#"
-            SELECT id, game_id, title, description, category, is_active, created_at, updated_at
-            FROM house_rules
-            WHERE game_id = ?
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
-            "#,
-        )?;
-
-        let house_rule_iter = stmt.query_map(
-            params![game_id, pagination.limit, pagination.offset],
+        q.execute(
+            conn,
+            "house_rules",
+            "id, game_id, title, description, category, is_active, created_at, updated_at",
+            "house_rules",
+            "created_at DESC",
+            None,
+            page,
+            limit,
             row_to_house_rule,
-        )?;
-
-        let house_rules: Result<Vec<HouseRule>, _> = house_rule_iter.collect();
-        let house_rules = house_rules?;
-
-        Ok(PaginatedResponse::new(house_rules, total, page, limit))
+        )
     })
 }
 

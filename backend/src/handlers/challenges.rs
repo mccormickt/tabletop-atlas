@@ -4,7 +4,9 @@ use serde::Deserialize;
 
 use crate::AppState;
 use crate::auth::require_auth;
+use crate::db::Database;
 use crate::db::challenges;
+use crate::error::DbResultExt;
 use crate::models::{
     AddParticipantRequest, AssignGameRequest, Challenge, ChallengeGame, ChallengeGridView,
     ChallengeParticipant, ChallengePlayWithParticipants, ChallengeStats, ChallengeSummary,
@@ -13,10 +15,9 @@ use crate::models::{
 };
 
 use super::{
-    HttpCreated, HttpDeleted, HttpOk, bad_request_error, created_response, deleted_response,
-    forbidden_error, internal_error, not_found_error, success_response,
+    HttpCreated, HttpDeleted, HttpOk, IdPath, bad_request_error, created_response,
+    deleted_response, forbidden_error, not_found_error, success_response,
 };
-use crate::db::Database;
 
 /// Helper to verify user is a participant in a challenge
 async fn require_participant(
@@ -26,7 +27,7 @@ async fn require_participant(
 ) -> Result<(), HttpError> {
     let is_participant = challenges::is_participant(db, challenge_id, user_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to check participant status")?;
 
     if !is_participant {
         return Err(forbidden_error(
@@ -40,7 +41,7 @@ async fn require_participant(
 async fn require_owner(db: &Database, challenge_id: i64, user_id: i64) -> Result<(), HttpError> {
     let is_owner = challenges::is_owner(db, challenge_id, user_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to check owner status")?;
 
     if !is_owner {
         return Err(forbidden_error(
@@ -48,11 +49,6 @@ async fn require_owner(db: &Database, challenge_id: i64, user_id: i64) -> Result
         ));
     }
     Ok(())
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct ChallengePath {
-    pub id: i64,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -90,7 +86,7 @@ pub async fn list_challenges(
     let (items, total) =
         challenges::list_user_challenges(&db, user.user_id, query.page, query.limit)
             .await
-            .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+            .db_context("Failed to list challenges")?;
 
     success_response(PaginatedResponse::new(
         items,
@@ -128,7 +124,7 @@ pub async fn create_challenge(
 
     let challenge = challenges::create_challenge(&db, user.user_id, request)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to create challenge")?;
 
     created_response(challenge)
 }
@@ -141,7 +137,7 @@ pub async fn create_challenge(
 }]
 pub async fn get_challenge(
     rqctx: RequestContext<AppState>,
-    path: Path<ChallengePath>,
+    path: Path<IdPath>,
 ) -> Result<HttpOk<Challenge>, HttpError> {
     let user = require_auth(&rqctx)?;
     let db = rqctx.context().db();
@@ -151,7 +147,7 @@ pub async fn get_challenge(
 
     let challenge = challenges::get_challenge(&db, challenge_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?
+        .db_context("Failed to get challenge")?
         .ok_or_else(|| not_found_error("Challenge not found".to_string()))?;
 
     success_response(challenge)
@@ -165,7 +161,7 @@ pub async fn get_challenge(
 }]
 pub async fn update_challenge(
     rqctx: RequestContext<AppState>,
-    path: Path<ChallengePath>,
+    path: Path<IdPath>,
     body: TypedBody<UpdateChallengeRequest>,
 ) -> Result<HttpOk<Challenge>, HttpError> {
     let user = require_auth(&rqctx)?;
@@ -177,7 +173,7 @@ pub async fn update_challenge(
 
     let challenge = challenges::update_challenge(&db, challenge_id, request)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?
+        .db_context("Failed to update challenge")?
         .ok_or_else(|| not_found_error("Challenge not found".to_string()))?;
 
     success_response(challenge)
@@ -191,7 +187,7 @@ pub async fn update_challenge(
 }]
 pub async fn delete_challenge(
     rqctx: RequestContext<AppState>,
-    path: Path<ChallengePath>,
+    path: Path<IdPath>,
 ) -> Result<HttpDeleted, HttpError> {
     let user = require_auth(&rqctx)?;
     let db = rqctx.context().db();
@@ -201,7 +197,7 @@ pub async fn delete_challenge(
 
     let deleted = challenges::delete_challenge(&db, challenge_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to delete challenge")?;
 
     if !deleted {
         return Err(not_found_error("Challenge not found".to_string()));
@@ -218,7 +214,7 @@ pub async fn delete_challenge(
 }]
 pub async fn get_challenge_grid(
     rqctx: RequestContext<AppState>,
-    path: Path<ChallengePath>,
+    path: Path<IdPath>,
 ) -> Result<HttpOk<ChallengeGridView>, HttpError> {
     let user = require_auth(&rqctx)?;
     let db = rqctx.context().db();
@@ -228,24 +224,24 @@ pub async fn get_challenge_grid(
 
     let challenge = challenges::get_challenge(&db, challenge_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?
+        .db_context("Failed to get challenge")?
         .ok_or_else(|| not_found_error("Challenge not found".to_string()))?;
 
     let participants = challenges::get_participants(&db, challenge_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to get participants")?;
 
     let games = challenges::get_games(&db, challenge_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to get games")?;
 
     let plays = challenges::get_plays(&db, challenge_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to get plays")?;
 
     let stats = challenges::get_stats(&db, challenge_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to get stats")?;
 
     success_response(ChallengeGridView {
         challenge,
@@ -264,7 +260,7 @@ pub async fn get_challenge_grid(
 }]
 pub async fn add_participant(
     rqctx: RequestContext<AppState>,
-    path: Path<ChallengePath>,
+    path: Path<IdPath>,
     body: TypedBody<AddParticipantRequest>,
 ) -> Result<HttpCreated<ChallengeParticipant>, HttpError> {
     let user = require_auth(&rqctx)?;
@@ -276,7 +272,7 @@ pub async fn add_participant(
 
     let participant = challenges::add_participant(&db, challenge_id, request)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to add participant")?;
 
     created_response(participant)
 }
@@ -299,7 +295,7 @@ pub async fn remove_participant(
 
     let removed = challenges::remove_participant(&db, path.id, path.user_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to remove participant")?;
 
     if !removed {
         return Err(bad_request_error(
@@ -318,7 +314,7 @@ pub async fn remove_participant(
 }]
 pub async fn assign_game(
     rqctx: RequestContext<AppState>,
-    path: Path<ChallengePath>,
+    path: Path<IdPath>,
     body: TypedBody<AssignGameRequest>,
 ) -> Result<HttpCreated<ChallengeGame>, HttpError> {
     let user = require_auth(&rqctx)?;
@@ -331,7 +327,7 @@ pub async fn assign_game(
     // Validate row_index is within grid bounds
     let challenge = challenges::get_challenge(&db, challenge_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?
+        .db_context("Failed to get challenge")?
         .ok_or_else(|| not_found_error("Challenge not found".to_string()))?;
 
     if request.row_index < 0 || request.row_index >= challenge.grid_rows {
@@ -343,7 +339,7 @@ pub async fn assign_game(
 
     let game = challenges::assign_game(&db, challenge_id, request)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to assign game")?;
 
     created_response(game)
 }
@@ -366,7 +362,7 @@ pub async fn remove_game(
 
     let removed = challenges::remove_game(&db, path.id, path.game_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to remove game")?;
 
     if !removed {
         return Err(not_found_error("Game not found in challenge".to_string()));
@@ -383,7 +379,7 @@ pub async fn remove_game(
 }]
 pub async fn record_play(
     rqctx: RequestContext<AppState>,
-    path: Path<ChallengePath>,
+    path: Path<IdPath>,
     body: TypedBody<RecordPlayRequest>,
 ) -> Result<HttpCreated<ChallengePlayWithParticipants>, HttpError> {
     let user = require_auth(&rqctx)?;
@@ -397,7 +393,7 @@ pub async fn record_play(
     // Validate col_index is within grid bounds
     let challenge = challenges::get_challenge(&db, challenge_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?
+        .db_context("Failed to get challenge")?
         .ok_or_else(|| not_found_error("Challenge not found".to_string()))?;
 
     if request.col_index < 0 || request.col_index >= challenge.grid_cols {
@@ -411,7 +407,7 @@ pub async fn record_play(
     let game_valid =
         challenges::game_belongs_to_challenge(&db, challenge_id, request.challenge_game_id)
             .await
-            .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+            .db_context("Failed to validate game")?;
 
     if !game_valid {
         return Err(bad_request_error(
@@ -424,7 +420,7 @@ pub async fn record_play(
     let participants_valid =
         challenges::validate_play_participants(&db, challenge_id, &participant_user_ids)
             .await
-            .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+            .db_context("Failed to validate participants")?;
 
     if !participants_valid {
         return Err(bad_request_error(
@@ -434,7 +430,7 @@ pub async fn record_play(
 
     let play = challenges::record_play(&db, challenge_id, request)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to record play")?;
 
     created_response(play)
 }
@@ -461,7 +457,7 @@ pub async fn update_play(
     // Verify the play belongs to this challenge
     let play_valid = challenges::play_belongs_to_challenge(&db, path.id, path.play_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to verify play")?;
 
     if !play_valid {
         return Err(not_found_error(
@@ -475,7 +471,7 @@ pub async fn update_play(
         let participants_valid =
             challenges::validate_play_participants(&db, path.id, &participant_user_ids)
                 .await
-                .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+                .db_context("Failed to validate participants")?;
 
         if !participants_valid {
             return Err(bad_request_error(
@@ -486,7 +482,7 @@ pub async fn update_play(
 
     let play = challenges::update_play(&db, path.play_id, request)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?
+        .db_context("Failed to update play")?
         .ok_or_else(|| not_found_error("Play not found".to_string()))?;
 
     success_response(play)
@@ -512,7 +508,7 @@ pub async fn delete_play(
     // Verify the play belongs to this challenge
     let play_valid = challenges::play_belongs_to_challenge(&db, path.id, path.play_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to verify play")?;
 
     if !play_valid {
         return Err(not_found_error(
@@ -522,7 +518,7 @@ pub async fn delete_play(
 
     let deleted = challenges::delete_play(&db, path.play_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to delete play")?;
 
     if !deleted {
         return Err(not_found_error("Play not found".to_string()));
@@ -539,7 +535,7 @@ pub async fn delete_play(
 }]
 pub async fn get_challenge_stats(
     rqctx: RequestContext<AppState>,
-    path: Path<ChallengePath>,
+    path: Path<IdPath>,
 ) -> Result<HttpOk<ChallengeStats>, HttpError> {
     let user = require_auth(&rqctx)?;
     let db = rqctx.context().db();
@@ -549,7 +545,7 @@ pub async fn get_challenge_stats(
 
     let stats = challenges::get_stats(&db, challenge_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to get stats")?;
 
     success_response(stats)
 }

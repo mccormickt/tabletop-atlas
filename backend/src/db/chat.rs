@@ -1,4 +1,4 @@
-use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
+use super::{Database, PaginatedQuery, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
     ChatHistory, ChatMessage, ChatSession, ChatSessionSummary, CreateChatSessionRequest,
     PaginatedResponse, UpdateChatSessionRequest,

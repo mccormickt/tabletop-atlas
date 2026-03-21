@@ -1,24 +1,19 @@
 use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
-use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::AppState;
 use crate::auth::{extract_auth, require_auth};
 use crate::db::custom_games;
+use crate::error::{AppError, DbResultExt, OptionExt};
 use crate::models::{
     CreateCustomGameRequest, CustomGame, CustomGameSummary, PaginatedResponse, PaginationParams,
     UpdateCustomGameRequest,
 };
 
 use super::{
-    HttpCreated, HttpDeleted, HttpOk, created_response, deleted_response, internal_error,
-    not_found_error, success_response,
+    HttpCreated, HttpDeleted, HttpOk, IdPath, created_response, deleted_response, not_found_error,
+    success_response,
 };
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct CustomGamePath {
-    pub id: i64,
-}
 
 /// List current user's custom games
 #[endpoint {
@@ -36,7 +31,7 @@ pub async fn list_custom_games(
 
     let result = custom_games::list_user_custom_games(&db, user.user_id, query.page, query.limit)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to list custom games")?;
 
     success_response(result)
 }
@@ -56,7 +51,7 @@ pub async fn list_public_custom_games(
 
     let result = custom_games::list_public_custom_games(&db, query.page, query.limit)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to list public custom games")?;
 
     success_response(result)
 }
@@ -77,7 +72,7 @@ pub async fn create_custom_game(
 
     let game = custom_games::create_custom_game(&db, user.user_id, request)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to create custom game")?;
 
     created_response(game)
 }
@@ -90,7 +85,7 @@ pub async fn create_custom_game(
 }]
 pub async fn get_custom_game(
     rqctx: RequestContext<AppState>,
-    path: Path<CustomGamePath>,
+    path: Path<IdPath>,
 ) -> Result<HttpOk<CustomGame>, HttpError> {
     let user = extract_auth(&rqctx);
     let db = rqctx.context().db();
@@ -98,19 +93,15 @@ pub async fn get_custom_game(
 
     let game = custom_games::get_custom_game(&db, game_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?
-        .ok_or_else(|| not_found_error("Custom game not found".to_string()))?;
+        .db_context("Failed to get custom game")?
+        .or_not_found("Custom game not found")?;
 
     // Check access: public games visible to all, private only to owner
     if !game.is_public {
         match user {
             Some(u) if u.user_id == game.user_id => {}
             _ => {
-                return Err(HttpError::for_client_error(
-                    None,
-                    dropshot::ClientErrorStatusCode::FORBIDDEN,
-                    "Access denied".to_string(),
-                ));
+                return Err(AppError::Forbidden("Access denied".to_string()).into());
             }
         }
     }
@@ -126,7 +117,7 @@ pub async fn get_custom_game(
 }]
 pub async fn update_custom_game(
     rqctx: RequestContext<AppState>,
-    path: Path<CustomGamePath>,
+    path: Path<IdPath>,
     body: TypedBody<UpdateCustomGameRequest>,
 ) -> Result<HttpOk<CustomGame>, HttpError> {
     let user = require_auth(&rqctx)?;
@@ -136,8 +127,8 @@ pub async fn update_custom_game(
 
     let game = custom_games::update_custom_game(&db, user.user_id, game_id, request)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?
-        .ok_or_else(|| not_found_error("Custom game not found or access denied".to_string()))?;
+        .db_context("Failed to update custom game")?
+        .or_not_found("Custom game not found or access denied")?;
 
     success_response(game)
 }
@@ -150,7 +141,7 @@ pub async fn update_custom_game(
 }]
 pub async fn delete_custom_game(
     rqctx: RequestContext<AppState>,
-    path: Path<CustomGamePath>,
+    path: Path<IdPath>,
 ) -> Result<HttpDeleted, HttpError> {
     let user = require_auth(&rqctx)?;
     let db = rqctx.context().db();
@@ -158,7 +149,7 @@ pub async fn delete_custom_game(
 
     let deleted = custom_games::delete_custom_game(&db, user.user_id, game_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to delete custom game")?;
 
     if !deleted {
         return Err(not_found_error(

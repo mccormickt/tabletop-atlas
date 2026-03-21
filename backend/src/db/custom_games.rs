@@ -1,4 +1,4 @@
-use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
+use super::{Database, PaginatedQuery, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
     CreateCustomGameRequest, CustomGame, CustomGameId, CustomGameSummary, PaginatedResponse,
     UpdateCustomGameRequest,
@@ -26,53 +26,42 @@ fn row_to_custom_game(row: &Row) -> SqliteResult<CustomGame> {
     })
 }
 
+fn row_to_custom_game_summary(row: &Row) -> SqliteResult<CustomGameSummary> {
+    Ok(CustomGameSummary {
+        id: row.get(0)?,
+        user_id: row.get(1)?,
+        name: row.get(2)?,
+        publisher: row.get(3)?,
+        year_published: row.get(4)?,
+        min_players: row.get(5)?,
+        max_players: row.get(6)?,
+        complexity_rating: row.get(7)?,
+        is_public: row.get::<_, i32>(8)? != 0,
+        has_rules_pdf: row.get::<_, Option<String>>(9)?.is_some(),
+    })
+}
+
 pub async fn list_user_custom_games(
     db: &Database,
     user_id: i64,
     page: u32,
     limit: u32,
 ) -> SqliteResult<PaginatedResponse<CustomGameSummary>> {
-    let pagination = PaginationInfo::new(page, limit);
-
     db.with_connection(|conn| {
-        let total: u32 = conn.query_row(
-            "SELECT COUNT(*) FROM custom_games WHERE user_id = ?",
-            params![user_id],
-            |row| row.get(0),
-        )?;
+        let mut q = PaginatedQuery::new();
+        q.filter("user_id = ?", user_id);
 
-        let mut stmt = conn.prepare(
-            r#"
-            SELECT id, user_id, name, publisher, year_published, min_players, max_players,
-                   complexity_rating, is_public, rules_pdf_path
-            FROM custom_games
-            WHERE user_id = ?
-            ORDER BY name ASC
-            LIMIT ? OFFSET ?
-            "#,
-        )?;
-
-        let games = stmt
-            .query_map(
-                params![user_id, pagination.limit, pagination.offset],
-                |row| {
-                    Ok(CustomGameSummary {
-                        id: row.get(0)?,
-                        user_id: row.get(1)?,
-                        name: row.get(2)?,
-                        publisher: row.get(3)?,
-                        year_published: row.get(4)?,
-                        min_players: row.get(5)?,
-                        max_players: row.get(6)?,
-                        complexity_rating: row.get(7)?,
-                        is_public: row.get::<_, i32>(8)? != 0,
-                        has_rules_pdf: row.get::<_, Option<String>>(9)?.is_some(),
-                    })
-                },
-            )?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(PaginatedResponse::new(games, total, page, limit))
+        q.execute(
+            conn,
+            "custom_games",
+            "id, user_id, name, publisher, year_published, min_players, max_players, complexity_rating, is_public, rules_pdf_path",
+            "custom_games",
+            "name ASC",
+            None,
+            page,
+            limit,
+            row_to_custom_game_summary,
+        )
     })
 }
 
@@ -81,44 +70,21 @@ pub async fn list_public_custom_games(
     page: u32,
     limit: u32,
 ) -> SqliteResult<PaginatedResponse<CustomGameSummary>> {
-    let pagination = PaginationInfo::new(page, limit);
-
     db.with_connection(|conn| {
-        let total: u32 = conn.query_row(
-            "SELECT COUNT(*) FROM custom_games WHERE is_public = 1",
-            [],
-            |row| row.get(0),
-        )?;
+        let mut q = PaginatedQuery::new();
+        q.filter_raw("is_public = 1");
 
-        let mut stmt = conn.prepare(
-            r#"
-            SELECT id, user_id, name, publisher, year_published, min_players, max_players,
-                   complexity_rating, is_public, rules_pdf_path
-            FROM custom_games
-            WHERE is_public = 1
-            ORDER BY name ASC
-            LIMIT ? OFFSET ?
-            "#,
-        )?;
-
-        let games = stmt
-            .query_map(params![pagination.limit, pagination.offset], |row| {
-                Ok(CustomGameSummary {
-                    id: row.get(0)?,
-                    user_id: row.get(1)?,
-                    name: row.get(2)?,
-                    publisher: row.get(3)?,
-                    year_published: row.get(4)?,
-                    min_players: row.get(5)?,
-                    max_players: row.get(6)?,
-                    complexity_rating: row.get(7)?,
-                    is_public: row.get::<_, i32>(8)? != 0,
-                    has_rules_pdf: row.get::<_, Option<String>>(9)?.is_some(),
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(PaginatedResponse::new(games, total, page, limit))
+        q.execute(
+            conn,
+            "custom_games",
+            "id, user_id, name, publisher, year_published, min_players, max_players, complexity_rating, is_public, rules_pdf_path",
+            "custom_games",
+            "name ASC",
+            None,
+            page,
+            limit,
+            row_to_custom_game_summary,
+        )
     })
 }
 

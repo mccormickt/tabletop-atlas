@@ -2,9 +2,10 @@ use crate::{
     AppState,
     auth::middleware::require_admin,
     db::games,
+    error::{DbResultExt, OptionExt},
     handlers::{
         HttpCreated, HttpDeleted, HttpError, HttpOk, bad_request_error, created_response,
-        deleted_response, internal_error, not_found_error, success_response,
+        deleted_response, success_response,
     },
     models::{
         CreateGameRequest, Game, GameSummary, PaginatedResponse, UpdateGameRequest, default_limit,
@@ -15,10 +16,7 @@ use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-#[derive(Deserialize, JsonSchema)]
-pub struct GamePathParam {
-    pub id: i64,
-}
+use super::IdPath;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GameSearchParams {
@@ -45,7 +43,7 @@ pub async fn list_games(
     let params = query.into_inner();
     let db = app_state.db();
 
-    match games::list_games(
+    let result = games::list_games(
         &db,
         params.page,
         params.limit,
@@ -53,13 +51,9 @@ pub async fn list_games(
         params.has_rules_pdf,
     )
     .await
-    {
-        Ok(result) => success_response(result),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to list games"; "error" => %e);
-            Err(internal_error("Failed to list games".to_string()))
-        }
-    }
+    .db_context("Failed to list games")?;
+
+    success_response(result)
 }
 
 /// Get a specific game by ID
@@ -69,23 +63,18 @@ pub async fn list_games(
 }]
 pub async fn get_game(
     rqctx: RequestContext<AppState>,
-    path: Path<GamePathParam>,
+    path: Path<IdPath>,
 ) -> Result<HttpOk<Game>, HttpError> {
     let app_state = rqctx.context();
     let game_id = path.into_inner().id;
     let db = app_state.db();
 
-    match games::get_game(&db, game_id).await {
-        Ok(Some(game)) => success_response(game),
-        Ok(None) => Err(not_found_error(format!(
-            "Game with id {} not found",
-            game_id
-        ))),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to get game"; "game_id" => game_id, "error" => %e);
-            Err(internal_error("Failed to get game".to_string()))
-        }
-    }
+    let game = games::get_game(&db, game_id)
+        .await
+        .db_context("Failed to get game")?
+        .or_not_found(format!("Game with id {} not found", game_id))?;
+
+    success_response(game)
 }
 
 /// Create a new game (admin only)
@@ -117,13 +106,11 @@ pub async fn create_game(
         ));
     }
 
-    match games::create_game(&db, create_request).await {
-        Ok(game) => created_response(game),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to create game"; "error" => %e);
-            Err(internal_error("Failed to create game".to_string()))
-        }
-    }
+    let game = games::create_game(&db, create_request)
+        .await
+        .db_context("Failed to create game")?;
+
+    created_response(game)
 }
 
 /// Update an existing game (admin only)
@@ -133,7 +120,7 @@ pub async fn create_game(
 }]
 pub async fn update_game(
     rqctx: RequestContext<AppState>,
-    path: Path<GamePathParam>,
+    path: Path<IdPath>,
     body: TypedBody<UpdateGameRequest>,
 ) -> Result<HttpOk<Game>, HttpError> {
     // Require admin access for updating master games
@@ -159,17 +146,12 @@ pub async fn update_game(
         ));
     }
 
-    match games::update_game(&db, game_id, update_request).await {
-        Ok(Some(game)) => success_response(game),
-        Ok(None) => Err(not_found_error(format!(
-            "Game with id {} not found",
-            game_id
-        ))),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to update game"; "game_id" => game_id, "error" => %e);
-            Err(internal_error("Failed to update game".to_string()))
-        }
-    }
+    let game = games::update_game(&db, game_id, update_request)
+        .await
+        .db_context("Failed to update game")?
+        .or_not_found(format!("Game with id {} not found", game_id))?;
+
+    success_response(game)
 }
 
 /// Delete a game (admin only)
@@ -179,7 +161,7 @@ pub async fn update_game(
 }]
 pub async fn delete_game(
     rqctx: RequestContext<AppState>,
-    path: Path<GamePathParam>,
+    path: Path<IdPath>,
 ) -> Result<HttpDeleted, HttpError> {
     // Require admin access for deleting master games
     require_admin(&rqctx)?;
@@ -188,15 +170,16 @@ pub async fn delete_game(
     let game_id = path.into_inner().id;
     let db = app_state.db();
 
-    match games::delete_game(&db, game_id).await {
-        Ok(true) => deleted_response(),
-        Ok(false) => Err(not_found_error(format!(
+    let deleted = games::delete_game(&db, game_id)
+        .await
+        .db_context("Failed to delete game")?;
+
+    if deleted {
+        deleted_response()
+    } else {
+        Err(crate::handlers::not_found_error(format!(
             "Game with id {} not found",
             game_id
-        ))),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to delete game"; "game_id" => game_id, "error" => %e);
-            Err(internal_error("Failed to delete game".to_string()))
-        }
+        )))
     }
 }
