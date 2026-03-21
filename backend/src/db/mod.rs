@@ -135,13 +135,11 @@ pub fn query_row_optional<T>(result: SqliteResult<T>) -> SqliteResult<Option<T>>
 ///
 /// Handles the common pattern of: build conditions -> COUNT query -> SELECT with LIMIT/OFFSET.
 #[derive(Default)]
-#[allow(dead_code)]
 pub struct PaginatedQuery {
     conditions: Vec<String>,
     params: Vec<Box<dyn rusqlite::ToSql>>,
 }
 
-#[allow(dead_code)]
 impl PaginatedQuery {
     pub fn new() -> Self {
         Self {

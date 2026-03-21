@@ -5,20 +5,16 @@ use dropshot::{Path, RequestContext, UntypedBody, endpoint};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::{bad_request_error, internal_error, not_found_error, success_response};
+use super::{IdPath, bad_request_error, internal_error, not_found_error, success_response};
 use crate::{
     AppState,
     auth::middleware::require_admin,
     db,
+    error::{DbResultExt, OptionExt},
     handlers::{HttpError, HttpOk},
     models::{CreateEmbeddingRequest, EmbeddingSourceType, RulesInfoResponse},
     pdf::{Processor, generate_pdf_filename, validate_pdf_file},
 };
-
-#[derive(Deserialize, JsonSchema)]
-pub struct UploadPathParam {
-    pub id: i64,
-}
 
 #[derive(Serialize, JsonSchema)]
 pub struct UploadResponse {

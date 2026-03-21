@@ -42,34 +42,19 @@ pub async fn list_chat_sessions(
     page: u32,
     limit: u32,
 ) -> SqliteResult<PaginatedResponse<ChatSessionSummary>> {
-    let pagination = PaginationInfo::new(page, limit);
-
     db.with_connection(|conn| {
-        // Get total count for the specific game
-        let total: u32 = conn.query_row(
-            "SELECT COUNT(*) FROM chat_sessions WHERE game_id = ?",
-            params![game_id],
-            |row| row.get(0),
-        )?;
+        let mut q = PaginatedQuery::new();
+        q.filter("cs.game_id = ?", game_id);
 
-        // Get chat sessions with message counts and last message times
-        let mut stmt = conn.prepare(
-            r#"
-            SELECT
-                cs.id, cs.game_id, cs.title, cs.include_house_rules, cs.created_at,
-                COUNT(cm.id) as message_count,
-                MAX(cm.created_at) as last_message_at
-            FROM chat_sessions cs
-            LEFT JOIN chat_messages cm ON cs.id = cm.session_id
-            WHERE cs.game_id = ?
-            GROUP BY cs.id, cs.game_id, cs.title, cs.include_house_rules, cs.created_at
-            ORDER BY COALESCE(MAX(cm.created_at), cs.created_at) DESC
-            LIMIT ? OFFSET ?
-            "#,
-        )?;
-
-        let session_iter = stmt.query_map(
-            params![game_id, pagination.limit, pagination.offset],
+        q.execute(
+            conn,
+            "chat_sessions cs",
+            "cs.id, cs.game_id, cs.title, cs.include_house_rules, cs.created_at, COUNT(cm.id) as message_count, MAX(cm.created_at) as last_message_at",
+            "chat_sessions cs LEFT JOIN chat_messages cm ON cs.id = cm.session_id",
+            "COALESCE(MAX(cm.created_at), cs.created_at) DESC",
+            Some("cs.id, cs.game_id, cs.title, cs.include_house_rules, cs.created_at"),
+            page,
+            limit,
             |row| {
                 let include_house_rules: bool = row.get(3)?;
                 let message_count: i32 = row.get(5)?;
@@ -94,12 +79,7 @@ pub async fn list_chat_sessions(
                     created_at: parse_datetime(row, "created_at")?,
                 })
             },
-        )?;
-
-        let sessions: Result<Vec<ChatSessionSummary>, _> = session_iter.collect();
-        let sessions = sessions?;
-
-        Ok(PaginatedResponse::new(sessions, total, page, limit))
+        )
     })
 }
 

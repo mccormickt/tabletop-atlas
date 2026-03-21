@@ -64,13 +64,11 @@ pub async fn list_chat_sessions(
         .parse()
         .map_err(|_| super::bad_request_error("Invalid game_id parameter".to_string()))?;
 
-    match chat::list_chat_sessions(&db, game_id, query.page, query.limit).await {
-        Ok(result) => success_response(result),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to list chat sessions"; "error" => %e);
-            Err(internal_error("Failed to list chat sessions".to_string()))
-        }
-    }
+    let result = chat::list_chat_sessions(&db, game_id, query.page, query.limit)
+        .await
+        .db_context("Failed to list chat sessions")?;
+
+    success_response(result)
 }
 
 /// Get a specific chat session with its message history
@@ -80,23 +78,18 @@ pub async fn list_chat_sessions(
 }]
 pub async fn get_chat_session(
     rqctx: RequestContext<AppState>,
-    path: Path<ChatSessionPathParam>,
+    path: Path<IdPath>,
 ) -> Result<HttpOk<ChatHistory>, HttpError> {
     let app_state = rqctx.context();
     let session_id = path.into_inner().id;
     let db = app_state.db();
 
-    match chat::get_chat_history(&db, session_id).await {
-        Ok(Some(history)) => success_response(history),
-        Ok(None) => Err(not_found_error(format!(
-            "Chat session with id {} not found",
-            session_id
-        ))),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to get chat session"; "session_id" => session_id, "error" => %e);
-            Err(internal_error("Failed to get chat session".to_string()))
-        }
-    }
+    let history = chat::get_chat_history(&db, session_id)
+        .await
+        .db_context("Failed to get chat session")?
+        .or_not_found(format!("Chat session with id {} not found", session_id))?;
+
+    success_response(history)
 }
 
 /// Create a new chat session
@@ -112,13 +105,11 @@ pub async fn create_chat_session(
     let create_request = body.into_inner();
     let db = app_state.db();
 
-    match chat::create_chat_session(&db, create_request).await {
-        Ok(session) => created_response(session),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to create chat session"; "error" => %e);
-            Err(internal_error("Failed to create chat session".to_string()))
-        }
-    }
+    let session = chat::create_chat_session(&db, create_request)
+        .await
+        .db_context("Failed to create chat session")?;
+
+    created_response(session)
 }
 
 /// Update a chat session (e.g., toggle include_house_rules)
@@ -128,7 +119,7 @@ pub async fn create_chat_session(
 }]
 pub async fn update_chat_session(
     rqctx: RequestContext<AppState>,
-    path: Path<ChatSessionPathParam>,
+    path: Path<IdPath>,
     body: TypedBody<UpdateChatSessionRequest>,
 ) -> Result<HttpOk<ChatSession>, HttpError> {
     let app_state = rqctx.context();
@@ -136,17 +127,12 @@ pub async fn update_chat_session(
     let update_request = body.into_inner();
     let db = app_state.db();
 
-    match chat::update_chat_session(&db, session_id, update_request).await {
-        Ok(Some(session)) => success_response(session),
-        Ok(None) => Err(not_found_error(format!(
-            "Chat session with id {} not found",
-            session_id
-        ))),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to update chat session"; "session_id" => session_id, "error" => %e);
-            Err(internal_error("Failed to update chat session".to_string()))
-        }
-    }
+    let session = chat::update_chat_session(&db, session_id, update_request)
+        .await
+        .db_context("Failed to update chat session")?
+        .or_not_found(format!("Chat session with id {} not found", session_id))?;
+
+    success_response(session)
 }
 
 /// Search rules text for a specific game using embedding similarity
