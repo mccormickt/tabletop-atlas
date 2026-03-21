@@ -1,7 +1,7 @@
 use super::{
     Database, PaginationInfo, format_now_for_db, like_pattern, parse_datetime, query_row_optional,
 };
-use crate::models::{CreateUserRequest, PaginatedResponse, User, UserId, UserListItem};
+use crate::models::{CreateUserRequest, PaginatedResponse, User, UserListItem};
 use rusqlite::{Result as SqliteResult, Row, params};
 
 /// Map a database row to a User struct
@@ -63,7 +63,7 @@ pub async fn create_user(db: &Database, request: CreateUserRequest) -> SqliteRes
     })
 }
 
-pub async fn get_user_by_id(db: &Database, user_id: UserId) -> SqliteResult<Option<User>> {
+pub async fn get_user_by_id(db: &Database, user_id: i64) -> SqliteResult<Option<User>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
             r#"
@@ -155,7 +155,7 @@ pub async fn list_users(
 /// remove the last admin, returns a custom error instead of proceeding.
 pub async fn update_user_role(
     db: &Database,
-    user_id: UserId,
+    user_id: i64,
     new_role: &str,
     check_last_admin: bool,
 ) -> SqliteResult<Option<UserListItem>> {
@@ -201,7 +201,7 @@ pub async fn update_user_role(
 
 pub async fn update_user(
     db: &Database,
-    user_id: UserId,
+    user_id: i64,
     display_name: Option<String>,
     picture_url: Option<String>,
 ) -> SqliteResult<Option<User>> {

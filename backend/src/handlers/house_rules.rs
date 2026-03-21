@@ -14,8 +14,8 @@ use crate::{
         deleted_response, internal_error, not_found_error, success_response,
     },
     models::{
-        CreateEmbeddingRequest, CreateHouseRuleRequest, EmbeddingSourceType, GameId, HouseRule,
-        HouseRuleId, PaginatedResponse, UpdateHouseRuleRequest, default_limit, default_page,
+        CreateEmbeddingRequest, CreateHouseRuleRequest, EmbeddingSourceType, HouseRule,
+        PaginatedResponse, UpdateHouseRuleRequest, default_limit, default_page,
     },
 };
 
@@ -97,12 +97,12 @@ async fn embed_house_rule<M: EmbeddingModel>(
 
 #[derive(Deserialize, JsonSchema)]
 pub struct HouseRulePathParam {
-    pub id: HouseRuleId,
+    pub id: i64,
 }
 
 #[derive(Deserialize, JsonSchema)]
 pub struct HouseRulesByGameQuery {
-    pub game_id: GameId,
+    pub game_id: i64,
     #[serde(default = "default_page")]
     pub page: u32,
     #[serde(default = "default_limit")]

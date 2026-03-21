@@ -2,14 +2,12 @@ use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::UserId;
-
 pub type CustomGameId = i64;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CustomGame {
     pub id: CustomGameId,
-    pub user_id: UserId,
+    pub user_id: i64,
     pub name: String,
     pub description: Option<String>,
     pub publisher: Option<String>,
@@ -28,7 +26,7 @@ pub struct CustomGame {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CustomGameSummary {
     pub id: CustomGameId,
-    pub user_id: UserId,
+    pub user_id: i64,
     pub name: String,
     pub publisher: Option<String>,
     pub year_published: Option<i32>,

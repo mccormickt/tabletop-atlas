@@ -1,7 +1,7 @@
 use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
-    ChatHistory, ChatMessage, ChatSession, ChatSessionId, ChatSessionSummary,
-    CreateChatSessionRequest, GameId, PaginatedResponse, UpdateChatSessionRequest,
+    ChatHistory, ChatMessage, ChatSession, ChatSessionSummary, CreateChatSessionRequest,
+    PaginatedResponse, UpdateChatSessionRequest,
 };
 use rusqlite::{Result as SqliteResult, Row, params};
 
@@ -38,7 +38,7 @@ fn row_to_chat_message(row: &Row) -> SqliteResult<ChatMessage> {
 
 pub async fn list_chat_sessions(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
     page: u32,
     limit: u32,
 ) -> SqliteResult<PaginatedResponse<ChatSessionSummary>> {
@@ -103,10 +103,7 @@ pub async fn list_chat_sessions(
     })
 }
 
-pub async fn get_chat_history(
-    db: &Database,
-    session_id: ChatSessionId,
-) -> SqliteResult<Option<ChatHistory>> {
+pub async fn get_chat_history(db: &Database, session_id: i64) -> SqliteResult<Option<ChatHistory>> {
     db.with_connection(|conn| {
         // First get the session
         let mut session_stmt = conn.prepare(
@@ -179,7 +176,7 @@ pub async fn create_chat_session(
 
 pub async fn add_message_to_session(
     db: &Database,
-    session_id: ChatSessionId,
+    session_id: i64,
     role: crate::models::MessageRole,
     content: String,
     context_chunks: Option<Vec<i64>>,
@@ -212,7 +209,7 @@ pub async fn add_message_to_session(
 
 pub async fn update_chat_session(
     db: &Database,
-    session_id: ChatSessionId,
+    session_id: i64,
     request: UpdateChatSessionRequest,
 ) -> SqliteResult<Option<ChatSession>> {
     db.with_transaction(|conn| {

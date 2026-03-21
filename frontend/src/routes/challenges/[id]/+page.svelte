@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { useAuth, type AuthState } from '$lib/stores/auth';
+	import { createAuthState } from '$lib/stores/auth.svelte';
 	import { api, getStatusColor } from '$lib';
 	import { Button } from '$lib/components/ui/button';
 	import ChallengeGrid from '$lib/components/challenges/ChallengeGrid.svelte';
@@ -16,9 +16,8 @@
 		GameType
 	} from '$lib';
 
-	const auth = useAuth();
+	const auth = createAuthState();
 
-	let authState = $state<AuthState>({ user: null, isLoading: true, error: null });
 	let gridData = $state<ChallengeGridView | null>(null);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
@@ -34,15 +33,11 @@
 	let selectedRowIndex = $state<number | null>(null);
 
 	$effect(() => {
-		const unsubscribe = auth.subscribe((state) => {
-			authState = state;
-			if (!state.isLoading && !state.user) {
-				goto(resolve('/auth/login'));
-			} else if (state.user && $page.params.id) {
-				loadGrid();
-			}
-		});
-		return unsubscribe;
+		if (!auth.isLoading && !auth.user) {
+			goto(resolve('/auth/login'));
+		} else if (auth.user && $page.params.id) {
+			loadGrid();
+		}
 	});
 
 	async function loadGrid() {
@@ -120,7 +115,7 @@
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	{#if authState.isLoading || isLoading}
+	{#if auth.isLoading || isLoading}
 		<div class="flex justify-center py-12">
 			<div
 				class="border-game-blue h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { useAuth, type AuthState } from '$lib/stores/auth';
+	import { createAuthState } from '$lib/stores/auth.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { EmptyState } from '$lib/components/ui/empty-state';
 
@@ -13,23 +13,18 @@
 		notes: string | null;
 	}
 
-	const auth = useAuth();
+	const auth = createAuthState();
 
-	let authState = $state<AuthState>({ user: null, isLoading: true, error: null });
 	let collection = $state<CollectionEntry[]>([]);
 	let isLoadingCollection = $state(true);
 	let error = $state<string | null>(null);
 
 	$effect(() => {
-		const unsubscribe = auth.subscribe((state) => {
-			authState = state;
-			if (!state.isLoading && !state.user) {
-				goto(resolve('/auth/login'));
-			} else if (state.user) {
-				loadCollection();
-			}
-		});
-		return unsubscribe;
+		if (!auth.isLoading && !auth.user) {
+			goto(resolve('/auth/login'));
+		} else if (auth.user) {
+			loadCollection();
+		}
 	});
 
 	async function loadCollection() {
@@ -75,7 +70,7 @@
 		<p class="text-muted-foreground mt-2">Games you own or want to track</p>
 	</div>
 
-	{#if authState.isLoading || isLoadingCollection}
+	{#if auth.isLoading || isLoadingCollection}
 		<div class="flex justify-center py-12">
 			<div
 				class="border-game-blue h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"

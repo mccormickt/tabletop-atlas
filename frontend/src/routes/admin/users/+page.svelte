@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { api, formatDate, type UserListItem } from '$lib';
+	import { api, formatDate, unwrapResult, createDebouncedAction, type UserListItem } from '$lib';
 	import { SearchInput, Badge, Pagination } from '$lib/components/ui';
-	import { useAuth, type AuthState } from '$lib/stores/auth';
+	import { createAuthState } from '$lib/stores/auth.svelte';
 
 	let users = $state<UserListItem[]>([]);
 	let isLoading = $state(true);
@@ -15,17 +15,9 @@
 	let statusMessage = $state<{ text: string; type: 'success' | 'error' } | null>(null);
 	let updatingUserId = $state<number | null>(null);
 
-	const auth = useAuth();
-	let authState = $state<AuthState>({ user: null, isLoading: true, error: null });
+	const auth = createAuthState();
 
-	$effect(() => {
-		const unsubscribe = auth.subscribe((state) => {
-			authState = state;
-		});
-		return unsubscribe;
-	});
-
-	let searchTimeout: ReturnType<typeof setTimeout>;
+	const debouncedSearch = createDebouncedAction(() => loadUsers(1));
 	let initialized = $state(false);
 
 	$effect(() => {
@@ -39,24 +31,25 @@
 		isLoading = true;
 		error = null;
 		try {
-			const result = await api.methods.listAdminUsers({
-				query: {
-					page: pageNum,
-					limit: 20,
-					search: searchQuery || undefined,
-					role: roleFilter || undefined
-				}
-			});
-			if (result.type === 'success') {
-				users = result.data.items;
-				page = result.data.page;
-				totalPages = result.data.totalPages;
-				total = result.data.total;
-			} else if (result.type === 'error') {
-				error = result.data.message || 'Failed to load users';
-			} else if (result.type === 'client_error') {
-				error = result.error.message || 'Failed to load users';
+			const r = unwrapResult(
+				await api.methods.listAdminUsers({
+					query: {
+						page: pageNum,
+						limit: 20,
+						search: searchQuery || undefined,
+						role: roleFilter || undefined
+					}
+				}),
+				'Failed to load users'
+			);
+			if (!r.ok) {
+				error = r.error;
+				return;
 			}
+			users = r.data.items;
+			page = r.data.page;
+			totalPages = r.data.totalPages;
+			total = r.data.total;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load users';
 		} finally {
@@ -66,10 +59,7 @@
 
 	function handleSearchInput(value: string) {
 		searchQuery = value;
-		clearTimeout(searchTimeout);
-		searchTimeout = setTimeout(() => {
-			loadUsers(1);
-		}, 300);
+		debouncedSearch.trigger();
 	}
 
 	function handleSearchClear() {
@@ -97,22 +87,19 @@
 		users = users.map((u) => (u.id === userId ? { ...u, role: newRole } : u));
 
 		try {
-			const result = await api.methods.updateUserRole({
-				path: { id: userId },
-				body: { role: newRole }
-			});
-			if (result.type === 'success') {
-				users = users.map((u) => (u.id === userId ? result.data : u));
+			const r = unwrapResult(
+				await api.methods.updateUserRole({
+					path: { id: userId },
+					body: { role: newRole }
+				}),
+				'Failed to update role'
+			);
+			if (r.ok) {
+				users = users.map((u) => (u.id === userId ? r.data : u));
 				showStatus('Role updated successfully', 'success');
 			} else {
 				users = previousUsers;
-				let msg = 'Failed to update role';
-				if (result.type === 'error') {
-					msg = result.data.message || msg;
-				} else if (result.type === 'client_error') {
-					msg = result.error.message || msg;
-				}
-				showStatus(msg, 'error');
+				showStatus(r.error, 'error');
 			}
 		} catch (err) {
 			users = previousUsers;
@@ -199,7 +186,7 @@
 								{user.displayName || '-'}
 							</td>
 							<td class="px-4 py-3">
-								{#if authState.user?.id === user.id}
+								{#if auth.user?.id === user.id}
 									<div class="flex items-center gap-2">
 										<Badge variant="outline">{user.role}</Badge>
 										<span class="text-muted-foreground text-xs">(You)</span>

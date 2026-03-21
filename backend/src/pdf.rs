@@ -312,7 +312,7 @@ pub fn validate_pdf_file(file_bytes: &[u8]) -> Result<()> {
 }
 
 /// Generate a safe filename for storing uploaded PDFs
-pub fn generate_pdf_filename(game_id: crate::models::GameId, original_filename: &str) -> String {
+pub fn generate_pdf_filename(game_id: i64, original_filename: &str) -> String {
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let _safe_name = original_filename
         .chars()
@@ -348,7 +348,7 @@ mod tests {
 
     #[test]
     fn test_generate_pdf_filename() {
-        let game_id: crate::models::GameId = 123;
+        let game_id: crate::models::i64 = 123;
         let original = "My Game Rules.pdf";
         let filename = generate_pdf_filename(game_id, original);
 

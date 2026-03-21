@@ -7,8 +7,8 @@ use crate::{
         deleted_response, internal_error, not_found_error, success_response,
     },
     models::{
-        CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, UpdateGameRequest,
-        default_limit, default_page,
+        CreateGameRequest, Game, GameSummary, PaginatedResponse, UpdateGameRequest, default_limit,
+        default_page,
     },
 };
 use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
@@ -17,7 +17,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct GamePathParam {
-    pub id: GameId,
+    pub id: i64,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

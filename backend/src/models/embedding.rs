@@ -1,17 +1,16 @@
-use super::{EmbeddingId, GameId, HouseRuleId};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Embedding {
-    pub id: EmbeddingId,
-    pub game_id: GameId,
+    pub id: i64,
+    pub game_id: i64,
     pub chunk_text: String,
     pub embedding: Vec<f32>, // Vector embedding
     pub chunk_index: i32,
     pub source_type: EmbeddingSourceType,
-    pub source_id: Option<HouseRuleId>,
+    pub source_id: Option<i64>,
     pub metadata: Option<String>, // JSON string
     pub created_at: DateTime<Utc>,
 }
@@ -43,28 +42,28 @@ impl EmbeddingSourceType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateEmbeddingRequest {
-    pub game_id: GameId,
+    pub game_id: i64,
     pub chunk_text: String,
     pub embedding: Vec<f32>,
     pub chunk_index: i32,
     pub source_type: EmbeddingSourceType,
-    pub source_id: Option<HouseRuleId>,
+    pub source_id: Option<i64>,
     pub metadata: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct EmbeddingSearchResult {
-    pub id: EmbeddingId,
+    pub id: i64,
     pub chunk_text: String,
     pub similarity_score: f32,
     pub source_type: EmbeddingSourceType,
-    pub source_id: Option<HouseRuleId>,
+    pub source_id: Option<i64>,
     pub metadata: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct SimilaritySearchRequest {
-    pub game_id: GameId,
+    pub game_id: i64,
     pub query_embedding: Vec<f32>,
     #[serde(default = "default_search_limit")]
     pub limit: u32,

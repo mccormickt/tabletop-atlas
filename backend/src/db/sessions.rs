@@ -1,7 +1,7 @@
 use super::{
     Database, format_datetime_for_db, format_now_for_db, parse_datetime, query_row_optional,
 };
-use crate::models::{Session, SessionId, UserId};
+use crate::models::{Session, SessionId};
 use chrono::{DateTime, Utc};
 use rusqlite::{Result as SqliteResult, params};
 use sha2::{Digest, Sha256};
@@ -20,7 +20,7 @@ pub fn generate_session_id() -> String {
 pub async fn create_session(
     db: &Database,
     session_id: &str,
-    user_id: UserId,
+    user_id: i64,
     refresh_token: &str,
     expires_at: DateTime<Utc>,
 ) -> SqliteResult<Session> {
@@ -88,7 +88,7 @@ pub async fn delete_session(db: &Database, session_id: &SessionId) -> SqliteResu
     })
 }
 
-pub async fn delete_user_sessions(db: &Database, user_id: UserId) -> SqliteResult<u64> {
+pub async fn delete_user_sessions(db: &Database, user_id: i64) -> SqliteResult<u64> {
     db.with_connection(|conn| {
         let rows_affected =
             conn.execute("DELETE FROM sessions WHERE user_id = ?", params![user_id])?;

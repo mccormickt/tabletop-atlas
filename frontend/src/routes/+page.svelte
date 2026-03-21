@@ -14,7 +14,7 @@
 		Trophy
 	} from '$lib/components/icons';
 	import { useHeader } from '$lib/stores/header';
-	import { useAuth } from '$lib/stores/auth';
+	import { createAuthState } from '$lib/stores/auth.svelte';
 
 	const header = useHeader();
 	header.configure({
@@ -22,15 +22,7 @@
 		currentGame: null
 	});
 
-	const auth = useAuth();
-	let isAdmin = $state(false);
-
-	$effect(() => {
-		const unsubscribe = auth.subscribe((state) => {
-			isAdmin = state.user?.role === 'admin';
-		});
-		return unsubscribe;
-	});
+	const auth = createAuthState();
 
 	function navigateToGames() {
 		goto(resolve('/games'));
@@ -273,7 +265,7 @@
 						<p class="font-display font-medium">Upload rule books</p>
 						<p class="text-muted-foreground text-sm">We'll index the content for you</p>
 					</div>
-					{#if isAdmin}
+					{#if auth.isAdmin}
 						<Button variant="ghost" size="sm" onclick={navigateToUpload}>Upload</Button>
 					{/if}
 				</div>

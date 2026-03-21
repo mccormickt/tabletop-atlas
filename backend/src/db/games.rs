@@ -2,8 +2,7 @@ use super::{
     Database, PaginationInfo, format_now_for_db, like_pattern, parse_datetime, query_row_optional,
 };
 use crate::models::{
-    CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, RulesInfoResponse,
-    UpdateGameRequest,
+    CreateGameRequest, Game, GameSummary, PaginatedResponse, RulesInfoResponse, UpdateGameRequest,
 };
 use rusqlite::{Result as SqliteResult, Row, params};
 
@@ -120,7 +119,7 @@ pub async fn list_games(
     })
 }
 
-pub async fn get_game(db: &Database, game_id: GameId) -> SqliteResult<Option<Game>> {
+pub async fn get_game(db: &Database, game_id: i64) -> SqliteResult<Option<Game>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
             r#"
@@ -180,7 +179,7 @@ pub async fn create_game(db: &Database, request: CreateGameRequest) -> SqliteRes
 
 pub async fn update_game(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
     request: UpdateGameRequest,
 ) -> SqliteResult<Option<Game>> {
     db.with_transaction(|conn| {
@@ -258,7 +257,7 @@ pub async fn update_game(
     })
 }
 
-pub async fn delete_game(db: &Database, game_id: GameId) -> SqliteResult<bool> {
+pub async fn delete_game(db: &Database, game_id: i64) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         let rows_affected =
             conn.execute("DELETE FROM master_games WHERE id = ?", params![game_id])?;
@@ -268,7 +267,7 @@ pub async fn delete_game(db: &Database, game_id: GameId) -> SqliteResult<bool> {
 
 pub async fn update_game_rules_text(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
     rules_text: String,
     pdf_path: Option<String>,
 ) -> SqliteResult<bool> {
@@ -284,7 +283,7 @@ pub async fn update_game_rules_text(
 
 pub async fn get_game_rules_info(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
 ) -> SqliteResult<Option<RulesInfoResponse>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
@@ -317,7 +316,7 @@ pub async fn get_game_rules_info(
 }
 
 // Helper function for synchronous game retrieval within transactions
-fn get_game_by_id_sync(conn: &rusqlite::Connection, game_id: GameId) -> SqliteResult<Game> {
+fn get_game_by_id_sync(conn: &rusqlite::Connection, game_id: i64) -> SqliteResult<Game> {
     let mut stmt = conn.prepare(
         r#"
         SELECT id, name, description, publisher, year_published,

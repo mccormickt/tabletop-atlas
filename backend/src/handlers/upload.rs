@@ -11,13 +11,13 @@ use crate::{
     auth::middleware::require_admin,
     db,
     handlers::{HttpError, HttpOk},
-    models::{CreateEmbeddingRequest, EmbeddingSourceType, GameId, RulesInfoResponse},
+    models::{CreateEmbeddingRequest, EmbeddingSourceType, RulesInfoResponse},
     pdf::{Processor, generate_pdf_filename, validate_pdf_file},
 };
 
 #[derive(Deserialize, JsonSchema)]
 pub struct UploadPathParam {
-    pub id: GameId,
+    pub id: i64,
 }
 
 #[derive(Serialize, JsonSchema)]

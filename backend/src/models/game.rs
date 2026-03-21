@@ -1,11 +1,10 @@
-use super::GameId;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Game {
-    pub id: GameId,
+    pub id: i64,
     pub name: String,
     pub description: Option<String>,
     pub publisher: Option<String>,
@@ -49,7 +48,7 @@ pub struct UpdateGameRequest {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GameSummary {
-    pub id: GameId,
+    pub id: i64,
     pub name: String,
     pub publisher: Option<String>,
     pub year_published: Option<i32>,

@@ -1,8 +1,5 @@
 use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
-use crate::models::{
-    CreateHouseRuleRequest, GameId, HouseRule, HouseRuleId, PaginatedResponse,
-    UpdateHouseRuleRequest,
-};
+use crate::models::{CreateHouseRuleRequest, HouseRule, PaginatedResponse, UpdateHouseRuleRequest};
 use rusqlite::{Result as SqliteResult, Row, params};
 
 /// Map a database row to a HouseRule struct
@@ -21,7 +18,7 @@ fn row_to_house_rule(row: &Row) -> SqliteResult<HouseRule> {
 
 pub async fn list_house_rules(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
     page: u32,
     limit: u32,
 ) -> SqliteResult<PaginatedResponse<HouseRule>> {
@@ -58,10 +55,7 @@ pub async fn list_house_rules(
     })
 }
 
-pub async fn get_house_rule(
-    db: &Database,
-    house_rule_id: HouseRuleId,
-) -> SqliteResult<Option<HouseRule>> {
+pub async fn get_house_rule(db: &Database, house_rule_id: i64) -> SqliteResult<Option<HouseRule>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
             r#"
@@ -128,7 +122,7 @@ pub async fn create_house_rule(
 
 pub async fn update_house_rule(
     db: &Database,
-    house_rule_id: HouseRuleId,
+    house_rule_id: i64,
     request: UpdateHouseRuleRequest,
 ) -> SqliteResult<Option<HouseRule>> {
     db.with_transaction(|conn| {
@@ -186,7 +180,7 @@ pub async fn update_house_rule(
     })
 }
 
-pub async fn delete_house_rule(db: &Database, house_rule_id: HouseRuleId) -> SqliteResult<bool> {
+pub async fn delete_house_rule(db: &Database, house_rule_id: i64) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         let rows_affected = conn.execute(
             "DELETE FROM house_rules WHERE id = ?",
@@ -199,7 +193,7 @@ pub async fn delete_house_rule(db: &Database, house_rule_id: HouseRuleId) -> Sql
 #[allow(dead_code)]
 pub async fn list_house_rules_by_game(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
     active_only: bool,
 ) -> SqliteResult<Vec<HouseRule>> {
     db.with_connection(|conn| {
@@ -231,7 +225,7 @@ pub async fn list_house_rules_by_game(
 // Helper function for synchronous house rule retrieval within transactions
 fn get_house_rule_by_id_sync(
     conn: &rusqlite::Connection,
-    house_rule_id: HouseRuleId,
+    house_rule_id: i64,
 ) -> SqliteResult<HouseRule> {
     let mut stmt = conn.prepare(
         r#"

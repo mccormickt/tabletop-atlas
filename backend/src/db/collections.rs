@@ -1,7 +1,7 @@
 use super::{Database, PaginationInfo, format_now_for_db, parse_datetime};
 use crate::models::{
     AddToCollectionRequest, CollectionEntry, CollectionEntryId, CollectionEntryWithGame,
-    PaginatedResponse, UpdateCollectionRequest, UserId,
+    PaginatedResponse, UpdateCollectionRequest,
 };
 use rusqlite::{Result as SqliteResult, Row, params};
 
@@ -20,7 +20,7 @@ fn row_to_collection_entry(row: &Row) -> SqliteResult<CollectionEntry> {
 
 pub async fn list_user_collection(
     db: &Database,
-    user_id: UserId,
+    user_id: i64,
     page: u32,
     limit: u32,
 ) -> SqliteResult<PaginatedResponse<CollectionEntryWithGame>> {
@@ -64,7 +64,7 @@ pub async fn list_user_collection(
 
 pub async fn add_to_collection(
     db: &Database,
-    user_id: UserId,
+    user_id: i64,
     request: AddToCollectionRequest,
 ) -> SqliteResult<CollectionEntry> {
     db.with_transaction(|conn| {
@@ -99,7 +99,7 @@ pub async fn add_to_collection(
 
 pub async fn update_collection_entry(
     db: &Database,
-    user_id: UserId,
+    user_id: i64,
     entry_id: CollectionEntryId,
     request: UpdateCollectionRequest,
 ) -> SqliteResult<Option<CollectionEntry>> {
@@ -156,7 +156,7 @@ pub async fn update_collection_entry(
 
 pub async fn remove_from_collection(
     db: &Database,
-    user_id: UserId,
+    user_id: i64,
     entry_id: CollectionEntryId,
 ) -> SqliteResult<bool> {
     db.with_connection(|conn| {

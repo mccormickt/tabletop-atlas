@@ -1,7 +1,7 @@
 use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
     CreateCustomGameRequest, CustomGame, CustomGameId, CustomGameSummary, PaginatedResponse,
-    UpdateCustomGameRequest, UserId,
+    UpdateCustomGameRequest,
 };
 use rusqlite::{Result as SqliteResult, Row, params};
 
@@ -28,7 +28,7 @@ fn row_to_custom_game(row: &Row) -> SqliteResult<CustomGame> {
 
 pub async fn list_user_custom_games(
     db: &Database,
-    user_id: UserId,
+    user_id: i64,
     page: u32,
     limit: u32,
 ) -> SqliteResult<PaginatedResponse<CustomGameSummary>> {
@@ -124,7 +124,7 @@ pub async fn list_public_custom_games(
 
 pub async fn create_custom_game(
     db: &Database,
-    user_id: UserId,
+    user_id: i64,
     request: CreateCustomGameRequest,
 ) -> SqliteResult<CustomGame> {
     db.with_transaction(|conn| {
@@ -173,7 +173,7 @@ pub async fn get_custom_game(
 
 pub async fn update_custom_game(
     db: &Database,
-    user_id: UserId,
+    user_id: i64,
     game_id: CustomGameId,
     request: UpdateCustomGameRequest,
 ) -> SqliteResult<Option<CustomGame>> {
@@ -250,7 +250,7 @@ pub async fn update_custom_game(
 
 pub async fn delete_custom_game(
     db: &Database,
-    user_id: UserId,
+    user_id: i64,
     game_id: CustomGameId,
 ) -> SqliteResult<bool> {
     db.with_connection(|conn| {

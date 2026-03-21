@@ -1,15 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { useAuth, type AuthState } from '$lib/stores/auth';
+	import { createAuthState } from '$lib/stores/auth.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
 
-	const auth = useAuth();
+	const auth = createAuthState();
 
-	let authState = $state<AuthState>({ user: null, isLoading: true, error: null });
 	let isSubmitting = $state(false);
 	let error = $state<string | null>(null);
 
@@ -21,13 +20,9 @@
 	let endDate = $state('');
 
 	$effect(() => {
-		const unsubscribe = auth.subscribe((state) => {
-			authState = state;
-			if (!state.isLoading && !state.user) {
-				goto(resolve('/auth/login'));
-			}
-		});
-		return unsubscribe;
+		if (!auth.isLoading && !auth.user) {
+			goto(resolve('/auth/login'));
+		}
 	});
 
 	async function handleSubmit(e: Event) {
@@ -90,7 +85,7 @@
 		<p class="text-muted-foreground mt-2">Set up a new gaming challenge to track with friends</p>
 	</div>
 
-	{#if authState.isLoading}
+	{#if auth.isLoading}
 		<div class="flex justify-center py-12">
 			<div
 				class="border-game-blue h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"

@@ -4,6 +4,7 @@
 	import { browser } from '$app/environment';
 	import {
 		api,
+		unwrapResult,
 		type GameSummary,
 		type CollectionEntryWithGame,
 		type CustomGameSummary
@@ -14,7 +15,7 @@
 	import BulkActionsBar from '$lib/components/BulkActionsBar.svelte';
 	import { GameBoxIcon, Rulebook } from '$lib/components/icons';
 	import { useHeader } from '$lib/stores/header';
-	import { useAuth, type AuthState } from '$lib/stores/auth';
+	import { createAuthState } from '$lib/stores/auth.svelte';
 
 	type TabType = 'library' | 'collection' | 'custom';
 
@@ -24,17 +25,8 @@
 		currentGame: null
 	});
 
-	const auth = useAuth();
-	let authState = $state<AuthState>({ user: null, isLoading: true, error: null });
-	let isAdmin = $state(false);
-
-	$effect(() => {
-		const unsubscribe = auth.subscribe((state) => {
-			authState = state;
-			isAdmin = state.user?.role === 'admin';
-		});
-		return unsubscribe;
-	});
+	const auth = createAuthState();
+	let isAdmin = $derived(auth.isAdmin);
 
 	// Tab state - read from URL on init
 	function getInitialTab(): TabType {
@@ -105,11 +97,11 @@
 
 	// Load data when tab changes
 	$effect(() => {
-		if (initialized && activeTab === 'collection' && !collectionFetched && authState.user) {
+		if (initialized && activeTab === 'collection' && !collectionFetched && auth.user) {
 			collectionFetched = true;
 			loadCollection(1);
 		}
-		if (initialized && activeTab === 'custom' && !customFetched && authState.user) {
+		if (initialized && activeTab === 'custom' && !customFetched && auth.user) {
 			customFetched = true;
 			loadCustomGames(1);
 		}
@@ -135,26 +127,25 @@
 		libraryError = null;
 
 		try {
-			const result = await api.methods.listGames({
-				query: {
-					page: pageNum,
-					limit,
-					search: searchQuery || undefined
-				}
-			});
-
-			if (result.type === 'success') {
-				libraryGames = result.data.items;
-				libraryPage = result.data.page;
-				libraryTotalPages = result.data.totalPages;
-				libraryTotal = result.data.total;
-			} else if (result.type === 'error') {
-				libraryError = result.data.message || 'Failed to load games';
+			const r = unwrapResult(
+				await api.methods.listGames({
+					query: {
+						page: pageNum,
+						limit,
+						search: searchQuery || undefined
+					}
+				}),
+				'Failed to load games'
+			);
+			if (!r.ok) {
+				libraryError = r.error;
 				libraryGames = [];
-			} else if (result.type === 'client_error') {
-				libraryError = result.error.message || 'Failed to load games';
-				libraryGames = [];
+				return;
 			}
+			libraryGames = r.data.items;
+			libraryPage = r.data.page;
+			libraryTotalPages = r.data.totalPages;
+			libraryTotal = r.data.total;
 		} catch (err) {
 			libraryError = err instanceof Error ? err.message : 'An unexpected error occurred';
 			libraryGames = [];
@@ -168,25 +159,24 @@
 		collectionError = null;
 
 		try {
-			const result = await api.methods.listCollection({
-				query: {
-					page: pageNum,
-					limit
-				}
-			});
-
-			if (result.type === 'success') {
-				collectionItems = result.data.items;
-				collectionPage = result.data.page;
-				collectionTotalPages = result.data.totalPages;
-				collectionTotal = result.data.total;
-			} else if (result.type === 'error') {
-				collectionError = result.data.message || 'Failed to load collection';
+			const r = unwrapResult(
+				await api.methods.listCollection({
+					query: {
+						page: pageNum,
+						limit
+					}
+				}),
+				'Failed to load collection'
+			);
+			if (!r.ok) {
+				collectionError = r.error;
 				collectionItems = [];
-			} else if (result.type === 'client_error') {
-				collectionError = result.error.message || 'Failed to load collection';
-				collectionItems = [];
+				return;
 			}
+			collectionItems = r.data.items;
+			collectionPage = r.data.page;
+			collectionTotalPages = r.data.totalPages;
+			collectionTotal = r.data.total;
 		} catch (err) {
 			collectionError = err instanceof Error ? err.message : 'An unexpected error occurred';
 			collectionItems = [];
@@ -200,25 +190,24 @@
 		customError = null;
 
 		try {
-			const result = await api.methods.listCustomGames({
-				query: {
-					page: pageNum,
-					limit
-				}
-			});
-
-			if (result.type === 'success') {
-				customGames = result.data.items;
-				customPage = result.data.page;
-				customTotalPages = result.data.totalPages;
-				customTotal = result.data.total;
-			} else if (result.type === 'error') {
-				customError = result.data.message || 'Failed to load custom games';
+			const r = unwrapResult(
+				await api.methods.listCustomGames({
+					query: {
+						page: pageNum,
+						limit
+					}
+				}),
+				'Failed to load custom games'
+			);
+			if (!r.ok) {
+				customError = r.error;
 				customGames = [];
-			} else if (result.type === 'client_error') {
-				customError = result.error.message || 'Failed to load custom games';
-				customGames = [];
+				return;
 			}
+			customGames = r.data.items;
+			customPage = r.data.page;
+			customTotalPages = r.data.totalPages;
+			customTotal = r.data.total;
 		} catch (err) {
 			customError = err instanceof Error ? err.message : 'An unexpected error occurred';
 			customGames = [];
@@ -320,16 +309,14 @@
 		}
 
 		try {
-			const result = await api.methods.deleteGame({
-				path: { id: game.id }
-			});
-
-			if (result.type === 'success') {
+			const r = unwrapResult(
+				await api.methods.deleteGame({ path: { id: game.id } }),
+				'Failed to delete game'
+			);
+			if (r.ok) {
 				await loadLibrary(libraryPage);
-			} else if (result.type === 'error') {
-				alert(result.data.message || 'Failed to delete game');
-			} else if (result.type === 'client_error') {
-				alert(result.error.message || 'Failed to delete game');
+			} else {
+				alert(r.error);
 			}
 		} catch (err) {
 			alert(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -553,7 +540,7 @@
 		<!-- Main Content -->
 		<div class="min-w-0 flex-1">
 			<!-- Auth Required Message for Collection/Custom -->
-			{#if (activeTab === 'collection' || activeTab === 'custom') && !authState.user && !authState.isLoading}
+			{#if (activeTab === 'collection' || activeTab === 'custom') && !auth.user && !auth.isLoading}
 				<GameBox variant="featured" showCorners={true} class="text-center">
 					<div class="py-12">
 						<div class="mb-6">
@@ -661,7 +648,7 @@
 			{/if}
 
 			<!-- Collection Tab Content -->
-			{#if activeTab === 'collection' && authState.user && !collectionLoading && !collectionError}
+			{#if activeTab === 'collection' && auth.user && !collectionLoading && !collectionError}
 				{#if collectionItems.length === 0}
 					<GameBox variant="featured" showCorners={true} class="text-center">
 						<div class="py-12">
@@ -696,7 +683,7 @@
 			{/if}
 
 			<!-- Custom Games Tab Content -->
-			{#if activeTab === 'custom' && authState.user && !customLoading && !customError}
+			{#if activeTab === 'custom' && auth.user && !customLoading && !customError}
 				{#if customGames.length === 0}
 					<GameBox variant="featured" showCorners={true} class="text-center">
 						<div class="py-12">
@@ -738,7 +725,7 @@
 <BulkActionsBar
 	selectedCount={selectedGameIds.size}
 	mode={activeTab}
-	onAddToCollection={activeTab === 'library' && authState.user ? handleAddToCollection : undefined}
+	onAddToCollection={activeTab === 'library' && auth.user ? handleAddToCollection : undefined}
 	onRemoveFromCollection={activeTab === 'collection' ? handleRemoveFromCollection : undefined}
 	onDelete={activeTab === 'custom' ? handleDeleteCustomGames : undefined}
 	onClearSelection={() => (selectedGameIds = new Set())}

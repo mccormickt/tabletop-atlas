@@ -2,12 +2,11 @@ use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub type UserId = i64;
 pub type SessionId = String;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct User {
-    pub id: UserId,
+    pub id: i64,
     pub google_sub: String,
     pub email: String,
     pub display_name: Option<String>,
@@ -19,7 +18,7 @@ pub struct User {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserInfo {
-    pub id: UserId,
+    pub id: i64,
     pub email: String,
     pub display_name: Option<String>,
     pub picture_url: Option<String>,
@@ -41,7 +40,7 @@ impl From<User> for UserInfo {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Session {
     pub id: SessionId,
-    pub user_id: UserId,
+    pub user_id: i64,
     pub refresh_token_hash: String,
     pub expires_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
@@ -49,7 +48,7 @@ pub struct Session {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserListItem {
-    pub id: UserId,
+    pub id: i64,
     pub email: String,
     pub display_name: Option<String>,
     pub role: String,

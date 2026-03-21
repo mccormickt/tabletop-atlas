@@ -1,10 +1,9 @@
 use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
-    AddParticipantRequest, AssignGameRequest, Challenge, ChallengeGame, ChallengeGameId,
-    ChallengeId, ChallengeParticipant, ChallengePlay, ChallengePlayId,
-    ChallengePlayWithParticipants, ChallengeStats, ChallengeStatus, ChallengeSummary,
-    CreateChallengeRequest, GameType, LeaderboardEntry, ParticipantRole, PlayParticipant,
-    RecordPlayRequest, UpdateChallengeRequest, UpdatePlayRequest, UserId,
+    AddParticipantRequest, AssignGameRequest, Challenge, ChallengeGame, ChallengeParticipant,
+    ChallengePlay, ChallengePlayWithParticipants, ChallengeStats, ChallengeStatus,
+    ChallengeSummary, CreateChallengeRequest, GameType, LeaderboardEntry, ParticipantRole,
+    PlayParticipant, RecordPlayRequest, UpdateChallengeRequest, UpdatePlayRequest,
 };
 use chrono::{NaiveDate, Utc};
 use rusqlite::{Result as SqliteResult, Row, params};
@@ -30,7 +29,7 @@ fn parse_role(role_str: &str) -> ParticipantRole {
 
 pub async fn create_challenge(
     db: &Database,
-    owner_id: UserId,
+    owner_id: i64,
     request: CreateChallengeRequest,
 ) -> SqliteResult<Challenge> {
     db.with_transaction(|conn| {
@@ -76,7 +75,7 @@ pub async fn create_challenge(
     })
 }
 
-pub async fn get_challenge(db: &Database, id: ChallengeId) -> SqliteResult<Option<Challenge>> {
+pub async fn get_challenge(db: &Database, id: i64) -> SqliteResult<Option<Challenge>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
             r#"
@@ -91,7 +90,7 @@ pub async fn get_challenge(db: &Database, id: ChallengeId) -> SqliteResult<Optio
 
 pub async fn list_user_challenges(
     db: &Database,
-    user_id: UserId,
+    user_id: i64,
     page: u32,
     limit: u32,
 ) -> SqliteResult<(Vec<ChallengeSummary>, u32)> {
@@ -162,7 +161,7 @@ pub async fn list_user_challenges(
 
 pub async fn update_challenge(
     db: &Database,
-    id: ChallengeId,
+    id: i64,
     request: UpdateChallengeRequest,
 ) -> SqliteResult<Option<Challenge>> {
     db.with_transaction(|conn| {
@@ -224,7 +223,7 @@ pub async fn update_challenge(
     })
 }
 
-pub async fn delete_challenge(db: &Database, id: ChallengeId) -> SqliteResult<bool> {
+pub async fn delete_challenge(db: &Database, id: i64) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         let rows = conn.execute("DELETE FROM challenges WHERE id = ?", params![id])?;
         Ok(rows > 0)
@@ -235,7 +234,7 @@ pub async fn delete_challenge(db: &Database, id: ChallengeId) -> SqliteResult<bo
 
 pub async fn add_participant(
     db: &Database,
-    challenge_id: ChallengeId,
+    challenge_id: i64,
     request: AddParticipantRequest,
 ) -> SqliteResult<ChallengeParticipant> {
     db.with_transaction(|conn| {
@@ -266,7 +265,7 @@ pub async fn add_participant(
 
 pub async fn get_participants(
     db: &Database,
-    challenge_id: ChallengeId,
+    challenge_id: i64,
 ) -> SqliteResult<Vec<ChallengeParticipant>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
@@ -286,8 +285,8 @@ pub async fn get_participants(
 
 pub async fn remove_participant(
     db: &Database,
-    challenge_id: ChallengeId,
-    user_id: UserId,
+    challenge_id: i64,
+    user_id: i64,
 ) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         // Don't allow removing the owner
@@ -309,11 +308,7 @@ pub async fn remove_participant(
     })
 }
 
-pub async fn is_participant(
-    db: &Database,
-    challenge_id: ChallengeId,
-    user_id: UserId,
-) -> SqliteResult<bool> {
+pub async fn is_participant(db: &Database, challenge_id: i64, user_id: i64) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM challenge_participants WHERE challenge_id = ? AND user_id = ?)",
@@ -323,11 +318,7 @@ pub async fn is_participant(
     })
 }
 
-pub async fn is_owner(
-    db: &Database,
-    challenge_id: ChallengeId,
-    user_id: UserId,
-) -> SqliteResult<bool> {
+pub async fn is_owner(db: &Database, challenge_id: i64, user_id: i64) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM challenges WHERE id = ? AND owner_id = ?)",
@@ -341,7 +332,7 @@ pub async fn is_owner(
 
 pub async fn assign_game(
     db: &Database,
-    challenge_id: ChallengeId,
+    challenge_id: i64,
     request: AssignGameRequest,
 ) -> SqliteResult<ChallengeGame> {
     db.with_transaction(|conn| {
@@ -381,10 +372,7 @@ pub async fn assign_game(
     })
 }
 
-pub async fn get_games(
-    db: &Database,
-    challenge_id: ChallengeId,
-) -> SqliteResult<Vec<ChallengeGame>> {
+pub async fn get_games(db: &Database, challenge_id: i64) -> SqliteResult<Vec<ChallengeGame>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
             r#"
@@ -399,11 +387,7 @@ pub async fn get_games(
     })
 }
 
-pub async fn remove_game(
-    db: &Database,
-    challenge_id: ChallengeId,
-    game_id: ChallengeGameId,
-) -> SqliteResult<bool> {
+pub async fn remove_game(db: &Database, challenge_id: i64, game_id: i64) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         let rows = conn.execute(
             "DELETE FROM challenge_games WHERE challenge_id = ? AND id = ?",
@@ -416,8 +400,8 @@ pub async fn remove_game(
 /// Check if a game belongs to a challenge
 pub async fn game_belongs_to_challenge(
     db: &Database,
-    challenge_id: ChallengeId,
-    game_id: ChallengeGameId,
+    challenge_id: i64,
+    game_id: i64,
 ) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         conn.query_row(
@@ -431,8 +415,8 @@ pub async fn game_belongs_to_challenge(
 /// Check if a play belongs to a challenge
 pub async fn play_belongs_to_challenge(
     db: &Database,
-    challenge_id: ChallengeId,
-    play_id: ChallengePlayId,
+    challenge_id: i64,
+    play_id: i64,
 ) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         conn.query_row(
@@ -446,8 +430,8 @@ pub async fn play_belongs_to_challenge(
 /// Check if all user IDs are participants in the challenge
 pub async fn validate_play_participants(
     db: &Database,
-    challenge_id: ChallengeId,
-    user_ids: &[UserId],
+    challenge_id: i64,
+    user_ids: &[i64],
 ) -> SqliteResult<bool> {
     if user_ids.is_empty() {
         return Ok(true);
@@ -472,7 +456,7 @@ pub async fn validate_play_participants(
 
 pub async fn record_play(
     db: &Database,
-    challenge_id: ChallengeId,
+    challenge_id: i64,
     request: RecordPlayRequest,
 ) -> SqliteResult<ChallengePlayWithParticipants> {
     db.with_transaction(|conn| {
@@ -514,7 +498,7 @@ pub async fn record_play(
 #[allow(dead_code)]
 pub async fn get_play(
     db: &Database,
-    play_id: ChallengePlayId,
+    play_id: i64,
 ) -> SqliteResult<Option<ChallengePlayWithParticipants>> {
     db.with_connection(
         |conn| match get_play_with_participants_internal(conn, play_id) {
@@ -527,7 +511,7 @@ pub async fn get_play(
 
 pub async fn update_play(
     db: &Database,
-    play_id: ChallengePlayId,
+    play_id: i64,
     request: UpdatePlayRequest,
 ) -> SqliteResult<Option<ChallengePlayWithParticipants>> {
     db.with_transaction(|conn| {
@@ -588,7 +572,7 @@ pub async fn update_play(
     })
 }
 
-pub async fn delete_play(db: &Database, play_id: ChallengePlayId) -> SqliteResult<bool> {
+pub async fn delete_play(db: &Database, play_id: i64) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         let rows = conn.execute("DELETE FROM challenge_plays WHERE id = ?", params![play_id])?;
         Ok(rows > 0)
@@ -597,7 +581,7 @@ pub async fn delete_play(db: &Database, play_id: ChallengePlayId) -> SqliteResul
 
 pub async fn get_plays(
     db: &Database,
-    challenge_id: ChallengeId,
+    challenge_id: i64,
 ) -> SqliteResult<Vec<ChallengePlayWithParticipants>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
@@ -634,7 +618,7 @@ pub async fn get_plays(
 
 // Stats operations
 
-pub async fn get_stats(db: &Database, challenge_id: ChallengeId) -> SqliteResult<ChallengeStats> {
+pub async fn get_stats(db: &Database, challenge_id: i64) -> SqliteResult<ChallengeStats> {
     db.with_connection(|conn| {
         // Get challenge dimensions
         let (grid_rows, grid_cols): (i32, i32) = conn.query_row(
@@ -767,7 +751,7 @@ fn row_to_play(row: &Row) -> SqliteResult<ChallengePlay> {
 
 fn get_play_participants_internal(
     conn: &rusqlite::Connection,
-    play_id: ChallengePlayId,
+    play_id: i64,
 ) -> SqliteResult<Vec<PlayParticipant>> {
     let mut stmt = conn.prepare(
         r#"
@@ -793,7 +777,7 @@ fn get_play_participants_internal(
 
 fn get_play_with_participants_internal(
     conn: &rusqlite::Connection,
-    play_id: ChallengePlayId,
+    play_id: i64,
 ) -> SqliteResult<ChallengePlayWithParticipants> {
     let mut stmt = conn.prepare(
         r#"

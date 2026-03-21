@@ -8,15 +8,15 @@ use crate::{
     db::chat,
     handlers::{HttpCreated, HttpError, HttpOk},
     models::{
-        ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionId, ChatSessionSummary,
-        ContextSource, CreateChatSessionRequest, GameId, MessageRole, PaginatedResponse,
-        SimilaritySearchRequest, UpdateChatSessionRequest,
+        ChatHistory, ChatRequest, ChatResponse, ChatSession, ChatSessionSummary, ContextSource,
+        CreateChatSessionRequest, MessageRole, PaginatedResponse, SimilaritySearchRequest,
+        UpdateChatSessionRequest,
     },
 };
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ChatSessionPathParam {
-    pub id: ChatSessionId,
+    pub id: i64,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -63,7 +63,7 @@ pub async fn list_chat_sessions(
     let query = query.into_inner();
     let db = app_state.db();
 
-    let game_id: GameId = query
+    let game_id: i64 = query
         .game_id
         .parse()
         .map_err(|_| super::bad_request_error("Invalid game_id parameter".to_string()))?;
@@ -168,7 +168,7 @@ pub async fn search_rules(
     let db = app_state.db();
 
     // Parse game_id from string
-    let game_id: GameId = search_query
+    let game_id: i64 = search_query
         .game_id
         .parse()
         .map_err(|_| super::bad_request_error("Invalid game_id parameter".to_string()))?;

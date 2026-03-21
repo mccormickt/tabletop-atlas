@@ -17,13 +17,12 @@ use super::{
     forbidden_error, internal_error, not_found_error, success_response,
 };
 use crate::db::Database;
-use crate::models::{ChallengeId, UserId};
 
 /// Helper to verify user is a participant in a challenge
 async fn require_participant(
     db: &Database,
-    challenge_id: ChallengeId,
-    user_id: UserId,
+    challenge_id: i64,
+    user_id: i64,
 ) -> Result<(), HttpError> {
     let is_participant = challenges::is_participant(db, challenge_id, user_id)
         .await
@@ -38,11 +37,7 @@ async fn require_participant(
 }
 
 /// Helper to verify user is the owner of a challenge
-async fn require_owner(
-    db: &Database,
-    challenge_id: ChallengeId,
-    user_id: UserId,
-) -> Result<(), HttpError> {
+async fn require_owner(db: &Database, challenge_id: i64, user_id: i64) -> Result<(), HttpError> {
     let is_owner = challenges::is_owner(db, challenge_id, user_id)
         .await
         .map_err(|e| internal_error(format!("Database error: {}", e)))?;

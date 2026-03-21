@@ -71,7 +71,7 @@
 {:else}
 	<div class="bg-background flex min-h-screen flex-col">
 		<!-- Global Header -->
-		<Header user={authState.user} isAuthLoading={authState.isLoading} />
+		<Header user={auth.user} isAuthLoading={auth.isLoading} />
 
 		<!-- Page Content with bottom padding for mobile nav -->
 		<main class="flex-1 pb-20 md:pb-0">

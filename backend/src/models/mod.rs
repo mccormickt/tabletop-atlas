@@ -24,13 +24,6 @@ pub use user::*;
 
 // Note: tool module uses explicit imports (crate::models::tool::*) for clarity
 
-// Common types used across models
-pub type GameId = i64;
-pub type HouseRuleId = i64;
-pub type EmbeddingId = i64;
-pub type ChatSessionId = i64;
-pub type ChatMessageId = i64;
-
 // Pagination parameters
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PaginationParams {
