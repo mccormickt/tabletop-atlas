@@ -1,6 +1,6 @@
 use super::{Database, PaginatedQuery, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
-    CreateCustomGameRequest, CustomGame, CustomGameId, CustomGameSummary, PaginatedResponse,
+    CreateCustomGameRequest, CustomGame, CustomGameSummary, PaginatedResponse,
     UpdateCustomGameRequest,
 };
 use rusqlite::{Result as SqliteResult, Row, params};
@@ -130,17 +130,14 @@ pub async fn create_custom_game(
     })
 }
 
-pub async fn get_custom_game(
-    db: &Database,
-    game_id: CustomGameId,
-) -> SqliteResult<Option<CustomGame>> {
+pub async fn get_custom_game(db: &Database, game_id: i64) -> SqliteResult<Option<CustomGame>> {
     db.with_connection(|conn| query_row_optional(get_custom_game_by_id_sync(conn, game_id)))
 }
 
 pub async fn update_custom_game(
     db: &Database,
     user_id: i64,
-    game_id: CustomGameId,
+    game_id: i64,
     request: UpdateCustomGameRequest,
 ) -> SqliteResult<Option<CustomGame>> {
     db.with_transaction(|conn| {
@@ -214,11 +211,7 @@ pub async fn update_custom_game(
     })
 }
 
-pub async fn delete_custom_game(
-    db: &Database,
-    user_id: i64,
-    game_id: CustomGameId,
-) -> SqliteResult<bool> {
+pub async fn delete_custom_game(db: &Database, user_id: i64, game_id: i64) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         let rows_affected = conn.execute(
             "DELETE FROM custom_games WHERE id = ? AND user_id = ?",
@@ -230,7 +223,7 @@ pub async fn delete_custom_game(
 
 fn get_custom_game_by_id_sync(
     conn: &rusqlite::Connection,
-    game_id: CustomGameId,
+    game_id: i64,
 ) -> SqliteResult<CustomGame> {
     let mut stmt = conn.prepare(
         r#"

@@ -116,7 +116,6 @@ pub fn deleted_response() -> Result<HttpDeleted, HttpError> {
 
 /// Shared path parameter for endpoints that take a single `{id}`.
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-#[allow(dead_code)]
 pub struct IdPath {
     pub id: i64,
 }

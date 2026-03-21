@@ -4,9 +4,7 @@ use crate::{
     bgg::BggClient,
     db::admin as admin_db,
     db::users,
-    handlers::{
-        bad_request_error, forbidden_error, internal_error, not_found_error, success_response,
-    },
+    handlers::{bad_request_error, forbidden_error, success_response},
     models::Game,
     models::admin::{
         BggEnrichError, BggEnrichPreviewResponse, BggEnrichRequest, BggGameEnrichPreview,
@@ -21,7 +19,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::{HttpError, HttpOk};
+use super::{HttpError, HttpOk, IdPath};
+use crate::error::{DbResultExt, OptionExt};
 
 // Maximum file size: 15MB
 const MAX_CSV_SIZE: usize = 15 * 1024 * 1024;
@@ -48,7 +47,7 @@ pub async fn get_admin_stats(
 
     let master_games_count = admin_db::get_master_games_count(&db)
         .await
-        .map_err(|e| internal_error(format!("Failed to get stats: {}", e)))?;
+        .db_context("Failed to get stats")?;
 
     success_response(AdminDashboardStats { master_games_count })
 }
@@ -65,11 +64,6 @@ pub struct UserSearchParams {
     pub limit: u32,
     pub search: Option<String>,
     pub role: Option<String>,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct UserIdPath {
-    pub id: i64,
 }
 
 /// List users with pagination, search, and role filter (admin only)
@@ -107,7 +101,7 @@ pub async fn list_admin_users(
         params.role.as_deref(),
     )
     .await
-    .map_err(|e| internal_error(format!("Failed to list users: {}", e)))?;
+    .db_context("Failed to list users")?;
 
     success_response(result)
 }
@@ -119,7 +113,7 @@ pub async fn list_admin_users(
 }]
 pub async fn update_user_role(
     rqctx: RequestContext<AppState>,
-    path: Path<UserIdPath>,
+    path: Path<IdPath>,
     body: TypedBody<UpdateUserRoleRequest>,
 ) -> Result<HttpOk<UserListItem>, HttpError> {
     let admin = require_admin(&rqctx)?;
@@ -142,19 +136,12 @@ pub async fn update_user_role(
         return Err(forbidden_error("Cannot change your own role".to_string()));
     }
 
-    // The last-admin check is done atomically inside the transaction
+    // The last-admin check is done atomically inside the DB transaction.
+    // Returns AppError::BadRequest if demoting last admin, AppError::Db for DB errors.
     let check_last_admin = request.role == "user";
     let updated = users::update_user_role(&db, target_user_id, &request.role, check_last_admin)
-        .await
-        .map_err(|e| {
-            let msg = e.to_string();
-            if msg.contains("Cannot demote the last remaining admin") {
-                bad_request_error("Cannot demote the last remaining admin".to_string())
-            } else {
-                internal_error(format!("Failed to update user role: {}", e))
-            }
-        })?
-        .ok_or_else(|| not_found_error(format!("User {} not found", target_user_id)))?;
+        .await?
+        .or_not_found(format!("User {} not found", target_user_id))?;
 
     success_response(updated)
 }
@@ -208,7 +195,7 @@ pub async fn preview_bgg_import(
     let bgg_ids: Vec<i32> = parsed_games.iter().map(|g| g.bgg_id).collect();
     let existing_games = admin_db::get_existing_games_by_bgg_ids(&db, &bgg_ids)
         .await
-        .map_err(|e| internal_error(format!("Failed to fetch existing games: {}", e)))?;
+        .db_context("Failed to fetch existing games")?;
 
     // Separate into inserts and updates
     let mut games_to_insert: Vec<BggGamePreview> = Vec::new();
@@ -282,7 +269,7 @@ pub async fn execute_bgg_import(
     let bgg_ids: Vec<i32> = parsed_games.iter().map(|g| g.bgg_id).collect();
     let existing_games = admin_db::get_existing_games_by_bgg_ids(&db, &bgg_ids)
         .await
-        .map_err(|e| internal_error(format!("Failed to fetch existing games: {}", e)))?;
+        .db_context("Failed to fetch existing games")?;
 
     // Separate into inserts and updates
     let mut games_to_insert: Vec<ParsedBggGame> = Vec::new();
@@ -300,7 +287,7 @@ pub async fn execute_bgg_import(
     let (inserted_count, updated_count) =
         admin_db::upsert_games_from_bgg(&db, games_to_insert, games_to_update)
             .await
-            .map_err(|e| internal_error(format!("Failed to import games: {}", e)))?;
+            .db_context("Failed to import games")?;
 
     success_response(BggImportResponse {
         inserted_count,
@@ -541,12 +528,6 @@ fn calculate_changes(existing: &crate::models::Game, new_data: &ParsedBggGame) -
 // BGG API Enrichment Endpoints
 // ============================================================================
 
-/// Path parameter for game ID
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct GameIdPath {
-    pub id: i64,
-}
-
 /// Get enrichment statistics - how many games are missing data
 #[endpoint {
     method = GET,
@@ -563,7 +544,7 @@ pub async fn get_enrichment_stats(
 
     let stats = admin_db::get_enrichment_stats(&db)
         .await
-        .map_err(|e| internal_error(format!("Failed to get enrichment stats: {}", e)))?;
+        .db_context("Failed to get enrichment stats")?;
 
     success_response(stats)
 }
@@ -575,7 +556,7 @@ pub async fn get_enrichment_stats(
 }]
 pub async fn preview_bgg_enrich(
     rqctx: RequestContext<AppState>,
-    path: Path<GameIdPath>,
+    path: Path<IdPath>,
 ) -> Result<HttpOk<BggEnrichPreviewResponse>, HttpError> {
     // Verify admin access
     require_admin(&rqctx)?;
@@ -587,8 +568,8 @@ pub async fn preview_bgg_enrich(
     // Get the game from database
     let game = admin_db::get_game_by_id(&db, game_id)
         .await
-        .map_err(|e| internal_error(format!("Failed to get game: {}", e)))?
-        .ok_or_else(|| not_found_error(format!("Game {} not found", game_id)))?;
+        .db_context("Failed to get game")?
+        .or_not_found(format!("Game {} not found", game_id))?;
 
     // Check if game has BGG ID
     let bgg_id = game
@@ -643,7 +624,7 @@ pub async fn preview_bgg_enrich(
 }]
 pub async fn execute_bgg_enrich(
     rqctx: RequestContext<AppState>,
-    path: Path<GameIdPath>,
+    path: Path<IdPath>,
     body: TypedBody<BggEnrichRequest>,
 ) -> Result<HttpOk<Game>, HttpError> {
     // Verify admin access
@@ -657,8 +638,8 @@ pub async fn execute_bgg_enrich(
     // Get the game from database
     let game = admin_db::get_game_by_id(&db, game_id)
         .await
-        .map_err(|e| internal_error(format!("Failed to get game: {}", e)))?
-        .ok_or_else(|| not_found_error(format!("Game {} not found", game_id)))?;
+        .db_context("Failed to get game")?
+        .or_not_found(format!("Game {} not found", game_id))?;
 
     // Check if game has BGG ID
     let bgg_id = game
@@ -682,7 +663,7 @@ pub async fn execute_bgg_enrich(
     let updated_game =
         admin_db::update_game_from_bgg(&db, game_id, &bgg_data, &request.fields_to_update)
             .await
-            .map_err(|e| internal_error(format!("Failed to update game: {}", e)))?;
+            .db_context("Failed to update game")?;
 
     success_response(updated_game)
 }
@@ -707,7 +688,7 @@ pub async fn preview_bulk_enrich(
     // Get games needing enrichment
     let games = admin_db::get_games_needing_enrichment(&db, limit)
         .await
-        .map_err(|e| internal_error(format!("Failed to get games: {}", e)))?;
+        .db_context("Failed to get games")?;
 
     if games.is_empty() {
         return success_response(BulkEnrichPreviewResponse {
@@ -801,7 +782,7 @@ pub async fn execute_bulk_enrich(
     // Get games needing enrichment
     let games = admin_db::get_games_needing_enrichment(&db, limit)
         .await
-        .map_err(|e| internal_error(format!("Failed to get games: {}", e)))?;
+        .db_context("Failed to get games")?;
 
     if games.is_empty() {
         return success_response(BulkEnrichResponse {
@@ -850,7 +831,7 @@ pub async fn execute_bulk_enrich(
     // Execute batch update
     let updated_count = admin_db::batch_update_games_from_bgg(&db, updates)
         .await
-        .map_err(|e| internal_error(format!("Failed to update games: {}", e)))?;
+        .db_context("Failed to update games")?;
 
     success_response(BulkEnrichResponse {
         updated_count,

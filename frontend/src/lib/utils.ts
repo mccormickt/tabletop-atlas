@@ -101,7 +101,11 @@ export function unwrapResult<T>(
 ): { ok: true; data: T } | { ok: false; error: string } {
 	if (result.type === 'success') return { ok: true, data: result.data };
 	if (result.type === 'error') return { ok: false, error: result.data.message || fallback };
-	// client_error is typically a JSON parse failure — use fallback
+	// client_error is typically a JSON parse failure — log details for debugging
+	console.error('API client error:', result.error.message, {
+		status: result.response.status,
+		text: result.text?.substring(0, 500)
+	});
 	return { ok: false, error: fallback };
 }
 

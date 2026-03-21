@@ -348,7 +348,7 @@ mod tests {
 
     #[test]
     fn test_generate_pdf_filename() {
-        let game_id: crate::models::i64 = 123;
+        let game_id: i64 = 123;
         let original = "My Game Rules.pdf";
         let filename = generate_pdf_filename(game_id, original);
 

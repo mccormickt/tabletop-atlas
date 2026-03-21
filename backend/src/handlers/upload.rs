@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use dropshot::{Path, RequestContext, UntypedBody, endpoint};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use super::{IdPath, bad_request_error, internal_error, not_found_error, success_response};
 use crate::{
@@ -31,7 +31,7 @@ pub struct UploadResponse {
 }]
 pub async fn upload_rules_pdf(
     rqctx: RequestContext<AppState>,
-    path: Path<UploadPathParam>,
+    path: Path<IdPath>,
     body: UntypedBody,
 ) -> Result<HttpOk<UploadResponse>, HttpError> {
     require_admin(&rqctx)?;
@@ -54,11 +54,8 @@ pub async fn upload_rules_pdf(
     let db = app_state.db();
     let game = db::games::get_game(&db, game_id)
         .await
-        .map_err(|e| internal_error(format!("Failed to get game: {}", e)))?
-        .ok_or(not_found_error(format!(
-            "Game with id {} not found",
-            game_id
-        )))?;
+        .db_context("Failed to get game")?
+        .or_not_found(format!("Game with id {} not found", game_id))?;
 
     // Create uploads directory if it doesn't exist
     let uploads_dir = PathBuf::from("uploads");
@@ -162,7 +159,7 @@ pub async fn upload_rules_pdf(
 }]
 pub async fn get_rules_info(
     rqctx: RequestContext<AppState>,
-    path: Path<UploadPathParam>,
+    path: Path<IdPath>,
 ) -> Result<HttpOk<RulesInfoResponse>, HttpError> {
     let app_state = rqctx.context();
     let game_id = path.into_inner().id;
@@ -171,11 +168,8 @@ pub async fn get_rules_info(
     // Get game rules info using consolidated database function
     let result = db::games::get_game_rules_info(&db, game_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?
-        .ok_or(not_found_error(format!(
-            "Game with id {} not found",
-            game_id
-        )))?;
+        .db_context("Failed to get game rules info")?
+        .or_not_found(format!("Game with id {} not found", game_id))?;
 
     success_response(result)
 }
@@ -187,7 +181,7 @@ pub async fn get_rules_info(
 }]
 pub async fn delete_rules(
     rqctx: RequestContext<AppState>,
-    path: Path<UploadPathParam>,
+    path: Path<IdPath>,
 ) -> Result<HttpOk<DeleteRulesResponse>, HttpError> {
     require_admin(&rqctx)?;
 

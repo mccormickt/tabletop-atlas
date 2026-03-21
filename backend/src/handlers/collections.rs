@@ -1,7 +1,3 @@
-use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
-use schemars::JsonSchema;
-use serde::Deserialize;
-
 use crate::AppState;
 use crate::auth::require_auth;
 use crate::db::collections;
@@ -10,6 +6,7 @@ use crate::models::{
     AddToCollectionRequest, CollectionEntry, CollectionEntryWithGame, PaginatedResponse,
     PaginationParams, UpdateCollectionRequest,
 };
+use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
 
 use super::{
     HttpCreated, HttpDeleted, HttpOk, IdPath, created_response, deleted_response, not_found_error,

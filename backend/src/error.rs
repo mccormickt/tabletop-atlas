@@ -49,7 +49,6 @@ impl From<AppError> for HttpError {
 }
 
 /// Extension trait for converting `SqliteResult<T>` to `Result<T, AppError>` with context.
-#[allow(dead_code)]
 pub trait DbResultExt<T> {
     fn db_context(self, ctx: &str) -> Result<T, AppError>;
 }
@@ -64,7 +63,6 @@ impl<T> DbResultExt<T> for SqliteResult<T> {
 }
 
 /// Extension trait for converting `Option<T>` to `Result<T, AppError>`.
-#[allow(dead_code)]
 pub trait OptionExt<T> {
     fn or_not_found(self, msg: impl Into<String>) -> Result<T, AppError>;
 }

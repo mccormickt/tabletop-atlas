@@ -1,4 +1,5 @@
 use super::{Database, PaginatedQuery, format_now_for_db, parse_datetime, query_row_optional};
+use crate::error::AppError;
 use crate::models::{CreateUserRequest, PaginatedResponse, User, UserListItem};
 use rusqlite::{Result as SqliteResult, Row, params};
 
@@ -116,13 +117,13 @@ pub async fn list_users(
 }
 
 /// Update a user's role. If `check_last_admin` is true and the update would
-/// remove the last admin, returns a custom error instead of proceeding.
+/// remove the last admin, returns `AppError::BadRequest`.
 pub async fn update_user_role(
     db: &Database,
     user_id: i64,
     new_role: &str,
     check_last_admin: bool,
-) -> SqliteResult<Option<UserListItem>> {
+) -> Result<Option<UserListItem>, AppError> {
     db.with_transaction(|conn| {
         let exists: bool = conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM users WHERE id = ?)",
@@ -131,7 +132,7 @@ pub async fn update_user_role(
         )?;
 
         if !exists {
-            return Ok(None);
+            return Ok((false, None));
         }
 
         // Atomically check last-admin constraint inside the transaction
@@ -142,10 +143,7 @@ pub async fn update_user_role(
                 |row| row.get(0),
             )?;
             if admin_count <= 1 {
-                return Err(rusqlite::Error::SqliteFailure(
-                    rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT),
-                    Some("Cannot demote the last remaining admin".to_string()),
-                ));
+                return Ok((true, None)); // Signal: last admin
             }
         }
 
@@ -157,9 +155,21 @@ pub async fn update_user_role(
 
         let mut stmt = conn
             .prepare("SELECT id, email, display_name, role, created_at FROM users WHERE id = ?")?;
-        Ok(Some(
-            stmt.query_row(params![user_id], row_to_user_list_item)?,
-        ))
+        let item = stmt.query_row(params![user_id], row_to_user_list_item)?;
+        Ok((false, Some(item)))
+    })
+    .map_err(|e| AppError::Db {
+        source: e,
+        context: "Failed to update user role".to_string(),
+    })
+    .and_then(|(is_last_admin, result)| {
+        if is_last_admin {
+            Err(AppError::BadRequest(
+                "Cannot demote the last remaining admin".to_string(),
+            ))
+        } else {
+            Ok(result)
+        }
     })
 }
 

@@ -1,6 +1,3 @@
-use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
-use serde::Deserialize;
-
 use crate::AppState;
 use crate::auth::{extract_auth, require_auth};
 use crate::db::custom_games;
@@ -9,6 +6,7 @@ use crate::models::{
     CreateCustomGameRequest, CustomGame, CustomGameSummary, PaginatedResponse, PaginationParams,
     UpdateCustomGameRequest,
 };
+use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
 
 use super::{
     HttpCreated, HttpDeleted, HttpOk, IdPath, created_response, deleted_response, not_found_error,

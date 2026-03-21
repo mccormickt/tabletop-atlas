@@ -83,17 +83,11 @@ pub async fn list_challenges(
     let db = rqctx.context().db();
     let query = query.into_inner();
 
-    let (items, total) =
-        challenges::list_user_challenges(&db, user.user_id, query.page, query.limit)
-            .await
-            .db_context("Failed to list challenges")?;
+    let result = challenges::list_user_challenges(&db, user.user_id, query.page, query.limit)
+        .await
+        .db_context("Failed to list challenges")?;
 
-    success_response(PaginatedResponse::new(
-        items,
-        total,
-        query.page,
-        query.limit,
-    ))
+    success_response(result)
 }
 
 /// Create a new challenge
