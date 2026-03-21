@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { api, type GameSummary, type SearchResult } from '$lib';
+	import { api, unwrapResult, createDebouncedAction, type GameSummary, type SearchResult } from '$lib';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import {
 		Button,
@@ -29,7 +29,7 @@
 	let totalResults = $state(0);
 	let hasSearched = $state(false);
 	let gameFilterQuery = $state('');
-	let gameSearchTimeout: ReturnType<typeof setTimeout> | null = null;
+	const debouncedGameSearch = createDebouncedAction(() => loadGames(gameFilterQuery));
 
 	let initialUrlParams: { gameId: string | null; query: string | null } = {
 		gameId: null,
@@ -93,20 +93,20 @@
 		error = null;
 
 		try {
-			const result = await api.methods.listGames({
-				query: {
-					limit: 50,
-					search: search || undefined
-				}
-			});
-
-			if (result.type === 'success') {
-				games = result.data.items;
-			} else if (result.type === 'error') {
-				error = result.data.message || 'Failed to load games';
-			} else if (result.type === 'client_error') {
-				error = result.error.message || 'Failed to load games';
+			const r = unwrapResult(
+				await api.methods.listGames({
+					query: {
+						limit: 50,
+						search: search || undefined
+					}
+				}),
+				'Failed to load games'
+			);
+			if (!r.ok) {
+				error = r.error;
+				return;
 			}
+			games = r.data.items;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
 		} finally {
@@ -115,22 +115,13 @@
 	}
 
 	function handleGameSearchInput(event: Event) {
-		const value = (event.target as HTMLInputElement).value;
-		gameFilterQuery = value;
-
-		if (gameSearchTimeout) {
-			clearTimeout(gameSearchTimeout);
-		}
-		gameSearchTimeout = setTimeout(() => {
-			loadGames(value);
-		}, 300);
+		gameFilterQuery = (event.target as HTMLInputElement).value;
+		debouncedGameSearch.trigger();
 	}
 
 	function handleGameSearchKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
-			if (gameSearchTimeout) {
-				clearTimeout(gameSearchTimeout);
-			}
+			debouncedGameSearch.cancel();
 			loadGames(gameFilterQuery);
 		}
 	}
@@ -182,23 +173,22 @@
 		hasSearched = true;
 
 		try {
-			const result = await api.methods.searchRules({
-				query: {
-					gameId: String(selectedGameId),
-					query: searchQuery.trim(),
-					limit: searchLimit
-				}
-			});
+			const r = unwrapResult(
+				await api.methods.searchRules({
+					query: {
+						gameId: String(selectedGameId),
+						query: searchQuery.trim(),
+						limit: searchLimit
+					}
+				}),
+				'Search failed'
+			);
 
-			if (result.type === 'success') {
-				searchResults = result.data.results;
-				totalResults = result.data.totalResults;
-			} else if (result.type === 'error') {
-				error = result.data.message || 'Search failed';
-				searchResults = [];
-				totalResults = 0;
-			} else if (result.type === 'client_error') {
-				error = result.error.message || 'Search failed';
+			if (r.ok) {
+				searchResults = r.data.results;
+				totalResults = r.data.totalResults;
+			} else {
+				error = r.error;
 				searchResults = [];
 				totalResults = 0;
 			}

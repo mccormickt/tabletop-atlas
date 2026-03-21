@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api, type CreateGameRequest } from '$lib';
+	import { api, unwrapResult, type CreateGameRequest } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Input, Label, Textarea } from '$lib/components/ui';
@@ -145,20 +145,17 @@
 
 		try {
 			const requestData = buildRequestData();
-			const result = await api.methods.createGame({
-				body: requestData
-			});
-
-			if (result.type === 'success') {
+			const r = unwrapResult(
+				await api.methods.createGame({ body: requestData }),
+				'An error occurred while saving the game'
+			);
+			if (r.ok) {
 				success = true;
-				// Navigate to the game detail page after a short delay
 				setTimeout(() => {
-					goto(resolve(`/games/${result.data.id}`));
+					goto(resolve(`/games/${r.data.id}`));
 				}, 1500);
-			} else if (result.type === 'error') {
-				error = result.data.message || 'An error occurred while saving the game';
-			} else if (result.type === 'client_error') {
-				error = result.error.message || 'An error occurred while saving the game';
+			} else {
+				error = r.error;
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';

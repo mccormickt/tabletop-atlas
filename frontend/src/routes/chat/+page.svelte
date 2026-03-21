@@ -4,6 +4,7 @@
 	import { browser } from '$app/environment';
 	import {
 		api,
+		createDebouncedAction,
 		type GameSummary,
 		type ChatSessionSummary,
 		type ChatHistory,
@@ -107,7 +108,7 @@
 	let error = $state<string | null>(null);
 	let togglingHouseRules = $state(false);
 	let gameFilterQuery = $state('');
-	let gameSearchTimeout: ReturnType<typeof setTimeout> | null = null;
+	const debouncedGameSearch = createDebouncedAction(() => loadGames(gameFilterQuery));
 
 	let showGameDrawer = $state(false);
 	let showSessionDrawer = $state(false);
@@ -189,22 +190,13 @@
 	}
 
 	function handleGameSearchInput(event: Event) {
-		const value = (event.target as HTMLInputElement).value;
-		gameFilterQuery = value;
-
-		if (gameSearchTimeout) {
-			clearTimeout(gameSearchTimeout);
-		}
-		gameSearchTimeout = setTimeout(() => {
-			loadGames(value);
-		}, 300);
+		gameFilterQuery = (event.target as HTMLInputElement).value;
+		debouncedGameSearch.trigger();
 	}
 
 	function handleGameSearchKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
-			if (gameSearchTimeout) {
-				clearTimeout(gameSearchTimeout);
-			}
+			debouncedGameSearch.cancel();
 			loadGames(gameFilterQuery);
 		}
 	}

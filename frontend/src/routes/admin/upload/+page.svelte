@@ -35,7 +35,7 @@
 	let rulesInfo = $state<RulesInfoResponse | null>(null);
 	let uploadSuccess = $state(false);
 	let searchQuery = $state('');
-	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+	const debouncedGameSearch = createDebouncedAction(() => loadGames(searchQuery));
 
 	let initialized = $state(false);
 
@@ -51,20 +51,20 @@
 		error = null;
 
 		try {
-			const result = await api.methods.listGames({
-				query: {
-					limit: 50,
-					search: search || undefined
-				}
-			});
-
-			if (result.type === 'success') {
-				games = result.data.items;
-			} else if (result.type === 'error') {
-				error = result.data.message || 'Failed to load games';
-			} else if (result.type === 'client_error') {
-				error = result.error.message || 'Failed to load games';
+			const r = unwrapResult(
+				await api.methods.listGames({
+					query: {
+						limit: 50,
+						search: search || undefined
+					}
+				}),
+				'Failed to load games'
+			);
+			if (!r.ok) {
+				error = r.error;
+				return;
 			}
+			games = r.data.items;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
 		} finally {
@@ -73,23 +73,13 @@
 	}
 
 	function handleSearchInput(event: Event) {
-		const value = (event.target as HTMLInputElement).value;
-		searchQuery = value;
-
-		// Debounce search
-		if (searchTimeout) {
-			clearTimeout(searchTimeout);
-		}
-		searchTimeout = setTimeout(() => {
-			loadGames(value);
-		}, 300);
+		searchQuery = (event.target as HTMLInputElement).value;
+		debouncedGameSearch.trigger();
 	}
 
 	function handleSearchKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
-			if (searchTimeout) {
-				clearTimeout(searchTimeout);
-			}
+			debouncedGameSearch.cancel();
 			loadGames(searchQuery);
 		}
 	}
