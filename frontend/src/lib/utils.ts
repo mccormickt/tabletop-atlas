@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import type { ApiResult } from '../api/http-client';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -92,4 +93,27 @@ export function getStatusColor(status: string): string {
 		default:
 			return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
 	}
+}
+
+export function unwrapResult<T>(
+	result: ApiResult<T>,
+	fallback: string
+): { ok: true; data: T } | { ok: false; error: string } {
+	if (result.type === 'success') return { ok: true, data: result.data };
+	if (result.type === 'error') return { ok: false, error: result.data.message || fallback };
+	// client_error is typically a JSON parse failure — use fallback
+	return { ok: false, error: fallback };
+}
+
+export function createDebouncedAction(fn: () => void, delay = 300) {
+	let timeout: ReturnType<typeof setTimeout>;
+	return {
+		trigger() {
+			clearTimeout(timeout);
+			timeout = setTimeout(fn, delay);
+		},
+		cancel() {
+			clearTimeout(timeout);
+		}
+	};
 }

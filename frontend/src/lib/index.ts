@@ -137,4 +137,11 @@ export type {
 } from '../api/Api';
 
 // Re-export utilities
-export { cn, formatDate, formatDateTime, getStatusColor } from './utils';
+export {
+	cn,
+	formatDate,
+	formatDateTime,
+	getStatusColor,
+	unwrapResult,
+	createDebouncedAction
+} from './utils';
