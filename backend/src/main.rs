@@ -15,6 +15,7 @@ mod bgg;
 mod config;
 mod db;
 mod embeddings;
+mod error;
 mod handlers;
 mod models;
 mod pdf;

@@ -1,9 +1,6 @@
-use super::{
-    Database, PaginationInfo, format_now_for_db, like_pattern, parse_datetime, query_row_optional,
-};
+use super::{Database, PaginatedQuery, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
-    CreateGameRequest, Game, GameId, GameSummary, PaginatedResponse, RulesInfoResponse,
-    UpdateGameRequest,
+    CreateGameRequest, Game, GameSummary, PaginatedResponse, RulesInfoResponse, UpdateGameRequest,
 };
 use rusqlite::{Result as SqliteResult, Row, params};
 
@@ -48,79 +45,33 @@ pub async fn list_games(
     search: Option<&str>,
     has_rules_pdf: Option<bool>,
 ) -> SqliteResult<PaginatedResponse<GameSummary>> {
-    let pagination = PaginationInfo::new(page, limit);
-
     db.with_connection(|conn| {
-        // Build WHERE clauses
-        let search_pattern = search.map(like_pattern);
-        let mut where_conditions: Vec<String> = Vec::new();
+        let mut q = PaginatedQuery::new();
 
-        if search_pattern.is_some() {
-            where_conditions.push("LOWER(g.name) LIKE ? ESCAPE '\\'".to_string());
+        if let Some(term) = search {
+            q.filter_like("LOWER(g.name)", term);
+        }
+        if let Some(true) = has_rules_pdf {
+            q.filter_raw("g.rules_pdf_path IS NOT NULL");
+        } else if let Some(false) = has_rules_pdf {
+            q.filter_raw("g.rules_pdf_path IS NULL");
         }
 
-        if let Some(has_pdf) = has_rules_pdf {
-            if has_pdf {
-                where_conditions.push("g.rules_pdf_path IS NOT NULL".to_string());
-            } else {
-                where_conditions.push("g.rules_pdf_path IS NULL".to_string());
-            }
-        }
-
-        let where_clause = if where_conditions.is_empty() {
-            String::new()
-        } else {
-            format!("WHERE {}", where_conditions.join(" AND "))
-        };
-
-        // Get total count (with filters)
-        let count_query = format!("SELECT COUNT(*) FROM master_games g {}", where_clause);
-        let total: u32 = if let Some(ref pattern) = search_pattern {
-            conn.query_row(&count_query, params![pattern], |row| row.get(0))?
-        } else {
-            conn.query_row(&count_query, [], |row| row.get(0))?
-        };
-
-        // Get games with house rules count
-        let query = format!(
-            r#"
-            SELECT
-                g.id, g.name, g.publisher, g.year_published,
-                g.min_players, g.max_players, g.complexity_rating,
-                g.rules_pdf_path,
-                COUNT(hr.id) as house_rules_count
-            FROM master_games g
-            LEFT JOIN house_rules hr ON g.id = hr.game_id AND hr.is_active = TRUE
-            {}
-            GROUP BY g.id, g.name, g.publisher, g.year_published,
-                     g.min_players, g.max_players, g.complexity_rating, g.rules_pdf_path
-            ORDER BY g.name ASC
-            LIMIT ? OFFSET ?
-            "#,
-            where_clause
-        );
-
-        let mut stmt = conn.prepare(&query)?;
-
-        let games: Vec<GameSummary> = if let Some(ref pattern) = search_pattern {
-            stmt.query_map(
-                params![pattern, pagination.limit, pagination.offset],
-                row_to_game_summary,
-            )?
-            .collect::<Result<Vec<_>, _>>()?
-        } else {
-            stmt.query_map(
-                params![pagination.limit, pagination.offset],
-                row_to_game_summary,
-            )?
-            .collect::<Result<Vec<_>, _>>()?
-        };
-
-        Ok(PaginatedResponse::new(games, total, page, limit))
+        q.execute(
+            conn,
+            "master_games g",
+            "g.id, g.name, g.publisher, g.year_published, g.min_players, g.max_players, g.complexity_rating, g.rules_pdf_path, COUNT(hr.id) as house_rules_count",
+            "master_games g LEFT JOIN house_rules hr ON g.id = hr.game_id AND hr.is_active = TRUE",
+            "g.name ASC",
+            Some("g.id, g.name, g.publisher, g.year_published, g.min_players, g.max_players, g.complexity_rating, g.rules_pdf_path"),
+            page,
+            limit,
+            row_to_game_summary,
+        )
     })
 }
 
-pub async fn get_game(db: &Database, game_id: GameId) -> SqliteResult<Option<Game>> {
+pub async fn get_game(db: &Database, game_id: i64) -> SqliteResult<Option<Game>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
             r#"
@@ -180,7 +131,7 @@ pub async fn create_game(db: &Database, request: CreateGameRequest) -> SqliteRes
 
 pub async fn update_game(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
     request: UpdateGameRequest,
 ) -> SqliteResult<Option<Game>> {
     db.with_transaction(|conn| {
@@ -258,7 +209,7 @@ pub async fn update_game(
     })
 }
 
-pub async fn delete_game(db: &Database, game_id: GameId) -> SqliteResult<bool> {
+pub async fn delete_game(db: &Database, game_id: i64) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         let rows_affected =
             conn.execute("DELETE FROM master_games WHERE id = ?", params![game_id])?;
@@ -268,7 +219,7 @@ pub async fn delete_game(db: &Database, game_id: GameId) -> SqliteResult<bool> {
 
 pub async fn update_game_rules_text(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
     rules_text: String,
     pdf_path: Option<String>,
 ) -> SqliteResult<bool> {
@@ -284,7 +235,7 @@ pub async fn update_game_rules_text(
 
 pub async fn get_game_rules_info(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
 ) -> SqliteResult<Option<RulesInfoResponse>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
@@ -317,7 +268,7 @@ pub async fn get_game_rules_info(
 }
 
 // Helper function for synchronous game retrieval within transactions
-fn get_game_by_id_sync(conn: &rusqlite::Connection, game_id: GameId) -> SqliteResult<Game> {
+fn get_game_by_id_sync(conn: &rusqlite::Connection, game_id: i64) -> SqliteResult<Game> {
     let mut stmt = conn.prepare(
         r#"
         SELECT id, name, description, publisher, year_published,

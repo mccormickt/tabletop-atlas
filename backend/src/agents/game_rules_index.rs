@@ -6,7 +6,7 @@ use rig::vector_store::VectorStoreIndex;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::db::Database;
-use crate::models::{GameId, SimilaritySearchRequest};
+use crate::models::SimilaritySearchRequest;
 
 /// No-op filter type to satisfy VectorStoreIndex + VectorStoreIndexDyn bounds.
 ///
@@ -43,12 +43,12 @@ impl rig::vector_store::request::SearchFilter for NoFilter {
 pub struct GameRulesIndex<M: EmbeddingModel> {
     model: Arc<M>,
     db: Database,
-    game_id: GameId,
+    game_id: i64,
     include_house_rules: bool,
 }
 
 impl<M: EmbeddingModel> GameRulesIndex<M> {
-    pub fn new(model: Arc<M>, db: Database, game_id: GameId, include_house_rules: bool) -> Self {
+    pub fn new(model: Arc<M>, db: Database, game_id: i64, include_house_rules: bool) -> Self {
         Self {
             model,
             db,

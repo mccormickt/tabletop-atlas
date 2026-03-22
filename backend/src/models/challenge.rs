@@ -2,12 +2,6 @@ use chrono::{DateTime, NaiveDate, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::UserId;
-
-pub type ChallengeId = i64;
-pub type ChallengeGameId = i64;
-pub type ChallengePlayId = i64;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum ChallengeStatus {
@@ -105,10 +99,10 @@ impl std::str::FromStr for ParticipantRole {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Challenge {
-    pub id: ChallengeId,
+    pub id: i64,
     pub name: String,
     pub description: Option<String>,
-    pub owner_id: UserId,
+    pub owner_id: i64,
     pub grid_rows: i32,
     pub grid_cols: i32,
     pub status: ChallengeStatus,
@@ -123,8 +117,8 @@ pub struct Challenge {
 #[serde(rename_all = "camelCase")]
 pub struct ChallengeParticipant {
     pub id: i64,
-    pub challenge_id: ChallengeId,
-    pub user_id: UserId,
+    pub challenge_id: i64,
+    pub user_id: i64,
     pub role: ParticipantRole,
     pub joined_at: DateTime<Utc>,
     pub display_name: Option<String>,
@@ -135,8 +129,8 @@ pub struct ChallengeParticipant {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengeGame {
-    pub id: ChallengeGameId,
-    pub challenge_id: ChallengeId,
+    pub id: i64,
+    pub challenge_id: i64,
     pub row_index: i32,
     pub game_type: GameType,
     pub game_id: i64,
@@ -148,9 +142,9 @@ pub struct ChallengeGame {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengePlay {
-    pub id: ChallengePlayId,
-    pub challenge_id: ChallengeId,
-    pub challenge_game_id: ChallengeGameId,
+    pub id: i64,
+    pub challenge_id: i64,
+    pub challenge_game_id: i64,
     pub col_index: i32,
     pub played_at: NaiveDate,
     pub notes: Option<String>,
@@ -163,8 +157,8 @@ pub struct ChallengePlay {
 #[serde(rename_all = "camelCase")]
 pub struct PlayParticipant {
     pub id: i64,
-    pub challenge_play_id: ChallengePlayId,
-    pub user_id: UserId,
+    pub challenge_play_id: i64,
+    pub user_id: i64,
     pub is_winner: bool,
     pub score: Option<i32>,
     pub display_name: Option<String>,
@@ -202,7 +196,7 @@ pub struct UpdateChallengeRequest {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AddParticipantRequest {
-    pub user_id: UserId,
+    pub user_id: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -217,7 +211,7 @@ pub struct AssignGameRequest {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayParticipantInput {
-    pub user_id: UserId,
+    pub user_id: i64,
     pub is_winner: bool,
     pub score: Option<i32>,
 }
@@ -225,7 +219,7 @@ pub struct PlayParticipantInput {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordPlayRequest {
-    pub challenge_game_id: ChallengeGameId,
+    pub challenge_game_id: i64,
     pub col_index: i32,
     pub played_at: NaiveDate,
     pub notes: Option<String>,
@@ -245,9 +239,9 @@ pub struct UpdatePlayRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengePlayWithParticipants {
-    pub id: ChallengePlayId,
-    pub challenge_id: ChallengeId,
-    pub challenge_game_id: ChallengeGameId,
+    pub id: i64,
+    pub challenge_id: i64,
+    pub challenge_game_id: i64,
     pub col_index: i32,
     pub played_at: NaiveDate,
     pub notes: Option<String>,
@@ -278,7 +272,7 @@ pub struct ChallengeStats {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct LeaderboardEntry {
-    pub user_id: UserId,
+    pub user_id: i64,
     pub display_name: Option<String>,
     pub picture_url: Option<String>,
     pub wins: i32,
@@ -289,10 +283,10 @@ pub struct LeaderboardEntry {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengeSummary {
-    pub id: ChallengeId,
+    pub id: i64,
     pub name: String,
     pub description: Option<String>,
-    pub owner_id: UserId,
+    pub owner_id: i64,
     pub grid_rows: i32,
     pub grid_cols: i32,
     pub status: ChallengeStatus,

@@ -1,12 +1,11 @@
-use super::{ChatMessageId, ChatSessionId, EmbeddingId, GameId};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ChatSession {
-    pub id: ChatSessionId,
-    pub game_id: GameId,
+    pub id: i64,
+    pub game_id: i64,
     pub title: Option<String>,
     pub include_house_rules: bool,
     pub created_at: DateTime<Utc>,
@@ -15,11 +14,11 @@ pub struct ChatSession {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ChatMessage {
-    pub id: ChatMessageId,
-    pub session_id: ChatSessionId,
+    pub id: i64,
+    pub session_id: i64,
     pub role: MessageRole,
     pub content: String,
-    pub context_chunks: Option<Vec<EmbeddingId>>, // IDs of embeddings used for context
+    pub context_chunks: Option<Vec<i64>>, // IDs of embeddings used for context
     pub created_at: DateTime<Utc>,
 }
 
@@ -58,7 +57,7 @@ fn default_true() -> bool {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct CreateChatSessionRequest {
-    pub game_id: GameId,
+    pub game_id: i64,
     pub title: Option<String>,
     #[serde(default = "default_true")]
     pub include_house_rules: bool,
@@ -72,7 +71,7 @@ pub struct UpdateChatSessionRequest {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ChatRequest {
-    pub session_id: ChatSessionId,
+    pub session_id: i64,
     pub message: String,
 }
 
@@ -85,7 +84,7 @@ pub struct ChatResponse {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ContextSource {
-    pub embedding_id: EmbeddingId,
+    pub embedding_id: i64,
     pub chunk_text: String,
     pub source_type: String,
     pub similarity_score: f32,
@@ -94,8 +93,8 @@ pub struct ContextSource {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ChatSessionSummary {
-    pub id: ChatSessionId,
-    pub game_id: GameId,
+    pub id: i64,
+    pub game_id: i64,
     pub title: Option<String>,
     pub include_house_rules: bool,
     pub message_count: i32,

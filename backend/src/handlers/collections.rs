@@ -1,24 +1,17 @@
-use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
-use schemars::JsonSchema;
-use serde::Deserialize;
-
 use crate::AppState;
 use crate::auth::require_auth;
 use crate::db::collections;
+use crate::error::{DbResultExt, OptionExt};
 use crate::models::{
     AddToCollectionRequest, CollectionEntry, CollectionEntryWithGame, PaginatedResponse,
     PaginationParams, UpdateCollectionRequest,
 };
+use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
 
 use super::{
-    HttpCreated, HttpDeleted, HttpOk, created_response, deleted_response, internal_error,
-    not_found_error, success_response,
+    HttpCreated, HttpDeleted, HttpOk, IdPath, created_response, deleted_response, not_found_error,
+    success_response,
 };
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct CollectionEntryPath {
-    pub id: i64,
-}
 
 /// List current user's game collection
 #[endpoint {
@@ -36,7 +29,7 @@ pub async fn list_collection(
 
     let result = collections::list_user_collection(&db, user.user_id, query.page, query.limit)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to list collection")?;
 
     success_response(result)
 }
@@ -57,7 +50,7 @@ pub async fn add_to_collection(
 
     let entry = collections::add_to_collection(&db, user.user_id, request)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to add to collection")?;
 
     created_response(entry)
 }
@@ -70,7 +63,7 @@ pub async fn add_to_collection(
 }]
 pub async fn update_collection_entry(
     rqctx: RequestContext<AppState>,
-    path: Path<CollectionEntryPath>,
+    path: Path<IdPath>,
     body: TypedBody<UpdateCollectionRequest>,
 ) -> Result<HttpOk<CollectionEntry>, HttpError> {
     let user = require_auth(&rqctx)?;
@@ -80,8 +73,8 @@ pub async fn update_collection_entry(
 
     let entry = collections::update_collection_entry(&db, user.user_id, entry_id, request)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?
-        .ok_or_else(|| not_found_error("Collection entry not found".to_string()))?;
+        .db_context("Failed to update collection entry")?
+        .or_not_found("Collection entry not found")?;
 
     success_response(entry)
 }
@@ -94,7 +87,7 @@ pub async fn update_collection_entry(
 }]
 pub async fn remove_from_collection(
     rqctx: RequestContext<AppState>,
-    path: Path<CollectionEntryPath>,
+    path: Path<IdPath>,
 ) -> Result<HttpDeleted, HttpError> {
     let user = require_auth(&rqctx)?;
     let db = rqctx.context().db();
@@ -102,7 +95,7 @@ pub async fn remove_from_collection(
 
     let deleted = collections::remove_from_collection(&db, user.user_id, entry_id)
         .await
-        .map_err(|e| internal_error(format!("Database error: {}", e)))?;
+        .db_context("Failed to remove from collection")?;
 
     if !deleted {
         return Err(not_found_error("Collection entry not found".to_string()));

@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api, type Game, type UpdateGameRequest } from '$lib';
+	import { api, unwrapResult, type Game, type UpdateGameRequest } from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Input, Label, Textarea } from '$lib/components/ui';
@@ -68,13 +68,12 @@
 		error = null;
 
 		try {
-			const result = await api.methods.getGame({
-				path: { id: gameId }
-			});
-
-			if (result.type === 'success') {
-				game = result.data;
-				// Populate form data with existing game data
+			const r = unwrapResult(
+				await api.methods.getGame({ path: { id: gameId } }),
+				'Failed to load game details'
+			);
+			if (r.ok) {
+				game = r.data;
 				formData = {
 					name: game.name || '',
 					description: game.description || '',
@@ -86,10 +85,8 @@
 					complexityRating: game.complexityRating?.toString() || '',
 					bggId: game.bggId?.toString() || ''
 				};
-			} else if (result.type === 'error') {
-				error = result.data.message || 'Failed to load game details';
-			} else if (result.type === 'client_error') {
-				error = result.error.message || 'Failed to load game details';
+			} else {
+				error = r.error;
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';
@@ -199,21 +196,17 @@
 
 		try {
 			const requestData = buildRequestData();
-			const result = await api.methods.updateGame({
-				path: { id: gameId },
-				body: requestData
-			});
-
-			if (result.type === 'success') {
+			const r = unwrapResult(
+				await api.methods.updateGame({ path: { id: gameId }, body: requestData }),
+				'An error occurred while updating the game'
+			);
+			if (r.ok) {
 				success = true;
-				// Navigate to the game detail page after a short delay
 				setTimeout(() => {
 					goto(resolve(`/games/${gameId}`));
 				}, 1500);
-			} else if (result.type === 'error') {
-				error = result.data.message || 'An error occurred while updating the game';
-			} else if (result.type === 'client_error') {
-				error = result.error.message || 'An error occurred while updating the game';
+			} else {
+				error = r.error;
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'An unexpected error occurred';

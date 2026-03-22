@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { api, type BulkEnrichPreviewResponse, type BulkEnrichResponse } from '$lib';
+	import { api, unwrapResult, type BulkEnrichPreviewResponse, type BulkEnrichResponse } from '$lib';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -76,21 +76,22 @@
 		isLoading = true;
 		error = null;
 
-		const result = await api.methods.previewBulkEnrich({
-			body: {
-				fieldsToEnrich: Array.from(selectedFields),
-				limit: batchLimit
-			}
-		});
+		const r = unwrapResult(
+			await api.methods.previewBulkEnrich({
+				body: {
+					fieldsToEnrich: Array.from(selectedFields),
+					limit: batchLimit
+				}
+			}),
+			'Failed to preview enrichment'
+		);
 
-		if (result.type === 'success') {
-			preview = result.data;
+		if (r.ok) {
+			preview = r.data;
 			updatePage = 1;
 			errorPage = 1;
-		} else if (result.type === 'error') {
-			error = result.data.message || 'Failed to preview enrichment';
-		} else if (result.type === 'client_error') {
-			error = result.error.message || 'Failed to preview enrichment';
+		} else {
+			error = r.error;
 		}
 
 		isLoading = false;
@@ -105,20 +106,21 @@
 		isLoading = true;
 		error = null;
 
-		const result = await api.methods.executeBulkEnrich({
-			body: {
-				fieldsToEnrich: Array.from(selectedFields),
-				limit: batchLimit
-			}
-		});
+		const r = unwrapResult(
+			await api.methods.executeBulkEnrich({
+				body: {
+					fieldsToEnrich: Array.from(selectedFields),
+					limit: batchLimit
+				}
+			}),
+			'Failed to enrich games'
+		);
 
-		if (result.type === 'success') {
-			enrichResult = result.data;
+		if (r.ok) {
+			enrichResult = r.data;
 			preview = null;
-		} else if (result.type === 'error') {
-			error = result.data.message || 'Failed to enrich games';
-		} else if (result.type === 'client_error') {
-			error = result.error.message || 'Failed to enrich games';
+		} else {
+			error = r.error;
 		}
 
 		isLoading = false;

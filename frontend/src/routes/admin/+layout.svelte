@@ -1,27 +1,20 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { useAuth, type AuthState } from '$lib/stores/auth';
+	import { createAuthState } from '$lib/stores/auth.svelte';
 
 	let { children } = $props();
 
-	const auth = useAuth();
-
-	let authState = $state<AuthState>({ user: null, isLoading: true, error: null });
+	const auth = createAuthState();
 
 	$effect(() => {
-		const unsubscribe = auth.subscribe((state) => {
-			authState = state;
-			// Redirect non-admin users to home
-			if (!state.isLoading && (!state.user || state.user.role !== 'admin')) {
-				goto(resolve('/'));
-			}
-		});
-		return unsubscribe;
+		if (!auth.isLoading && (!auth.user || auth.user.role !== 'admin')) {
+			goto(resolve('/'));
+		}
 	});
 </script>
 
-{#if authState.isLoading}
+{#if auth.isLoading}
 	<div class="flex min-h-[50vh] items-center justify-center">
 		<div class="text-center">
 			<div
@@ -30,7 +23,7 @@
 			<p class="text-muted-foreground mt-4">Loading...</p>
 		</div>
 	</div>
-{:else if authState.user?.role === 'admin'}
+{:else if auth.isAdmin}
 	{@render children()}
 {:else}
 	<div class="flex min-h-[50vh] items-center justify-center">

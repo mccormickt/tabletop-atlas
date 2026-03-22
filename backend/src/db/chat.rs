@@ -1,7 +1,7 @@
-use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
+use super::{Database, PaginatedQuery, format_now_for_db, parse_datetime, query_row_optional};
 use crate::models::{
-    ChatHistory, ChatMessage, ChatSession, ChatSessionId, ChatSessionSummary,
-    CreateChatSessionRequest, GameId, PaginatedResponse, UpdateChatSessionRequest,
+    ChatHistory, ChatMessage, ChatSession, ChatSessionSummary, CreateChatSessionRequest,
+    PaginatedResponse, UpdateChatSessionRequest,
 };
 use rusqlite::{Result as SqliteResult, Row, params};
 
@@ -38,38 +38,23 @@ fn row_to_chat_message(row: &Row) -> SqliteResult<ChatMessage> {
 
 pub async fn list_chat_sessions(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
     page: u32,
     limit: u32,
 ) -> SqliteResult<PaginatedResponse<ChatSessionSummary>> {
-    let pagination = PaginationInfo::new(page, limit);
-
     db.with_connection(|conn| {
-        // Get total count for the specific game
-        let total: u32 = conn.query_row(
-            "SELECT COUNT(*) FROM chat_sessions WHERE game_id = ?",
-            params![game_id],
-            |row| row.get(0),
-        )?;
+        let mut q = PaginatedQuery::new();
+        q.filter("cs.game_id = ?", game_id);
 
-        // Get chat sessions with message counts and last message times
-        let mut stmt = conn.prepare(
-            r#"
-            SELECT
-                cs.id, cs.game_id, cs.title, cs.include_house_rules, cs.created_at,
-                COUNT(cm.id) as message_count,
-                MAX(cm.created_at) as last_message_at
-            FROM chat_sessions cs
-            LEFT JOIN chat_messages cm ON cs.id = cm.session_id
-            WHERE cs.game_id = ?
-            GROUP BY cs.id, cs.game_id, cs.title, cs.include_house_rules, cs.created_at
-            ORDER BY COALESCE(MAX(cm.created_at), cs.created_at) DESC
-            LIMIT ? OFFSET ?
-            "#,
-        )?;
-
-        let session_iter = stmt.query_map(
-            params![game_id, pagination.limit, pagination.offset],
+        q.execute(
+            conn,
+            "chat_sessions cs",
+            "cs.id, cs.game_id, cs.title, cs.include_house_rules, cs.created_at, COUNT(cm.id) as message_count, MAX(cm.created_at) as last_message_at",
+            "chat_sessions cs LEFT JOIN chat_messages cm ON cs.id = cm.session_id",
+            "COALESCE(MAX(cm.created_at), cs.created_at) DESC",
+            Some("cs.id, cs.game_id, cs.title, cs.include_house_rules, cs.created_at"),
+            page,
+            limit,
             |row| {
                 let include_house_rules: bool = row.get(3)?;
                 let message_count: i32 = row.get(5)?;
@@ -94,19 +79,11 @@ pub async fn list_chat_sessions(
                     created_at: parse_datetime(row, "created_at")?,
                 })
             },
-        )?;
-
-        let sessions: Result<Vec<ChatSessionSummary>, _> = session_iter.collect();
-        let sessions = sessions?;
-
-        Ok(PaginatedResponse::new(sessions, total, page, limit))
+        )
     })
 }
 
-pub async fn get_chat_history(
-    db: &Database,
-    session_id: ChatSessionId,
-) -> SqliteResult<Option<ChatHistory>> {
+pub async fn get_chat_history(db: &Database, session_id: i64) -> SqliteResult<Option<ChatHistory>> {
     db.with_connection(|conn| {
         // First get the session
         let mut session_stmt = conn.prepare(
@@ -179,7 +156,7 @@ pub async fn create_chat_session(
 
 pub async fn add_message_to_session(
     db: &Database,
-    session_id: ChatSessionId,
+    session_id: i64,
     role: crate::models::MessageRole,
     content: String,
     context_chunks: Option<Vec<i64>>,
@@ -212,7 +189,7 @@ pub async fn add_message_to_session(
 
 pub async fn update_chat_session(
     db: &Database,
-    session_id: ChatSessionId,
+    session_id: i64,
     request: UpdateChatSessionRequest,
 ) -> SqliteResult<Option<ChatSession>> {
     db.with_transaction(|conn| {

@@ -130,3 +130,115 @@ pub fn query_row_optional<T>(result: SqliteResult<T>) -> SqliteResult<Option<T>>
         Err(e) => Err(e),
     }
 }
+
+/// Builder for paginated list queries with dynamic WHERE clauses.
+///
+/// Handles the common pattern of: build conditions -> COUNT query -> SELECT with LIMIT/OFFSET.
+#[derive(Default)]
+pub struct PaginatedQuery {
+    conditions: Vec<String>,
+    params: Vec<Box<dyn rusqlite::ToSql>>,
+}
+
+impl PaginatedQuery {
+    pub fn new() -> Self {
+        Self {
+            conditions: Vec::new(),
+            params: Vec::new(),
+        }
+    }
+
+    /// Add a WHERE condition with a bound parameter (e.g., `"role = ?"`, role_value).
+    pub fn filter(&mut self, clause: &str, param: impl rusqlite::ToSql + 'static) {
+        self.conditions.push(clause.to_string());
+        self.params.push(Box::new(param));
+    }
+
+    /// Add a LIKE search on a single column with proper wildcard escaping.
+    pub fn filter_like(&mut self, column: &str, term: &str) {
+        self.conditions
+            .push(format!("{} LIKE ? ESCAPE '\\'", column));
+        self.params.push(Box::new(like_pattern(term)));
+    }
+
+    /// Add a LIKE search across multiple columns (OR). Each column gets its own param.
+    pub fn filter_like_any(&mut self, columns: &[&str], term: &str) {
+        let pattern = like_pattern(term);
+        let parts: Vec<String> = columns
+            .iter()
+            .map(|col| format!("{} LIKE ? ESCAPE '\\'", col))
+            .collect();
+        self.conditions.push(format!("({})", parts.join(" OR ")));
+        for _ in columns {
+            self.params.push(Box::new(pattern.clone()));
+        }
+    }
+
+    /// Add a raw condition with no bound parameters (e.g., `"rules_pdf_path IS NOT NULL"`).
+    pub fn filter_raw(&mut self, clause: &str) {
+        self.conditions.push(clause.to_string());
+    }
+
+    /// Execute the query: COUNT for total, then SELECT with pagination.
+    ///
+    /// - `count_from`: table/join for COUNT (e.g., `"master_games g"`)
+    /// - `select_columns`: columns for SELECT (e.g., `"g.id, g.name"`)
+    /// - `select_from`: table/join for SELECT (may differ from count_from if JOINs add columns)
+    /// - `order_by`: ORDER BY clause (e.g., `"g.name ASC"`)
+    /// - `group_by`: optional GROUP BY clause (e.g., `"g.id, g.name"`)
+    #[allow(clippy::too_many_arguments)]
+    pub fn execute<T>(
+        &self,
+        conn: &Connection,
+        count_from: &str,
+        select_columns: &str,
+        select_from: &str,
+        order_by: &str,
+        group_by: Option<&str>,
+        page: u32,
+        limit: u32,
+        mapper: impl Fn(&rusqlite::Row) -> SqliteResult<T>,
+    ) -> SqliteResult<crate::models::PaginatedResponse<T>> {
+        let pagination = PaginationInfo::new(page, limit);
+
+        let where_clause = if self.conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", self.conditions.join(" AND "))
+        };
+
+        let group_clause = group_by
+            .map(|g| format!("GROUP BY {}", g))
+            .unwrap_or_default();
+
+        // Build param refs for the WHERE clause
+        let where_refs: Vec<&dyn rusqlite::ToSql> =
+            self.params.iter().map(|p| p.as_ref()).collect();
+
+        // COUNT query
+        let count_sql = format!("SELECT COUNT(*) FROM {} {}", count_from, where_clause);
+        let total: u32 = conn.query_row(&count_sql, where_refs.as_slice(), |row| row.get(0))?;
+
+        // SELECT query with pagination
+        let select_sql = format!(
+            "SELECT {} FROM {} {} {} ORDER BY {} LIMIT ? OFFSET ?",
+            select_columns, select_from, where_clause, group_clause, order_by
+        );
+
+        // Build full param list: WHERE params + LIMIT + OFFSET
+        let mut all_refs: Vec<&dyn rusqlite::ToSql> = where_refs;
+        let limit_val = pagination.limit;
+        let offset_val = pagination.offset;
+        all_refs.push(&limit_val);
+        all_refs.push(&offset_val);
+
+        let mut stmt = conn.prepare(&select_sql)?;
+        let items: Vec<T> = stmt
+            .query_map(all_refs.as_slice(), |row| mapper(row))?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(crate::models::PaginatedResponse::new(
+            items, total, page, limit,
+        ))
+    }
+}

@@ -9,13 +9,14 @@ use crate::{
     auth::middleware::require_auth,
     db::{embeddings, house_rules},
     embeddings::Embedder,
+    error::{DbResultExt, OptionExt},
     handlers::{
-        HttpCreated, HttpDeleted, HttpError, HttpOk, bad_request_error, created_response,
-        deleted_response, internal_error, not_found_error, success_response,
+        HttpCreated, HttpDeleted, HttpError, HttpOk, IdPath, bad_request_error, created_response,
+        deleted_response, internal_error, success_response,
     },
     models::{
-        CreateEmbeddingRequest, CreateHouseRuleRequest, EmbeddingSourceType, GameId, HouseRule,
-        HouseRuleId, PaginatedResponse, UpdateHouseRuleRequest,
+        CreateEmbeddingRequest, CreateHouseRuleRequest, EmbeddingSourceType, HouseRule,
+        PaginatedResponse, UpdateHouseRuleRequest, default_limit, default_page,
     },
 };
 
@@ -29,11 +30,7 @@ async fn embed_house_rule<M: EmbeddingModel>(
     // First, delete any existing embeddings for this house rule
     embeddings::delete_embeddings_for_house_rule(db, house_rule.id)
         .await
-        .map_err(|e| {
-            slog::error!(log, "Failed to delete existing embeddings for house rule";
-                "house_rule_id" => house_rule.id, "error" => %e);
-            internal_error("Failed to update house rule embeddings".to_string())
-        })?;
+        .db_context("Failed to update house rule embeddings")?;
 
     // If the house rule is not active, we're done (don't embed inactive rules)
     if !house_rule.is_active {
@@ -83,11 +80,7 @@ async fn embed_house_rule<M: EmbeddingModel>(
 
     embeddings::create_embedding(db, create_request)
         .await
-        .map_err(|e| {
-            slog::error!(log, "Failed to store embedding for house rule";
-                "house_rule_id" => house_rule.id, "error" => %e);
-            internal_error("Failed to store house rule embedding".to_string())
-        })?;
+        .db_context("Failed to store house rule embedding")?;
 
     slog::info!(log, "Successfully embedded house rule";
         "house_rule_id" => house_rule.id, "game_id" => house_rule.game_id);
@@ -96,20 +89,8 @@ async fn embed_house_rule<M: EmbeddingModel>(
 }
 
 #[derive(Deserialize, JsonSchema)]
-pub struct HouseRulePathParam {
-    pub id: HouseRuleId,
-}
-
-fn default_page() -> u32 {
-    1
-}
-fn default_limit() -> u32 {
-    20
-}
-
-#[derive(Deserialize, JsonSchema)]
 pub struct HouseRulesByGameQuery {
-    pub game_id: GameId,
+    pub game_id: i64,
     #[serde(default = "default_page")]
     pub page: u32,
     #[serde(default = "default_limit")]
@@ -129,13 +110,11 @@ pub async fn list_house_rules(
     let query = query.into_inner();
     let db = app_state.db();
 
-    match house_rules::list_house_rules(&db, query.game_id, query.page, query.limit).await {
-        Ok(result) => success_response(result),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to list house rules"; "error" => %e);
-            Err(internal_error("Failed to list house rules".to_string()))
-        }
-    }
+    let result = house_rules::list_house_rules(&db, query.game_id, query.page, query.limit)
+        .await
+        .db_context("Failed to list house rules")?;
+
+    success_response(result)
 }
 
 /// Get a specific house rule by ID
@@ -145,23 +124,18 @@ pub async fn list_house_rules(
 }]
 pub async fn get_house_rule(
     rqctx: RequestContext<AppState>,
-    path: Path<HouseRulePathParam>,
+    path: Path<IdPath>,
 ) -> Result<HttpOk<HouseRule>, HttpError> {
     let app_state = rqctx.context();
     let house_rule_id = path.into_inner().id;
     let db = app_state.db();
 
-    match house_rules::get_house_rule(&db, house_rule_id).await {
-        Ok(Some(house_rule)) => success_response(house_rule),
-        Ok(None) => Err(not_found_error(format!(
-            "House rule with id {} not found",
-            house_rule_id
-        ))),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to get house rule"; "house_rule_id" => house_rule_id, "error" => %e);
-            Err(internal_error("Failed to get house rule".to_string()))
-        }
-    }
+    let house_rule = house_rules::get_house_rule(&db, house_rule_id)
+        .await
+        .db_context("Failed to get house rule")?
+        .or_not_found(format!("House rule with id {} not found", house_rule_id))?;
+
+    success_response(house_rule)
 }
 
 /// Create a new house rule
@@ -192,20 +166,17 @@ pub async fn create_house_rule(
         ));
     }
 
-    match house_rules::create_house_rule(&db, create_request).await {
-        Ok(house_rule) => {
-            // Embed the house rule asynchronously (don't block on embedding errors)
-            if let Err(e) = embed_house_rule(&rqctx.log, embedder, &db, &house_rule).await {
-                slog::warn!(rqctx.log, "Failed to embed house rule, continuing";
-                    "house_rule_id" => house_rule.id, "error" => ?e);
-            }
-            created_response(house_rule)
-        }
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to create house rule"; "error" => %e);
-            Err(internal_error("Failed to create house rule".to_string()))
-        }
+    let house_rule = house_rules::create_house_rule(&db, create_request)
+        .await
+        .db_context("Failed to create house rule")?;
+
+    // Embed the house rule asynchronously (don't block on embedding errors)
+    if let Err(e) = embed_house_rule(&rqctx.log, embedder, &db, &house_rule).await {
+        slog::warn!(rqctx.log, "Failed to embed house rule, continuing";
+            "house_rule_id" => house_rule.id, "error" => ?e);
     }
+
+    created_response(house_rule)
 }
 
 /// Update an existing house rule
@@ -215,7 +186,7 @@ pub async fn create_house_rule(
 }]
 pub async fn update_house_rule(
     rqctx: RequestContext<AppState>,
-    path: Path<HouseRulePathParam>,
+    path: Path<IdPath>,
     body: TypedBody<UpdateHouseRuleRequest>,
 ) -> Result<HttpOk<HouseRule>, HttpError> {
     require_auth(&rqctx)?;
@@ -242,24 +213,18 @@ pub async fn update_house_rule(
         ));
     }
 
-    match house_rules::update_house_rule(&db, house_rule_id, update_request).await {
-        Ok(Some(house_rule)) => {
-            // Re-embed the house rule (handles active state changes)
-            if let Err(e) = embed_house_rule(&rqctx.log, embedder, &db, &house_rule).await {
-                slog::warn!(rqctx.log, "Failed to re-embed house rule, continuing";
-                    "house_rule_id" => house_rule.id, "error" => ?e);
-            }
-            success_response(house_rule)
-        }
-        Ok(None) => Err(not_found_error(format!(
-            "House rule with id {} not found",
-            house_rule_id
-        ))),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to update house rule"; "house_rule_id" => house_rule_id, "error" => %e);
-            Err(internal_error("Failed to update house rule".to_string()))
-        }
+    let house_rule = house_rules::update_house_rule(&db, house_rule_id, update_request)
+        .await
+        .db_context("Failed to update house rule")?
+        .or_not_found(format!("House rule with id {} not found", house_rule_id))?;
+
+    // Re-embed the house rule (handles active state changes)
+    if let Err(e) = embed_house_rule(&rqctx.log, embedder, &db, &house_rule).await {
+        slog::warn!(rqctx.log, "Failed to re-embed house rule, continuing";
+            "house_rule_id" => house_rule.id, "error" => ?e);
     }
+
+    success_response(house_rule)
 }
 
 /// Delete a house rule
@@ -269,7 +234,7 @@ pub async fn update_house_rule(
 }]
 pub async fn delete_house_rule(
     rqctx: RequestContext<AppState>,
-    path: Path<HouseRulePathParam>,
+    path: Path<IdPath>,
 ) -> Result<HttpDeleted, HttpError> {
     require_auth(&rqctx)?;
 
@@ -283,15 +248,16 @@ pub async fn delete_house_rule(
             "house_rule_id" => house_rule_id, "error" => %e);
     }
 
-    match house_rules::delete_house_rule(&db, house_rule_id).await {
-        Ok(true) => deleted_response(),
-        Ok(false) => Err(not_found_error(format!(
+    let deleted = house_rules::delete_house_rule(&db, house_rule_id)
+        .await
+        .db_context("Failed to delete house rule")?;
+
+    if deleted {
+        deleted_response()
+    } else {
+        Err(crate::handlers::not_found_error(format!(
             "House rule with id {} not found",
             house_rule_id
-        ))),
-        Err(e) => {
-            slog::error!(rqctx.log, "Failed to delete house rule"; "house_rule_id" => house_rule_id, "error" => %e);
-            Err(internal_error("Failed to delete house rule".to_string()))
-        }
+        )))
     }
 }

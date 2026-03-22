@@ -2,28 +2,24 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { useAuth } from '$lib/stores/auth';
+	import { createAuthState } from '$lib/stores/auth.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Meeple } from '$lib/components/icons';
 
-	const auth = useAuth();
+	const authStore = useAuth();
+	const auth = createAuthState();
 
 	let isRedirecting = $state(false);
-	let authState = $state<{ user: unknown; isLoading: boolean }>({ user: null, isLoading: true });
 
 	$effect(() => {
-		const unsubscribe = auth.subscribe((state) => {
-			authState = state;
-			// If already authenticated, redirect to home
-			if (!state.isLoading && state.user) {
-				goto(resolve('/'));
-			}
-		});
-		return unsubscribe;
+		if (!auth.isLoading && auth.user) {
+			goto(resolve('/'));
+		}
 	});
 
 	function handleLogin() {
 		isRedirecting = true;
-		auth.login();
+		authStore.login();
 	}
 </script>
 
@@ -39,7 +35,7 @@
 			<p class="text-muted-foreground">Sign in to access your game collection and more</p>
 		</div>
 
-		{#if authState.isLoading || isRedirecting}
+		{#if auth.isLoading || isRedirecting}
 			<div class="flex justify-center">
 				<div
 					class="border-game-blue h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"

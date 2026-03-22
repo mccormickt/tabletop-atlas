@@ -32,6 +32,7 @@ urlencoding.workspace = true
 inventory.workspace = true
 csv.workspace = true
 quick-xml.workspace = true
+thiserror = "2"
 
 [build-dependencies]
 # No build dependencies needed for now

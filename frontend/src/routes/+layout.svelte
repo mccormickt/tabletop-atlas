@@ -6,7 +6,8 @@
 	import Header from '$lib/components/Header.svelte';
 	import MobileNav from '$lib/components/MobileNav.svelte';
 	import { createHeaderStore, setHeaderContext } from '$lib/stores/header';
-	import { createAuthStore, setAuthContext, type UserInfo } from '$lib/stores/auth';
+	import { createAuthStore, setAuthContext } from '$lib/stores/auth';
+	import { createAuthState } from '$lib/stores/auth.svelte';
 
 	let { children } = $props();
 
@@ -26,10 +27,7 @@
 	setAuthContext(authStore);
 
 	// Subscribe to auth state
-	let authState = $state({
-		user: null as UserInfo | null,
-		isLoading: true
-	});
+	const auth = createAuthState();
 
 	async function initMocking() {
 		if (
@@ -54,23 +52,13 @@
 	// Redirect to login if not authenticated and not on a public route
 	$effect(() => {
 		const pathname = page.url.pathname;
-		if (!authState.isLoading && !authState.user && !isPublicRoute(pathname)) {
+		if (!auth.isLoading && !auth.user && !isPublicRoute(pathname)) {
 			goto(resolve('/auth/login'));
 		}
 	});
-
-	$effect(() => {
-		const unsubscribe = authStore.subscribe((state) => {
-			authState = {
-				user: state.user,
-				isLoading: state.isLoading
-			};
-		});
-		return unsubscribe;
-	});
 </script>
 
-{#if authState.isLoading && !isPublicRoute(page.url.pathname)}
+{#if auth.isLoading && !isPublicRoute(page.url.pathname)}
 	<!-- Show loading state while checking auth for protected routes -->
 	<div class="bg-background flex min-h-screen items-center justify-center">
 		<div class="text-center">
@@ -83,7 +71,7 @@
 {:else}
 	<div class="bg-background flex min-h-screen flex-col">
 		<!-- Global Header -->
-		<Header user={authState.user} isAuthLoading={authState.isLoading} />
+		<Header user={auth.user} isAuthLoading={auth.isLoading} />
 
 		<!-- Page Content with bottom padding for mobile nav -->
 		<main class="flex-1 pb-20 md:pb-0">

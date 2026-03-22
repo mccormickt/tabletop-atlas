@@ -1,8 +1,5 @@
-use super::{Database, PaginationInfo, format_now_for_db, parse_datetime, query_row_optional};
-use crate::models::{
-    CreateHouseRuleRequest, GameId, HouseRule, HouseRuleId, PaginatedResponse,
-    UpdateHouseRuleRequest,
-};
+use super::{Database, PaginatedQuery, format_now_for_db, parse_datetime, query_row_optional};
+use crate::models::{CreateHouseRuleRequest, HouseRule, PaginatedResponse, UpdateHouseRuleRequest};
 use rusqlite::{Result as SqliteResult, Row, params};
 
 /// Map a database row to a HouseRule struct
@@ -21,47 +18,29 @@ fn row_to_house_rule(row: &Row) -> SqliteResult<HouseRule> {
 
 pub async fn list_house_rules(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
     page: u32,
     limit: u32,
 ) -> SqliteResult<PaginatedResponse<HouseRule>> {
-    let pagination = PaginationInfo::new(page, limit);
-
     db.with_connection(|conn| {
-        // Get total count for the specific game
-        let total: u32 = conn.query_row(
-            "SELECT COUNT(*) FROM house_rules WHERE game_id = ?",
-            params![game_id],
-            |row| row.get(0),
-        )?;
+        let mut q = PaginatedQuery::new();
+        q.filter("game_id = ?", game_id);
 
-        // Get house rules for the game
-        let mut stmt = conn.prepare(
-            r#"
-            SELECT id, game_id, title, description, category, is_active, created_at, updated_at
-            FROM house_rules
-            WHERE game_id = ?
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
-            "#,
-        )?;
-
-        let house_rule_iter = stmt.query_map(
-            params![game_id, pagination.limit, pagination.offset],
+        q.execute(
+            conn,
+            "house_rules",
+            "id, game_id, title, description, category, is_active, created_at, updated_at",
+            "house_rules",
+            "created_at DESC",
+            None,
+            page,
+            limit,
             row_to_house_rule,
-        )?;
-
-        let house_rules: Result<Vec<HouseRule>, _> = house_rule_iter.collect();
-        let house_rules = house_rules?;
-
-        Ok(PaginatedResponse::new(house_rules, total, page, limit))
+        )
     })
 }
 
-pub async fn get_house_rule(
-    db: &Database,
-    house_rule_id: HouseRuleId,
-) -> SqliteResult<Option<HouseRule>> {
+pub async fn get_house_rule(db: &Database, house_rule_id: i64) -> SqliteResult<Option<HouseRule>> {
     db.with_connection(|conn| {
         let mut stmt = conn.prepare(
             r#"
@@ -128,7 +107,7 @@ pub async fn create_house_rule(
 
 pub async fn update_house_rule(
     db: &Database,
-    house_rule_id: HouseRuleId,
+    house_rule_id: i64,
     request: UpdateHouseRuleRequest,
 ) -> SqliteResult<Option<HouseRule>> {
     db.with_transaction(|conn| {
@@ -186,7 +165,7 @@ pub async fn update_house_rule(
     })
 }
 
-pub async fn delete_house_rule(db: &Database, house_rule_id: HouseRuleId) -> SqliteResult<bool> {
+pub async fn delete_house_rule(db: &Database, house_rule_id: i64) -> SqliteResult<bool> {
     db.with_connection(|conn| {
         let rows_affected = conn.execute(
             "DELETE FROM house_rules WHERE id = ?",
@@ -199,7 +178,7 @@ pub async fn delete_house_rule(db: &Database, house_rule_id: HouseRuleId) -> Sql
 #[allow(dead_code)]
 pub async fn list_house_rules_by_game(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
     active_only: bool,
 ) -> SqliteResult<Vec<HouseRule>> {
     db.with_connection(|conn| {
@@ -231,7 +210,7 @@ pub async fn list_house_rules_by_game(
 // Helper function for synchronous house rule retrieval within transactions
 fn get_house_rule_by_id_sync(
     conn: &rusqlite::Connection,
-    house_rule_id: HouseRuleId,
+    house_rule_id: i64,
 ) -> SqliteResult<HouseRule> {
     let mut stmt = conn.prepare(
         r#"

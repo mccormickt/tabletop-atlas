@@ -1,8 +1,8 @@
 use rusqlite::{Result as SqliteResult, params};
 
 use crate::models::{
-    CreateEmbeddingRequest, Embedding, EmbeddingId, EmbeddingSearchResult, EmbeddingSourceType,
-    GameId, HouseRuleId, SimilaritySearchRequest,
+    CreateEmbeddingRequest, Embedding, EmbeddingSearchResult, EmbeddingSourceType,
+    SimilaritySearchRequest,
 };
 
 use super::{Database, format_now_for_db, parse_datetime};
@@ -325,7 +325,7 @@ pub async fn similarity_search_filtered(
 
 pub async fn delete_embeddings_for_game(
     db: &Database,
-    game_id: GameId,
+    game_id: i64,
     source_type: Option<EmbeddingSourceType>,
 ) -> SqliteResult<u32> {
     db.with_connection(|conn| {
@@ -345,7 +345,7 @@ pub async fn delete_embeddings_for_game(
 
 pub async fn delete_embeddings_for_house_rule(
     db: &Database,
-    house_rule_id: HouseRuleId,
+    house_rule_id: i64,
 ) -> SqliteResult<u32> {
     db.with_connection(|conn| {
         let rows_affected = conn.execute(
@@ -360,7 +360,7 @@ pub async fn delete_embeddings_for_house_rule(
 pub async fn create_embeddings_batch(
     db: &Database,
     requests: Vec<CreateEmbeddingRequest>,
-) -> SqliteResult<Vec<EmbeddingId>> {
+) -> SqliteResult<Vec<i64>> {
     db.with_transaction(|conn| {
         let now_str = format_now_for_db();
         let mut embedding_ids = Vec::new();

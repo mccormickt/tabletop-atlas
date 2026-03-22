@@ -1,12 +1,11 @@
-use super::{GameId, HouseRuleId};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct HouseRule {
-    pub id: HouseRuleId,
-    pub game_id: GameId,
+    pub id: i64,
+    pub game_id: i64,
     pub title: String,
     pub description: String,
     pub category: Option<String>,
@@ -17,7 +16,7 @@ pub struct HouseRule {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct CreateHouseRuleRequest {
-    pub game_id: GameId,
+    pub game_id: i64,
     pub title: String,
     pub description: String,
     pub category: Option<String>,

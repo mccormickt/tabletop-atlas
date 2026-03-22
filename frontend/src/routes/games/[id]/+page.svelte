@@ -2,7 +2,14 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api, type Game, type RulesInfoResponse, type HouseRule, formatDate } from '$lib';
+	import {
+		api,
+		unwrapResult,
+		type Game,
+		type RulesInfoResponse,
+		type HouseRule,
+		formatDate
+	} from '$lib';
 	import { Button } from '$lib/components/ui';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui';
 	import { Badge } from '$lib/components/ui';
@@ -10,7 +17,7 @@
 	import BggEnrichModal from '$lib/components/admin/BggEnrichModal.svelte';
 
 	import { useHeader } from '$lib/stores/header';
-	import { useAuth, type AuthState } from '$lib/stores/auth';
+	import { createAuthState } from '$lib/stores/auth.svelte';
 
 	// Tab type
 	type TabType = 'details' | 'house-rules';
@@ -20,21 +27,11 @@
 
 	// Configure header for this page
 	const header = useHeader();
-	const auth = useAuth();
+	const auth = createAuthState();
 
 	// Auth state
-	let authState = $state<AuthState>({ user: null, isLoading: true, error: null });
-	let isUserAdmin = $state(false);
-	let isAuthenticated = $state(false);
-
-	$effect(() => {
-		const unsubscribe = auth.subscribe((state) => {
-			authState = state;
-			isUserAdmin = state.user?.role === 'admin';
-			isAuthenticated = !!state.user;
-		});
-		return unsubscribe;
-	});
+	let isUserAdmin = $derived(auth.isAdmin);
+	let isAuthenticated = $derived(auth.isAuthenticated);
 
 	// Game state
 	let game = $state<Game | null>(null);
@@ -77,7 +74,7 @@
 
 	// Check collection status when authenticated and game is loaded
 	$effect(() => {
-		if (isAuthenticated && game && !authState.isLoading) {
+		if (isAuthenticated && game && !auth.isLoading) {
 			checkCollectionStatus();
 		}
 	});
@@ -108,17 +105,15 @@
 
 		addingToCollection = true;
 		try {
-			const result = await api.methods.addToCollection({
-				body: { masterGameId: gameId }
-			});
-
-			if (result.type === 'success') {
+			const r = unwrapResult(
+				await api.methods.addToCollection({ body: { masterGameId: gameId } }),
+				'Failed to add to collection'
+			);
+			if (r.ok) {
 				isInCollection = true;
-				collectionEntryId = result.data.id;
-			} else if (result.type === 'error') {
-				alert(result.data.message || 'Failed to add to collection');
-			} else if (result.type === 'client_error') {
-				alert(result.error.message || 'Failed to add to collection');
+				collectionEntryId = r.data.id;
+			} else {
+				alert(r.error);
 			}
 		} catch (err) {
 			alert(err instanceof Error ? err.message : 'Failed to add to collection');
@@ -132,17 +127,15 @@
 
 		addingToCollection = true;
 		try {
-			const result = await api.methods.removeFromCollection({
-				path: { id: collectionEntryId }
-			});
-
-			if (result.type === 'success') {
+			const r = unwrapResult(
+				await api.methods.removeFromCollection({ path: { id: collectionEntryId } }),
+				'Failed to remove from collection'
+			);
+			if (r.ok) {
 				isInCollection = false;
 				collectionEntryId = null;
-			} else if (result.type === 'error') {
-				alert(result.data.message || 'Failed to remove from collection');
-			} else if (result.type === 'client_error') {
-				alert(result.error.message || 'Failed to remove from collection');
+			} else {
+				alert(r.error);
 			}
 		} catch (err) {
 			alert(err instanceof Error ? err.message : 'Failed to remove from collection');
@@ -170,17 +163,15 @@
 				api.methods.getRulesInfo({ path: { id: gameId } })
 			]);
 
-			if (gameResult.type === 'success') {
-				game = gameResult.data;
-				// Update header with current game
+			const gr = unwrapResult(gameResult, 'Failed to load game');
+			if (gr.ok) {
+				game = gr.data;
 				header.configure({
-					currentGame: gameResult.data,
-					showSearch: gameResult.data.rulesPdfPath ? true : false
+					currentGame: gr.data,
+					showSearch: gr.data.rulesPdfPath ? true : false
 				});
-			} else if (gameResult.type === 'error') {
-				error = gameResult.data.message || 'Failed to load game';
-			} else if (gameResult.type === 'client_error') {
-				error = gameResult.error.message || 'Failed to load game';
+			} else {
+				error = gr.error;
 			}
 
 			if (rulesResult.type === 'success') {
@@ -200,19 +191,19 @@
 		houseRulesError = null;
 
 		try {
-			const result = await api.methods.listHouseRules({
-				query: { gameId, page: houseRulesPage, limit: houseRulesLimit }
-			});
-
-			if (result.type === 'success') {
-				houseRules = result.data.items;
-				houseRulesTotalPages = result.data.totalPages;
-				houseRulesTotal = result.data.total;
-			} else if (result.type === 'error') {
-				houseRulesError = result.data.message || 'Failed to load house rules';
-			} else if (result.type === 'client_error') {
-				houseRulesError = result.error.message || 'Failed to load house rules';
+			const r = unwrapResult(
+				await api.methods.listHouseRules({
+					query: { gameId, page: houseRulesPage, limit: houseRulesLimit }
+				}),
+				'Failed to load house rules'
+			);
+			if (!r.ok) {
+				houseRulesError = r.error;
+				return;
 			}
+			houseRules = r.data.items;
+			houseRulesTotalPages = r.data.totalPages;
+			houseRulesTotal = r.data.total;
 		} catch (err) {
 			houseRulesError = err instanceof Error ? err.message : 'An unexpected error occurred';
 		} finally {
@@ -226,16 +217,14 @@
 	}
 
 	async function handleHouseRuleDelete(rule: HouseRule) {
-		const result = await api.methods.deleteHouseRule({
-			path: { id: rule.id }
-		});
-
-		if (result.type === 'success') {
+		const r = unwrapResult(
+			await api.methods.deleteHouseRule({ path: { id: rule.id } }),
+			'Failed to delete house rule'
+		);
+		if (r.ok) {
 			await loadHouseRules();
-		} else if (result.type === 'error') {
-			throw new Error(result.data.message || 'Failed to delete house rule');
-		} else if (result.type === 'client_error') {
-			throw new Error(result.error.message || 'Failed to delete house rule');
+		} else {
+			throw new Error(r.error);
 		}
 	}
 
@@ -254,17 +243,14 @@
 		deleting = true;
 
 		try {
-			const result = await api.methods.deleteGame({
-				path: { id: game.id }
-			});
-
-			if (result.type === 'success') {
-				// Navigate back to games list
+			const r = unwrapResult(
+				await api.methods.deleteGame({ path: { id: game.id } }),
+				'Failed to delete game'
+			);
+			if (r.ok) {
 				goto(resolve('/games'));
-			} else if (result.type === 'error') {
-				alert(result.data.message || 'Failed to delete game');
-			} else if (result.type === 'client_error') {
-				alert(result.error.message || 'Failed to delete game');
+			} else {
+				alert(r.error);
 			}
 		} catch (err) {
 			alert(err instanceof Error ? err.message : 'An unexpected error occurred');
