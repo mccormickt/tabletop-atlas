@@ -391,6 +391,8 @@ fn create_api_description() -> Result<ApiDescription<AppState>, Box<dyn std::err
 
     // Register admin endpoints
     api.register(handlers::admin::get_admin_stats)?;
+    api.register(handlers::admin::list_admin_users)?;
+    api.register(handlers::admin::update_user_role)?;
     api.register(handlers::admin::preview_bgg_import)?;
     api.register(handlers::admin::execute_bgg_import)?;
     api.register(handlers::admin::get_enrichment_stats)?;

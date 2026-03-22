@@ -82,6 +82,17 @@
 				</Card.Content>
 			</Card.Root>
 
+			<!-- User Management Card -->
+			<Card.Root>
+				<Card.Header>
+					<Card.Title>User Management</Card.Title>
+					<Card.Description>Manage user accounts and roles</Card.Description>
+				</Card.Header>
+				<Card.Content>
+					<Button href="/admin/users">Manage Users</Button>
+				</Card.Content>
+			</Card.Root>
+
 			<!-- Import Games Card -->
 			<Card.Root>
 				<Card.Header>

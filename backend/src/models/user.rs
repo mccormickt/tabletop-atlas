@@ -48,6 +48,20 @@ pub struct Session {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct UserListItem {
+    pub id: UserId,
+    pub email: String,
+    pub display_name: Option<String>,
+    pub role: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct UpdateUserRoleRequest {
+    pub role: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateUserRequest {
     pub google_sub: String,
     pub email: String,

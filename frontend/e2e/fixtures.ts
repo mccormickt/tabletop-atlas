@@ -173,6 +173,10 @@ async function setupDefaultRoutes(page: Page) {
 			return route.fulfill(json(data.mockAdminStats));
 		if (path === '/api/admin/bgg/stats' && method === 'GET')
 			return route.fulfill(json(data.mockEnrichmentStats));
+		if (path === '/api/admin/users' && method === 'GET')
+			return route.fulfill(json(data.mockUsersPage));
+		if (/^\/api\/admin\/users\/\d+\/role$/.test(path) && method === 'PUT')
+			return route.fulfill(json(data.mockUsersPage.items[0]));
 
 		// Unhandled API request — let through
 		return route.fallback();

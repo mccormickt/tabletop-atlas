@@ -523,6 +523,38 @@ export const mockSearchResults = {
 	total_results: 2
 };
 
+// --- Admin Users ---
+
+export const mockUsersPage = {
+	items: [
+		{
+			id: 1,
+			email: 'user@example.com',
+			display_name: 'Regular User',
+			role: 'user',
+			created_at: '2024-01-01T00:00:00Z'
+		},
+		{
+			id: 2,
+			email: 'admin@test.com',
+			display_name: 'Admin User',
+			role: 'admin',
+			created_at: '2024-01-02T00:00:00Z'
+		},
+		{
+			id: 3,
+			email: 'admin2@test.com',
+			display_name: 'Second Admin',
+			role: 'admin',
+			created_at: '2024-01-03T00:00:00Z'
+		}
+	],
+	page: 1,
+	limit: 20,
+	total: 3,
+	total_pages: 1
+};
+
 // --- Admin ---
 
 export const mockAdminStats = {
