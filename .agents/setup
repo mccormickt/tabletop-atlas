@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+echo "==> Installing system build dependencies"
+sudo apt-get update -qq
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+  build-essential \
+  ca-certificates \
+  cmake \
+  curl \
+  git \
+  pkg-config
+
+node_home="$HOME/.local/node-v22"
+export PATH="$node_home/bin:$PATH"
+node_major="$(node --version 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || true)"
+if [[ "$node_major" != "22" ]]; then
+  echo "==> Installing Node.js 22"
+  case "$(uname -m)" in
+    x86_64) node_arch="x64" ;;
+    aarch64) node_arch="arm64" ;;
+    *) echo "Unsupported Node.js architecture: $(uname -m)" >&2; exit 1 ;;
+  esac
+  node_manifest="$(mktemp)"
+  node_archive="$(mktemp --suffix=.tar.xz)"
+  curl -fsSL https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt -o "$node_manifest"
+  node_filename="$(awk -v arch="$node_arch" '$2 ~ "node-v.*-linux-" arch "\\.tar\\.xz$" { print $2 }' "$node_manifest")"
+  curl -fsSL "https://nodejs.org/dist/latest-v22.x/$node_filename" -o "$node_archive"
+  expected_checksum="$(awk -v file="$node_filename" '$2 == file { print $1 }' "$node_manifest")"
+  echo "$expected_checksum  $node_archive" | sha256sum --check --status
+  rm -rf "$node_home"
+  mkdir -p "$node_home"
+  tar -xJf "$node_archive" --strip-components=1 -C "$node_home"
+  rm -f "$node_manifest" "$node_archive"
+fi
+
+pnpm_major="$(pnpm --version 2>/dev/null | cut -d. -f1 || true)"
+if [[ "$pnpm_major" != "9" ]]; then
+  echo "==> Installing pnpm 9"
+  npm install --global pnpm@9
+fi
+
+if [[ ! -x "$HOME/.cargo/bin/rustup" ]]; then
+  echo "==> Installing rustup"
+  curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | \
+    sh -s -- -y --profile minimal --default-toolchain none
+fi
+
+# The rustup installer cannot update this running process's environment.
+# shellcheck disable=SC1091
+source "$HOME/.cargo/env"
+
+echo "==> Installing the stable Rust toolchain"
+rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+rustup default stable
+
+profile_marker="# tabletop-atlas orb toolchains"
+if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+  cat >> "$HOME/.bash_profile" <<'EOF'
+
+# tabletop-atlas orb toolchains
+export PATH="$HOME/.local/node-v22/bin:$HOME/.cargo/bin:$PATH"
+EOF
+fi
+
+if ! command -v cargo-watch >/dev/null 2>&1; then
+  echo "==> Installing cargo-watch"
+  cargo install cargo-watch --locked
+fi
+
+echo "==> Installing JavaScript dependencies"
+pnpm install --frozen-lockfile
+
+echo "==> Installing the Playwright Chromium runtime"
+pnpm --prefix frontend exec playwright install --with-deps chromium
+
+echo "==> Fetching Rust dependencies"
+cargo fetch --locked
+
+if [[ ! -f .env ]]; then
+  echo "==> Creating local environment configuration"
+  cp -- .env.example .env
+fi
+
+mkdir -p uploads
+
+echo "==> Orb setup complete"
