@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents working in this repository.
 
 ## Project Architecture
 
@@ -528,7 +528,7 @@ This command:
 
 ### Auto-Formatting
 
-**Formatting is handled automatically.** A Claude Code hook runs `cargo fmt` (Rust) and `prettier` (frontend) after each file edit. You don't need to run format commands manually during development.
+**Formatting is handled automatically.** A coding agent hook runs `cargo fmt` (Rust) and `prettier` (frontend) after each file edit. You don't need to run format commands manually during development.
 
 ### When to Run Lint/Check
 
