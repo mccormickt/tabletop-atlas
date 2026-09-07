@@ -3,13 +3,15 @@ members = ["backend"]
 resolver = "3"
 
 [workspace.dependencies]
-dropshot = "0.16"
+dropshot = "0.17.1"
 http = "1.5.0"
 serde = { version = "1.0.229", features = ["derive"] }
 tokio = { version = "1.53.1", features = ["full"] }
 uuid = { version = "1.26.0", features = ["v4", "serde"] }
 chrono = { version = "0.4.45", features = ["serde"] }
-schemars = { version = "0.8", features = ["uuid", "chrono"] }
+schemars = { version = "1.2.2", features = ["uuid1", "chrono04"] }
+# Dropshot 0.17 uses Schemars 0.8 for its endpoint JsonSchema bounds.
+dropshot_schemars = { package = "schemars", version = "0.8.22", features = ["uuid1", "chrono"] }
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 rusqlite_migration = "2.6.0"
 anyhow = "1.0.104"

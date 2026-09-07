@@ -1,5 +1,5 @@
 use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{IdPath, created_response, internal_error, not_found_error, success_response};
@@ -16,6 +16,7 @@ use crate::{
 };
 
 #[derive(Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ChatSessionsByGameQuery {
     pub game_id: String,
     pub page: u32,
@@ -23,6 +24,7 @@ pub struct ChatSessionsByGameQuery {
 }
 
 #[derive(Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct RulesSearchQuery {
     pub game_id: String,
     pub query: String,
@@ -30,6 +32,7 @@ pub struct RulesSearchQuery {
 }
 
 #[derive(Serialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct RulesSearchResponse {
     pub game_id: i64,
     pub query: String,
@@ -38,6 +41,7 @@ pub struct RulesSearchResponse {
 }
 
 #[derive(Serialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct SearchResult {
     pub chunk_id: i64,
     pub chunk_text: String,

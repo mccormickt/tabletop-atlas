@@ -1,7 +1,8 @@
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "snake_case")]
 pub enum ToolType {
     ScoreCalculator,
@@ -11,6 +12,7 @@ pub enum ToolType {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ScoringSchema {
     pub categories: Vec<ScoringCategory>,
@@ -18,6 +20,7 @@ pub struct ScoringSchema {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ScoringCategory {
     pub id: String,
@@ -32,6 +35,7 @@ pub struct ScoringCategory {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "snake_case")]
 pub enum InputType {
     Integer,
@@ -42,6 +46,7 @@ pub enum InputType {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct SelectOption {
     pub value: i32,
@@ -49,6 +54,7 @@ pub struct SelectOption {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "snake_case")]
 pub enum ScoringRule {
     Direct,
@@ -58,6 +64,7 @@ pub enum ScoringRule {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ThresholdEntry {
     pub min: i32,
@@ -66,6 +73,7 @@ pub struct ThresholdEntry {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct Expansion {
     pub id: String,

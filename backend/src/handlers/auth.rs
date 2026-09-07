@@ -1,7 +1,7 @@
 use cookie::{Cookie, SameSite};
 use dropshot::{HttpError, HttpResponseHeaders, HttpResponseOk, Query, RequestContext, endpoint};
+use dropshot_schemars::JsonSchema;
 use http::header::{HeaderName, HeaderValue};
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::AppState;
@@ -12,12 +12,14 @@ use crate::models::{CreateUserRequest, UserInfo};
 use super::{CorsHeaders, internal_error, not_found_error, success_response, unauthorized_error};
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct CallbackQuery {
     pub code: String,
     pub state: Option<String>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct AuthResponse {
     pub user: UserInfo,
 }

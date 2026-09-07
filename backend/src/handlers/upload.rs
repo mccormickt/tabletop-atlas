@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use dropshot::{Path, RequestContext, UntypedBody, endpoint};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{IdPath, bad_request_error, internal_error, not_found_error, success_response};
@@ -17,6 +17,7 @@ use crate::{
 };
 
 #[derive(Serialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct UploadResponse {
     pub message: String,
     pub file_path: Option<String>,
@@ -249,6 +250,7 @@ pub async fn delete_rules(
 }
 
 #[derive(Serialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct DeleteRulesResponse {
     pub message: String,
     pub embeddings_deleted: u32,

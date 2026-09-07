@@ -1,6 +1,6 @@
 use cookie::Cookie;
 use dropshot::{ClientErrorStatusCode, HttpError, RequestContext};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -8,6 +8,7 @@ use super::jwt;
 use crate::AppState;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct AuthenticatedUser {
     pub user_id: i64,
     pub email: String,

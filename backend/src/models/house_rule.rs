@@ -1,8 +1,9 @@
 use chrono::{DateTime, Utc};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct HouseRule {
     pub id: i64,
     pub game_id: i64,
@@ -15,6 +16,7 @@ pub struct HouseRule {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct CreateHouseRuleRequest {
     pub game_id: i64,
     pub title: String,
@@ -25,6 +27,7 @@ pub struct CreateHouseRuleRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct UpdateHouseRuleRequest {
     pub title: Option<String>,
     pub description: Option<String>,

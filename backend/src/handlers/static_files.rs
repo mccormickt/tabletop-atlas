@@ -1,8 +1,8 @@
 use dropshot::{Body, HttpError, Path as DropPath, RequestContext, endpoint};
+use dropshot_schemars::JsonSchema;
 use http::{Response, StatusCode};
 use include_dir::{Dir, include_dir};
 use mime_guess;
-use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::{
@@ -14,6 +14,7 @@ use crate::{
 static FRONTEND_ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/../frontend/build");
 
 #[derive(Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct AssetPathParam {
     pub path: Vec<String>,
 }

@@ -1,8 +1,9 @@
 use chrono::{DateTime, NaiveDate, Utc};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "lowercase")]
 pub enum ChallengeStatus {
     Draft,
@@ -37,6 +38,7 @@ impl std::str::FromStr for ChallengeStatus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "lowercase")]
 pub enum GameType {
     Master,
@@ -68,6 +70,7 @@ impl std::str::FromStr for GameType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "lowercase")]
 pub enum ParticipantRole {
     Owner,
@@ -97,6 +100,7 @@ impl std::str::FromStr for ParticipantRole {
 
 // Main challenge entity
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct Challenge {
     pub id: i64,
@@ -114,6 +118,7 @@ pub struct Challenge {
 
 // Challenge participant
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengeParticipant {
     pub id: i64,
@@ -127,6 +132,7 @@ pub struct ChallengeParticipant {
 
 // Challenge game (row assignment)
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengeGame {
     pub id: i64,
@@ -140,6 +146,7 @@ pub struct ChallengeGame {
 
 // Challenge play (cell)
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengePlay {
     pub id: i64,
@@ -154,6 +161,7 @@ pub struct ChallengePlay {
 
 // Play participant
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct PlayParticipant {
     pub id: i64,
@@ -167,6 +175,7 @@ pub struct PlayParticipant {
 // Request/Response types
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct CreateChallengeRequest {
     pub name: String,
@@ -184,6 +193,7 @@ fn default_grid_size() -> i32 {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateChallengeRequest {
     pub name: Option<String>,
@@ -194,12 +204,14 @@ pub struct UpdateChallengeRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct AddParticipantRequest {
     pub user_id: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct AssignGameRequest {
     pub row_index: i32,
@@ -209,6 +221,7 @@ pub struct AssignGameRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct PlayParticipantInput {
     pub user_id: i64,
@@ -217,6 +230,7 @@ pub struct PlayParticipantInput {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct RecordPlayRequest {
     pub challenge_game_id: i64,
@@ -227,6 +241,7 @@ pub struct RecordPlayRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct UpdatePlayRequest {
     pub played_at: Option<NaiveDate>,
@@ -237,6 +252,7 @@ pub struct UpdatePlayRequest {
 // Response types with joined data
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengePlayWithParticipants {
     pub id: i64,
@@ -251,6 +267,7 @@ pub struct ChallengePlayWithParticipants {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengeGridView {
     pub challenge: Challenge,
@@ -261,6 +278,7 @@ pub struct ChallengeGridView {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengeStats {
     pub total_cells: i32,
@@ -270,6 +288,7 @@ pub struct ChallengeStats {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct LeaderboardEntry {
     pub user_id: i64,
@@ -281,6 +300,7 @@ pub struct LeaderboardEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ChallengeSummary {
     pub id: i64,

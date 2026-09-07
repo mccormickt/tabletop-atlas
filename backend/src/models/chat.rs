@@ -1,8 +1,9 @@
 use chrono::{DateTime, Utc};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ChatSession {
     pub id: i64,
     pub game_id: i64,
@@ -13,6 +14,7 @@ pub struct ChatSession {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ChatMessage {
     pub id: i64,
     pub session_id: i64,
@@ -23,6 +25,7 @@ pub struct ChatMessage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub enum MessageRole {
     #[serde(rename = "user")]
     User,
@@ -56,6 +59,7 @@ fn default_true() -> bool {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct CreateChatSessionRequest {
     pub game_id: i64,
     pub title: Option<String>,
@@ -64,18 +68,21 @@ pub struct CreateChatSessionRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct UpdateChatSessionRequest {
     pub title: Option<String>,
     pub include_house_rules: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ChatRequest {
     pub session_id: i64,
     pub message: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ChatResponse {
     pub user_message: ChatMessage,
     pub assistant_message: ChatMessage,
@@ -83,6 +90,7 @@ pub struct ChatResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ContextSource {
     pub embedding_id: i64,
     pub chunk_text: String,
@@ -92,6 +100,7 @@ pub struct ContextSource {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ChatSessionSummary {
     pub id: i64,
     pub game_id: i64,
@@ -103,6 +112,7 @@ pub struct ChatSessionSummary {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ChatHistory {
     pub session: ChatSession,
     pub messages: Vec<ChatMessage>,

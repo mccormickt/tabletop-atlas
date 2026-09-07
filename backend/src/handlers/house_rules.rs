@@ -1,5 +1,5 @@
 use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::Deserialize;
 
 use rig::embeddings::EmbeddingModel;
@@ -89,6 +89,7 @@ async fn embed_house_rule<M: EmbeddingModel>(
 }
 
 #[derive(Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct HouseRulesByGameQuery {
     pub game_id: i64,
     #[serde(default = "default_page")]

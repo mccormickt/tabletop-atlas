@@ -1,5 +1,5 @@
 use dropshot::{HttpError, Path, Query, RequestContext, TypedBody, endpoint};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::AppState;
@@ -52,18 +52,21 @@ async fn require_owner(db: &Database, challenge_id: i64, user_id: i64) -> Result
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ChallengeGamePath {
     pub id: i64,
     pub game_id: i64,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ChallengeParticipantPath {
     pub id: i64,
     pub user_id: i64,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ChallengePlayPath {
     pub id: i64,
     pub play_id: i64,

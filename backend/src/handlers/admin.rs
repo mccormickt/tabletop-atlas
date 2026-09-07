@@ -15,7 +15,7 @@ use crate::{
     models::{PaginatedResponse, UpdateUserRoleRequest, UserListItem, default_limit, default_page},
 };
 use dropshot::{Path, Query, RequestContext, TypedBody, UntypedBody, endpoint};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -27,6 +27,7 @@ const MAX_CSV_SIZE: usize = 15 * 1024 * 1024;
 
 /// Admin dashboard stats
 #[derive(Debug, Serialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct AdminDashboardStats {
     pub master_games_count: u32,
 }
@@ -57,6 +58,7 @@ pub async fn get_admin_stats(
 // ============================================================================
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct UserSearchParams {
     #[serde(default = "default_page")]
     pub page: u32,

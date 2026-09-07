@@ -1,8 +1,9 @@
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Response for BGG import preview
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BggImportPreviewResponse {
     /// Games that will be inserted (new)
     pub games_to_insert: Vec<BggGamePreview>,
@@ -16,6 +17,7 @@ pub struct BggImportPreviewResponse {
 
 /// Response for BGG import execution
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BggImportResponse {
     /// Number of games inserted
     pub inserted_count: u32,
@@ -27,6 +29,7 @@ pub struct BggImportResponse {
 
 /// Preview of a game to be inserted from BGG CSV
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BggGamePreview {
     /// Row number in CSV (1-indexed)
     pub row: u32,
@@ -48,6 +51,7 @@ pub struct BggGamePreview {
 
 /// Preview of a game that will be updated
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BggGameUpdatePreview {
     /// Row number in CSV (1-indexed)
     pub row: u32,
@@ -63,6 +67,7 @@ pub struct BggGameUpdatePreview {
 
 /// A field that will be changed during update
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct FieldChange {
     /// Field name
     pub field: String,
@@ -74,6 +79,7 @@ pub struct FieldChange {
 
 /// Error that occurred while parsing a row
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BggParseError {
     /// Row number in CSV (1-indexed)
     pub row: u32,
@@ -115,6 +121,7 @@ impl ParsedBggGame {
 
 /// Values for comparing current game data vs BGG data
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BggGameValues {
     /// Game name
     pub name: String,
@@ -134,6 +141,7 @@ pub struct BggGameValues {
 
 /// Response for single game BGG enrichment preview
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BggEnrichPreviewResponse {
     /// Database game ID
     pub game_id: i64,
@@ -149,6 +157,7 @@ pub struct BggEnrichPreviewResponse {
 
 /// Request to execute single game BGG enrichment
 #[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BggEnrichRequest {
     /// Which fields to update from BGG data
     pub fields_to_update: Vec<String>,
@@ -156,6 +165,7 @@ pub struct BggEnrichRequest {
 
 /// Statistics about games needing enrichment
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct EnrichmentStats {
     /// Total games with a BGG ID
     pub total_with_bgg_id: u32,
@@ -175,6 +185,7 @@ pub struct EnrichmentStats {
 
 /// Request for bulk BGG enrichment
 #[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BulkEnrichRequest {
     /// Which fields to enrich (e.g., ["year_published", "min_players"])
     pub fields_to_enrich: Vec<String>,
@@ -184,6 +195,7 @@ pub struct BulkEnrichRequest {
 
 /// Preview of a game that will be enriched from BGG
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BggGameEnrichPreview {
     /// Database game ID
     pub game_id: i64,
@@ -197,6 +209,7 @@ pub struct BggGameEnrichPreview {
 
 /// Error that occurred while enriching a game from BGG
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BggEnrichError {
     /// Database game ID
     pub game_id: i64,
@@ -208,6 +221,7 @@ pub struct BggEnrichError {
 
 /// Response for bulk BGG enrichment preview
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BulkEnrichPreviewResponse {
     /// Games that will be updated
     pub games_to_update: Vec<BggGameEnrichPreview>,
@@ -219,6 +233,7 @@ pub struct BulkEnrichPreviewResponse {
 
 /// Response for bulk BGG enrichment execution
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BulkEnrichResponse {
     /// Number of games updated
     pub updated_count: u32,

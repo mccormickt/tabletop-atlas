@@ -1,8 +1,9 @@
 use chrono::{DateTime, Utc};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct CollectionEntry {
     pub id: i64,
     pub user_id: i64,
@@ -14,6 +15,7 @@ pub struct CollectionEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct CollectionEntryWithGame {
     pub id: i64,
     pub master_game_id: i64,
@@ -25,6 +27,7 @@ pub struct CollectionEntryWithGame {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct AddToCollectionRequest {
     pub master_game_id: i64,
     pub notes: Option<String>,
@@ -32,6 +35,7 @@ pub struct AddToCollectionRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct UpdateCollectionRequest {
     pub notes: Option<String>,
     pub rating: Option<i32>,
