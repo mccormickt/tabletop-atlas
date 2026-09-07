@@ -22,7 +22,7 @@ environment:
     packages:
       - build-base
       - rust
-      - nodejs-22
+      - nodejs-26
       - pnpm
   environment:
     CARGO_HOME: /var/cache/melange/cargo

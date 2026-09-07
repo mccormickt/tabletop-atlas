@@ -186,15 +186,15 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
-                let tag_name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let tag_name = e.name().as_ref().to_string();
 
                 match tag_name.as_str() {
                     "item" => {
                         // Start a new game
                         let mut builder = BggGameDataBuilder::default();
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                            let value = String::from_utf8_lossy(&attr.value).to_string();
+                            let key = attr.key.as_ref().to_string();
+                            let value = attr.value.to_string();
                             if key == "id" {
                                 builder.bgg_id = value.parse().ok();
                             }
@@ -205,8 +205,8 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
                         let mut is_primary = false;
                         let mut name_value = String::new();
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
-                            let value = String::from_utf8_lossy(&attr.value).to_string();
+                            let key = attr.key.as_ref().to_string();
+                            let value = attr.value.to_string();
                             if key == "type" && value == "primary" {
                                 is_primary = true;
                             }
@@ -220,9 +220,9 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
                     }
                     "yearpublished" if current_game.is_some() => {
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                            let key = attr.key.as_ref().to_string();
                             if key == "value" {
-                                let value = String::from_utf8_lossy(&attr.value).to_string();
+                                let value = attr.value.to_string();
                                 if let Some(ref mut game) = current_game {
                                     game.year_published = value.parse().ok();
                                 }
@@ -231,9 +231,9 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
                     }
                     "minplayers" if current_game.is_some() => {
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                            let key = attr.key.as_ref().to_string();
                             if key == "value" {
-                                let value = String::from_utf8_lossy(&attr.value).to_string();
+                                let value = attr.value.to_string();
                                 if let Some(ref mut game) = current_game {
                                     game.min_players = value.parse().ok();
                                 }
@@ -242,9 +242,9 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
                     }
                     "maxplayers" if current_game.is_some() => {
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                            let key = attr.key.as_ref().to_string();
                             if key == "value" {
-                                let value = String::from_utf8_lossy(&attr.value).to_string();
+                                let value = attr.value.to_string();
                                 if let Some(ref mut game) = current_game {
                                     game.max_players = value.parse().ok();
                                 }
@@ -253,9 +253,9 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
                     }
                     "playingtime" if current_game.is_some() => {
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                            let key = attr.key.as_ref().to_string();
                             if key == "value" {
-                                let value = String::from_utf8_lossy(&attr.value).to_string();
+                                let value = attr.value.to_string();
                                 if let Some(ref mut game) = current_game {
                                     game.play_time_minutes = value.parse().ok();
                                 }
@@ -279,9 +279,9 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
                     }
                     "averageweight" if in_ratings && current_game.is_some() => {
                         for attr in e.attributes().flatten() {
-                            let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                            let key = attr.key.as_ref().to_string();
                             if key == "value" {
-                                let value = String::from_utf8_lossy(&attr.value).to_string();
+                                let value = attr.value.to_string();
                                 if let Some(ref mut game) = current_game {
                                     game.complexity_rating = value.parse().ok();
                                 }
@@ -293,7 +293,7 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
             }
             Ok(Event::Text(e)) => {
                 if let Some(ref mut game) = current_game {
-                    let text = e.decode().unwrap_or_default().to_string();
+                    let text = e.as_ref().to_string();
                     // We need to track which element we're in
                     // This is handled by the element stack approach below
                     if !text.is_empty() {
@@ -303,7 +303,7 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
                 }
             }
             Ok(Event::End(e)) => {
-                let tag_name = String::from_utf8_lossy(e.name().as_ref()).to_string();
+                let tag_name = e.name().as_ref().to_string();
                 match tag_name.as_str() {
                     "item" => {
                         if let Some(builder) = current_game.take()

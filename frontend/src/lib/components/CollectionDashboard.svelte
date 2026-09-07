@@ -123,15 +123,9 @@
 		const items = displayItems;
 		return [...items].sort((a, b) => {
 			let aVal: string | number | undefined | null = a[sortField as keyof DisplayItem] as
-				| string
-				| number
-				| undefined
-				| null;
+				string | number | undefined | null;
 			let bVal: string | number | undefined | null = b[sortField as keyof DisplayItem] as
-				| string
-				| number
-				| undefined
-				| null;
+				string | number | undefined | null;
 
 			if (aVal === undefined || aVal === null) return 1;
 			if (bVal === undefined || bVal === null) return -1;

@@ -541,11 +541,7 @@ export type HouseRule = {
 export type SelectOption = { label: string; value: number };
 
 export type InputType =
-	| 'integer'
-	| 'counter'
-	| 'checkbox'
-	| 'science_symbols'
-	| { select: { options: SelectOption[] } };
+	'integer' | 'counter' | 'checkbox' | 'science_symbols' | { select: { options: SelectOption[] } };
 
 export type PaginatedResponse_for_ChallengeSummary = {
 	items: ChallengeSummary[];
