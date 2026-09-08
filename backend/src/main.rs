@@ -293,6 +293,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         default_request_body_max_bytes: 15 * 1024 * 1024, // 15MB for PDF/CSV uploads
         default_handler_task_mode: dropshot::HandlerTaskMode::Detached,
         log_headers: Default::default(),
+        compression: Default::default(),
     };
 
     // Create API description

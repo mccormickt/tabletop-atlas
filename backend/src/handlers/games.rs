@@ -13,12 +13,13 @@ use crate::{
     },
 };
 use dropshot::{Path, Query, RequestContext, TypedBody, endpoint};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::IdPath;
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct GameSearchParams {
     #[serde(default = "default_page")]
     pub page: u32,

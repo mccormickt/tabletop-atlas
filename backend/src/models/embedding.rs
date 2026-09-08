@@ -1,8 +1,9 @@
 use chrono::{DateTime, Utc};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct Embedding {
     pub id: i64,
     pub game_id: i64,
@@ -16,6 +17,7 @@ pub struct Embedding {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[schemars(crate = "dropshot_schemars")]
 pub enum EmbeddingSourceType {
     #[serde(rename = "rules_pdf")]
     RulesPdf,
@@ -41,6 +43,7 @@ impl EmbeddingSourceType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct CreateEmbeddingRequest {
     pub game_id: i64,
     pub chunk_text: String,
@@ -52,6 +55,7 @@ pub struct CreateEmbeddingRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct EmbeddingSearchResult {
     pub id: i64,
     pub chunk_text: String,
@@ -62,6 +66,7 @@ pub struct EmbeddingSearchResult {
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct SimilaritySearchRequest {
     pub game_id: i64,
     pub query_embedding: Vec<f32>,

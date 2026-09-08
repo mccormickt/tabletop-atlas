@@ -1,10 +1,11 @@
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::tools::scoring::{ScoringSchema, ToolType};
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerRange {
     pub min: u8,
@@ -33,6 +34,7 @@ impl From<(u8, u8)> for PlayerRange {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ToolSummary {
     pub id: String,
@@ -42,6 +44,7 @@ pub struct ToolSummary {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ToolDetails {
     pub id: String,
@@ -52,6 +55,7 @@ pub struct ToolDetails {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ScoreInput {
     pub players: Vec<PlayerScoreInput>,
@@ -59,6 +63,7 @@ pub struct ScoreInput {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerScoreInput {
     pub name: String,
@@ -66,6 +71,7 @@ pub struct PlayerScoreInput {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct ScoreOutput {
     pub players: Vec<PlayerScoreResult>,
@@ -73,6 +79,7 @@ pub struct ScoreOutput {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerScoreResult {
     pub name: String,

@@ -1,5 +1,5 @@
 use dropshot::{HttpError, Path, RequestContext, TypedBody, endpoint};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashSet;
 
@@ -103,6 +103,7 @@ pub async fn list_tools(
 }
 
 #[derive(Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct ToolIdPath {
     pub tool_id: String,
 }

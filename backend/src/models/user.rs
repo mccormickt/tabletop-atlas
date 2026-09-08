@@ -1,10 +1,11 @@
 use chrono::{DateTime, Utc};
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub type SessionId = String;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct User {
     pub id: i64,
     pub google_sub: String,
@@ -17,6 +18,7 @@ pub struct User {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct UserInfo {
     pub id: i64,
     pub email: String,
@@ -38,6 +40,7 @@ impl From<User> for UserInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct Session {
     pub id: SessionId,
     pub user_id: i64,
@@ -47,6 +50,7 @@ pub struct Session {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct UserListItem {
     pub id: i64,
     pub email: String,
@@ -56,11 +60,13 @@ pub struct UserListItem {
 }
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct UpdateUserRoleRequest {
     pub role: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct CreateUserRequest {
     pub google_sub: String,
     pub email: String,

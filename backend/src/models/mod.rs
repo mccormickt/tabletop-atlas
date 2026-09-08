@@ -1,5 +1,5 @@
 // DateTime and Utc re-exported from individual modules as needed
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 pub mod admin;
@@ -26,6 +26,7 @@ pub use user::*;
 
 // Pagination parameters
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct PaginationParams {
     #[serde(default = "default_page")]
     pub page: u32,
@@ -42,6 +43,7 @@ pub fn default_limit() -> u32 {
 
 // Paginated response
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct PaginatedResponse<T> {
     pub items: Vec<T>,
     pub total: u32,

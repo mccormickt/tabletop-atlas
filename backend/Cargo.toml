@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 dropshot.workspace = true
 schemars.workspace = true
+dropshot_schemars.workspace = true
 serde.workspace = true
 tokio.workspace = true
 uuid.workspace = true

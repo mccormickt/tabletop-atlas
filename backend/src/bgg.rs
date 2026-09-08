@@ -3,9 +3,9 @@
 //! This module provides functionality to fetch and parse game data from the
 //! BoardGameGeek XML API2 endpoint.
 
+use dropshot_schemars::JsonSchema;
 use quick_xml::Reader;
 use quick_xml::events::Event;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
@@ -21,6 +21,7 @@ const MIN_REQUEST_INTERVAL: Duration = Duration::from_millis(500);
 
 /// Parsed game data from BGG API
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct BggGameData {
     pub bgg_id: i32,
     pub name: String,

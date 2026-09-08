@@ -4,7 +4,7 @@
 use dropshot::{
     HttpError, HttpResponseCreated, HttpResponseDeleted, HttpResponseHeaders, HttpResponseOk,
 };
-use schemars::JsonSchema;
+use dropshot_schemars::JsonSchema;
 use serde::Serialize;
 
 pub mod admin;
@@ -81,6 +81,7 @@ fn add_cors_headers(error: HttpError) -> HttpError {
 }
 
 #[derive(Serialize, JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct CorsHeaders {
     #[serde(rename = "Access-Control-Allow-Origin")]
     pub origin: String,
@@ -115,7 +116,8 @@ pub fn deleted_response() -> Result<HttpDeleted, HttpError> {
 }
 
 /// Shared path parameter for endpoints that take a single `{id}`.
-#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+#[derive(Debug, serde::Deserialize, dropshot_schemars::JsonSchema)]
+#[schemars(crate = "dropshot_schemars")]
 pub struct IdPath {
     pub id: i64,
 }
