@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
-use rig::agent::AgentBuilder;
-use rig::completion::{Chat, CompletionModel, Prompt};
+use rig::completion::CompletionModel;
 use rig::message::Message;
 use rig::vector_store::VectorStoreIndexDyn;
+use rig_agent::agent::AgentBuilder;
+use rig_agent::completion::{Chat, Prompt};
 
 use crate::models::MessageRole;
 
@@ -30,7 +31,7 @@ pub struct RulesChatAgent<M: CompletionModel> {
     model: M,
 }
 
-impl<M: CompletionModel> RulesChatAgent<M> {
+impl<M: CompletionModel + Clone + 'static> RulesChatAgent<M> {
     pub fn new(model: M) -> Self {
         Self { model }
     }
@@ -57,7 +58,7 @@ impl<M: CompletionModel> RulesChatAgent<M> {
                 .await
                 .context("Failed to prompt agent")
         } else {
-            let history: Vec<Message> = chat_history
+            let mut history: Vec<Message> = chat_history
                 .iter()
                 .map(|(role, content)| match role {
                     MessageRole::Assistant => Message::assistant(content),
@@ -68,7 +69,7 @@ impl<M: CompletionModel> RulesChatAgent<M> {
                 .collect();
 
             agent
-                .chat(question, history)
+                .chat(question, &mut history)
                 .await
                 .context("Failed to chat with agent")
         }
