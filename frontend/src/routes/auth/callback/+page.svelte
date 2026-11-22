@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { useAuth } from '$lib/stores/auth';
-	import { Meeple } from '$lib/components/icons';
+	import { useAuth } from '#lib/stores/auth.js';
+	import { Meeple } from '#lib/components/icons/index.js';
 
 	const auth = useAuth();
 

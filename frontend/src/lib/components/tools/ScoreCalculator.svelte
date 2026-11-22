@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import PlayerSetup from './PlayerSetup.svelte';
 	import ExpansionSelector from './ExpansionSelector.svelte';
 	import ScoringGrid from './ScoringGrid.svelte';
 	import ScoreSummary from './ScoreSummary.svelte';
-	import type { ToolDetails, ScoreInput, ScoreOutput, PlayerScoreInput } from '$lib';
+	import type { ToolDetails, ScoreInput, ScoreOutput, PlayerScoreInput } from '#lib';
 
 	let {
 		tool,

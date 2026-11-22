@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { api, type BggEnrichPreviewResponse, type FieldChange } from '$lib';
+	import { api, type BggEnrichPreviewResponse, type FieldChange } from '#lib';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { Button } from '$lib/components/ui/button';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Label } from '$lib/components/ui/label';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
 
 	let {
 		gameId,

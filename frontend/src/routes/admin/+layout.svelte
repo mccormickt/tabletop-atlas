@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { createAuthState } from '$lib/stores/auth.svelte';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
 
 	let { children } = $props();
 

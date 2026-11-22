@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
-	import { EmptyState } from '$lib/components/ui/empty-state';
-	import ToolCard from '$lib/components/tools/ToolCard.svelte';
-	import { api } from '$lib';
-	import type { ToolSummary } from '$lib';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { EmptyState } from '#lib/components/ui/empty-state/index.js';
+	import ToolCard from '#lib/components/tools/ToolCard.svelte';
+	import { api } from '#lib';
+	import type { ToolSummary } from '#lib';
 
 	let tools = $state<ToolSummary[]>([]);
 	let isLoading = $state(true);

@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { createAuthState } from '$lib/stores/auth.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { Textarea } from '$lib/components/ui/textarea';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import { Textarea } from '#lib/components/ui/textarea/index.js';
 
 	const auth = createAuthState();
 
@@ -52,7 +52,7 @@
 
 			if (response.ok) {
 				const challenge = await response.json();
-				goto(resolve(`/challenges/${challenge.id}`));
+				goto(resolve('/challenges/[id]', { id: String(challenge.id) }));
 			} else if (response.status === 401) {
 				goto(resolve('/auth/login'));
 			} else {
@@ -167,9 +167,9 @@
 			</div>
 
 			<div class="flex gap-4 pt-4">
-				<Button type="button" variant="outline" href={resolve('/challenges')} class="flex-1"
-					>Cancel</Button
-				>
+				<Button type="button" variant="outline" href={resolve('/challenges')} class="flex-1">
+					Cancel
+				</Button>
 				<Button type="submit" class="flex-1" disabled={isSubmitting}>
 					{#if isSubmitting}
 						Creating...

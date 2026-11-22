@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api } from '$lib';
-	import { Button, GameBox } from '$lib/components/ui';
-	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
+	import { api } from '#lib';
+	import { Button, GameBox } from '#lib/components/ui/index.js';
+	import { ComponentTray, ComponentTraySection } from '#lib/components/ui/index.js';
 	import {
 		Meeple,
 		Dice,
@@ -12,9 +12,9 @@
 		SearchGlass,
 		ChatBubble,
 		Trophy
-	} from '$lib/components/icons';
-	import { useHeader } from '$lib/stores/header';
-	import { createAuthState } from '$lib/stores/auth.svelte';
+	} from '#lib/components/icons/index.js';
+	import { useHeader } from '#lib/stores/header.js';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
 
 	const header = useHeader();
 	header.configure({

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
-	import { Button, Input, Label } from '$lib/components/ui';
-	import { SearchGlass } from '$lib/components/icons';
+	import { ComponentTray, ComponentTraySection } from '#lib/components/ui/index.js';
+	import { Button, Input, Label } from '#lib/components/ui/index.js';
+	import { SearchGlass } from '#lib/components/icons/index.js';
 
 	type FilterState = {
 		search?: string;

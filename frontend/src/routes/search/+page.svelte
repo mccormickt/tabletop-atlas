@@ -8,7 +8,7 @@
 		createDebouncedAction,
 		type GameSummary,
 		type SearchResult
-	} from '$lib';
+	} from '#lib';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import {
 		Button,
@@ -18,10 +18,16 @@
 		GameBox,
 		CardSleeve,
 		LoadingSpinner
-	} from '$lib/components/ui';
-	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
-	import { Dice, GameBoxIcon, Rulebook, SearchGlass, ChatBubble } from '$lib/components/icons';
-	import { useHeader } from '$lib/stores/header';
+	} from '#lib/components/ui/index.js';
+	import { ComponentTray, ComponentTraySection } from '#lib/components/ui/index.js';
+	import {
+		Dice,
+		GameBoxIcon,
+		Rulebook,
+		SearchGlass,
+		ChatBubble
+	} from '#lib/components/icons/index.js';
+	import { useHeader } from '#lib/stores/header.js';
 
 	let games = $state<GameSummary[]>([]);
 	let loading = $state(true);
@@ -162,7 +168,7 @@
 		const queryString = params.toString();
 		const newUrl = `/search${queryString ? '?' + queryString : ''}`;
 		if (newUrl !== window.location.pathname + window.location.search) {
-			goto(resolve('/search') + (queryString ? '?' + queryString : ''), { replaceState: true });
+			goto(resolve('/search') + (queryString ? '?' + queryString : ''), { replace: true });
 		}
 	}
 
@@ -216,7 +222,7 @@
 	}
 
 	function goToGame(gameId: number) {
-		goto(resolve(`/games/${gameId}`));
+		goto(resolve('/games/[id]', { id: String(gameId) }));
 	}
 
 	function getDiceValue(score: number): 1 | 2 | 3 | 4 | 5 | 6 {
@@ -275,9 +281,9 @@
 							{gameFilterQuery ? 'No games match search' : 'No games found'}
 						</p>
 						{#if !gameFilterQuery}
-							<Button variant="game-primary" href="/games/add" size="sm" class="w-full"
-								>Add Game</Button
-							>
+							<Button variant="game-primary" href="/games/add" size="sm" class="w-full">
+								Add Game
+							</Button>
 						{/if}
 					</ComponentTraySection>
 				{:else}
@@ -447,8 +453,10 @@
 					<p class="text-muted-foreground font-body mb-4 text-sm">
 						Try different keywords or check our <a
 							href={resolve('/chat')}
-							class="text-game-blue hover:underline">Chat</a
-						> for Q&A
+							class="text-game-blue hover:underline"
+						>
+							Chat
+						</a> for Q&A
 					</p>
 					<div class="flex flex-wrap justify-center gap-2">
 						{#each ['victory', 'combat', 'movement', 'setup', 'turn', 'scoring'] as term (term)}

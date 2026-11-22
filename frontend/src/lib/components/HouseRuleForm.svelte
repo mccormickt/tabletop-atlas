@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { api } from '$lib';
-	import { Button, Input, Textarea, Label } from '$lib/components/ui';
-	import type { HouseRule, CreateHouseRuleRequest, UpdateHouseRuleRequest } from '$lib';
+	import { api } from '#lib';
+	import { Button, Input, Textarea, Label } from '#lib/components/ui/index.js';
+	import type { HouseRule, CreateHouseRuleRequest, UpdateHouseRuleRequest } from '#lib';
 
 	// Props
 	let {

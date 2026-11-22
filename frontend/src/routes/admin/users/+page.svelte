@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { api, formatDate, unwrapResult, createDebouncedAction, type UserListItem } from '$lib';
-	import { SearchInput, Badge, Pagination } from '$lib/components/ui';
-	import { createAuthState } from '$lib/stores/auth.svelte';
+	import { api, formatDate, unwrapResult, createDebouncedAction, type UserListItem } from '#lib';
+	import { SearchInput, Badge, Pagination } from '#lib/components/ui/index.js';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
 
 	let users = $state<UserListItem[]>([]);
 	let isLoading = $state(true);

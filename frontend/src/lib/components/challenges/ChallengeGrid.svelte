@@ -4,7 +4,7 @@
 		ChallengeGame,
 		ChallengePlayWithParticipants,
 		ChallengeParticipant
-	} from '$lib';
+	} from '#lib';
 	import ChallengeCell from './ChallengeCell.svelte';
 	import GameRow from './GameRow.svelte';
 

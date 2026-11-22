@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
 
 	interface BggGamePreview {
 		row: number;
@@ -387,9 +387,9 @@
 												{#each game.changes as change (change.field)}
 													<div class="text-xs">
 														<span class="font-medium">{formatFieldName(change.field)}:</span>
-														<span class="text-red-500 line-through"
-															>{change.old_value ?? 'null'}</span
-														>
+														<span class="text-red-500 line-through">
+															{change.old_value ?? 'null'}
+														</span>
 														&rarr;
 														<span class="text-green-500">{change.new_value ?? 'null'}</span>
 													</div>

@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { createAuthState } from '$lib/stores/auth.svelte';
-	import { api } from '$lib';
-	import { Button } from '$lib/components/ui/button';
-	import type { ChallengeStats, Challenge } from '$lib';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
+	import { api } from '#lib';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import type { ChallengeStats, Challenge } from '#lib';
 
 	const auth = createAuthState();
 
@@ -17,7 +17,7 @@
 	$effect(() => {
 		if (!auth.isLoading && !auth.user) {
 			goto(resolve('/auth/login'));
-		} else if (auth.user && $page.params.id) {
+		} else if (auth.user && page.params.id) {
 			loadData();
 		}
 	});
@@ -26,7 +26,7 @@
 		isLoading = true;
 		error = null;
 		try {
-			const challengeId = Number($page.params.id);
+			const challengeId = Number(page.params.id);
 
 			// Fetch stats and challenge info in parallel
 			const [statsResult, challengeResult] = await Promise.all([
@@ -84,7 +84,7 @@
 		<!-- Header -->
 		<div class="mb-8">
 			<a
-				href={resolve(`/challenges/${$page.params.id}`)}
+				href={resolve('/challenges/[id]', { id: page.params.id ?? '' })}
 				class="text-muted-foreground hover:text-foreground text-sm"
 			>
 				&larr; Back to Challenge
@@ -190,7 +190,9 @@
 
 		<!-- Back Button -->
 		<div class="mt-8 text-center">
-			<Button href={resolve(`/challenges/${$page.params.id}`)}>Back to Challenge Grid</Button>
+			<Button href={resolve('/challenges/[id]', { id: page.params.id ?? '' })}>
+				Back to Challenge Grid
+			</Button>
 		</div>
 	{/if}
 </div>

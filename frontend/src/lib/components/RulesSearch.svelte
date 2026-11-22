@@ -1,10 +1,16 @@
 <script lang="ts">
-	import { api, type SearchResult } from '$lib';
-	import { Button } from '$lib/components/ui';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
-	import { Input, Label } from '$lib/components/ui';
-	import { Badge } from '$lib/components/ui';
-	import { formatSimilarityScore, getSimilarityColor, truncateText } from '$lib/utils';
+	import { api, type SearchResult } from '#lib';
+	import { Button } from '#lib/components/ui/index.js';
+	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle
+	} from '#lib/components/ui/index.js';
+	import { Input, Label } from '#lib/components/ui/index.js';
+	import { Badge } from '#lib/components/ui/index.js';
+	import { formatSimilarityScore, getSimilarityColor, truncateText } from '#lib/utils.js';
 
 	// Props
 	let {

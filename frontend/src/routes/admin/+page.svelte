@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { api, type EnrichmentStats } from '$lib';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
+	import { api, type EnrichmentStats } from '#lib';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
 
 	interface AdminStats {
 		master_games_count: number;

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { ChallengeParticipant } from '$lib';
-	import { Input } from '$lib/components/ui/input';
+	import type { ChallengeParticipant } from '#lib';
+	import { Input } from '#lib/components/ui/input/index.js';
 
 	let {
 		participants,

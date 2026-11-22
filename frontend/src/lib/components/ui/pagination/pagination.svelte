@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { cn } from '$lib/utils';
-	import { Button } from '$lib/components/ui';
+	import { cn } from '#lib/utils.js';
+	import { Button } from '#lib/components/ui/index.js';
 
 	let {
 		currentPage = 1,

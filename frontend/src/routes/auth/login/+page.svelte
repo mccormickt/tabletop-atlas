@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { useAuth } from '$lib/stores/auth';
-	import { createAuthState } from '$lib/stores/auth.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Meeple } from '$lib/components/icons';
+	import { useAuth } from '#lib/stores/auth.js';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Meeple } from '#lib/components/icons/index.js';
 
 	const authStore = useAuth();
 	const auth = createAuthState();

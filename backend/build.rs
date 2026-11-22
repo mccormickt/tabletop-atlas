@@ -5,8 +5,9 @@ use std::process::Command;
 fn main() {
     println!("cargo:rerun-if-changed=../frontend/src");
     println!("cargo:rerun-if-changed=../frontend/package.json");
-    println!("cargo:rerun-if-changed=../frontend/svelte.config.js");
+    println!("cargo:rerun-if-changed=../frontend/tsconfig.json");
     println!("cargo:rerun-if-changed=../frontend/vite.config.ts");
+    println!("cargo:rerun-if-changed=../pnpm-lock.yaml");
 
     // Get the project root directory
     let manifest_dir =

@@ -3,7 +3,7 @@
 	import CounterInput from './inputs/CounterInput.svelte';
 	import SelectInput from './inputs/SelectInput.svelte';
 	import ScienceInput from './inputs/ScienceInput.svelte';
-	import type { ScoringCategory } from '$lib';
+	import type { ScoringCategory } from '#lib';
 
 	let {
 		category,

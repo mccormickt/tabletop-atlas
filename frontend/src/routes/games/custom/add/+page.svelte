@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { createAuthState } from '$lib/stores/auth.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { Textarea } from '$lib/components/ui/textarea';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import { Textarea } from '#lib/components/ui/textarea/index.js';
 
 	const auth = createAuthState();
 
@@ -165,18 +165,18 @@
 					bind:checked={formData.is_public}
 					class="h-4 w-4 rounded border-gray-300"
 				/>
-				<Label for="is_public" class="cursor-pointer"
-					>Make this game public (others can see it)</Label
-				>
+				<Label for="is_public" class="cursor-pointer">
+					Make this game public (others can see it)
+				</Label>
 			</div>
 
 			<div class="flex gap-4">
 				<Button type="submit" disabled={isSubmitting || !formData.name}>
 					{isSubmitting ? 'Creating...' : 'Create Game'}
 				</Button>
-				<Button type="button" variant="outline" onclick={() => goto(resolve('/games/custom'))}
-					>Cancel</Button
-				>
+				<Button type="button" variant="outline" onclick={() => goto(resolve('/games/custom'))}>
+					Cancel
+				</Button>
 			</div>
 		</form>
 	{/if}

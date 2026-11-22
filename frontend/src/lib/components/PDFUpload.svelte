@@ -1,10 +1,16 @@
 <script lang="ts">
-	import { api, uploadRulesPdf } from '$lib';
-	import { Button } from '$lib/components/ui';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
-	import { Progress } from '$lib/components/ui';
-	import { Badge } from '$lib/components/ui';
-	import type { RulesInfoResponse, UploadResponse } from '$lib';
+	import { api, uploadRulesPdf } from '#lib';
+	import { Button } from '#lib/components/ui/index.js';
+	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle
+	} from '#lib/components/ui/index.js';
+	import { Progress } from '#lib/components/ui/index.js';
+	import { Badge } from '#lib/components/ui/index.js';
+	import type { RulesInfoResponse, UploadResponse } from '#lib';
 
 	// Props
 	let {

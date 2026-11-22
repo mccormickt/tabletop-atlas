@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { browser } from '$app/environment';
-	import type { GameSummary, CollectionEntryWithGame, CustomGameSummary } from '$lib';
+	import { browser } from '$app/env';
+	import type { GameSummary, CollectionEntryWithGame, CustomGameSummary } from '#lib';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { Button, Badge, CardSleeve, Pagination } from '$lib/components/ui';
+	import { Button, Badge, CardSleeve, Pagination } from '#lib/components/ui/index.js';
 	import { Dice } from './icons';
 
 	type ViewMode = 'table' | 'cards' | 'compact';
@@ -151,22 +151,24 @@
 	}
 
 	function handleView(item: DisplayItem) {
+		if (mode === 'custom') {
+			return;
+		}
 		if (mode === 'collection' && item.masterGameId) {
-			goto(resolve(`/games/${item.masterGameId}`));
-		} else if (mode === 'custom') {
-			goto(resolve(`/games/custom/${item.id}`));
+			goto(resolve('/games/[id]', { id: String(item.masterGameId) }));
 		} else {
-			goto(resolve(`/games/${item.id}`));
+			goto(resolve('/games/[id]', { id: String(item.id) }));
 		}
 	}
 
 	function handleEdit(item: DisplayItem) {
 		if (mode === 'custom') {
-			goto(resolve(`/games/custom/${item.id}/edit`));
-		} else if (mode === 'collection' && item.masterGameId) {
-			goto(resolve(`/games/${item.masterGameId}/edit`));
+			return;
+		}
+		if (mode === 'collection' && item.masterGameId) {
+			goto(resolve('/games/[id]/edit', { id: String(item.masterGameId) }));
 		} else {
-			goto(resolve(`/games/${item.id}/edit`));
+			goto(resolve('/games/[id]/edit', { id: String(item.id) }));
 		}
 	}
 
@@ -204,7 +206,8 @@
 	}
 
 	// Check if we should show actions for this mode
-	let showEditButton = $derived(mode === 'library' ? isAdmin : mode === 'custom');
+	let showViewButton = $derived(mode !== 'custom');
+	let showEditButton = $derived(mode === 'library' ? isAdmin : false);
 	let showDeleteButton = $derived(mode === 'library' ? isAdmin && !!onDelete : mode === 'custom');
 	let showSelectionCheckboxes = $derived(
 		mode === 'library' || mode === 'collection' || mode === 'custom'
@@ -408,11 +411,15 @@
 								</td>
 								<td class="px-4 py-3 text-right">
 									<div class="flex items-center justify-end gap-1">
-										<Button variant="ghost" size="sm" onclick={() => handleView(item)}>View</Button>
+										{#if showViewButton}
+											<Button variant="ghost" size="sm" onclick={() => handleView(item)}>
+												View
+											</Button>
+										{/if}
 										{#if showEditButton}
-											<Button variant="ghost" size="sm" onclick={() => handleEdit(item)}
-												>Edit</Button
-											>
+											<Button variant="ghost" size="sm" onclick={() => handleEdit(item)}>
+												Edit
+											</Button>
 										{/if}
 									</div>
 								</td>

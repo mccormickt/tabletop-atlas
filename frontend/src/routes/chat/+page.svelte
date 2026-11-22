@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import {
 		api,
 		createDebouncedAction,
@@ -9,7 +9,7 @@
 		type ChatSessionSummary,
 		type ChatHistory,
 		type ChatMessage
-	} from '$lib';
+	} from '#lib';
 	import {
 		Button,
 		Input,
@@ -18,9 +18,9 @@
 		CardSleeve,
 		LoadingSpinner,
 		EmptyState
-	} from '$lib/components/ui';
-	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
-	import { Meeple, Dice, GameBoxIcon, Rulebook, ChatBubble } from '$lib/components/icons';
+	} from '#lib/components/ui/index.js';
+	import { ComponentTray, ComponentTraySection } from '#lib/components/ui/index.js';
+	import { Meeple, Dice, GameBoxIcon, Rulebook, ChatBubble } from '#lib/components/icons/index.js';
 	import { page } from '$app/state';
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
@@ -210,7 +210,7 @@
 		const url = new URL(window.location.href);
 		url.searchParams.set('game_id', game.id.toString());
 		url.searchParams.delete('session_id');
-		goto(resolve('/chat') + url.search, { replaceState: true });
+		goto(resolve('/chat') + url.search, { replace: true });
 	}
 
 	async function loadChatSessions(gameId: number) {
@@ -257,7 +257,7 @@
 
 				const url = new URL(window.location.href);
 				url.searchParams.set('session_id', result.data.id.toString());
-				goto(resolve('/chat') + url.search, { replaceState: true });
+				goto(resolve('/chat') + url.search, { replace: true });
 			} else {
 				error = 'Failed to create chat session';
 			}
@@ -283,7 +283,7 @@
 
 				const url = new URL(window.location.href);
 				url.searchParams.set('session_id', sessionId.toString());
-				goto(resolve('/chat') + url.search, { replaceState: true });
+				goto(resolve('/chat') + url.search, { replace: true });
 			} else {
 				error = 'Failed to load chat session';
 			}
@@ -611,9 +611,9 @@
 								</div>
 								<div class="flex items-center gap-3">
 									<label class="flex cursor-pointer items-center gap-2">
-										<span class="font-ui text-muted-foreground hidden text-sm sm:inline"
-											>House Rules</span
-										>
+										<span class="font-ui text-muted-foreground hidden text-sm sm:inline">
+											House Rules
+										</span>
 										<button
 											type="button"
 											onclick={toggleHouseRules}

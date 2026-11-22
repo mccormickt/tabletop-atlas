@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { LeaderboardEntry } from '$lib';
+	import type { LeaderboardEntry } from '#lib';
 
 	let { entries }: { entries: LeaderboardEntry[] } = $props();
 

@@ -1,9 +1,16 @@
 <script lang="ts">
-	import { formatDate } from '$lib';
-	import { Button, Badge, Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui';
-	import { EmptyState, LoadingSpinner } from '$lib/components/ui';
+	import { formatDate } from '#lib';
+	import {
+		Button,
+		Badge,
+		Card,
+		CardContent,
+		CardHeader,
+		CardTitle
+	} from '#lib/components/ui/index.js';
+	import { EmptyState, LoadingSpinner } from '#lib/components/ui/index.js';
 	import HouseRuleForm from './HouseRuleForm.svelte';
-	import type { HouseRule } from '$lib';
+	import type { HouseRule } from '#lib';
 
 	// Props - data passed from parent
 	let {
@@ -162,9 +169,9 @@
 							</div>
 							<div class="flex space-x-2">
 								<Button variant="outline" size="sm" onclick={() => startEdit(rule)}>Edit</Button>
-								<Button variant="destructive" size="sm" onclick={() => handleDelete(rule)}
-									>Delete</Button
-								>
+								<Button variant="destructive" size="sm" onclick={() => handleDelete(rule)}>
+									Delete
+								</Button>
 							</div>
 						</div>
 					</CardContent>

@@ -1,11 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api, unwrapResult, type CreateGameRequest } from '$lib';
-	import { Button } from '$lib/components/ui';
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui';
-	import { Input, Label, Textarea } from '$lib/components/ui';
-	import { useHeader } from '$lib/stores/header';
+	import { api, unwrapResult, type CreateGameRequest } from '#lib';
+	import { Button } from '#lib/components/ui/index.js';
+	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle
+	} from '#lib/components/ui/index.js';
+	import { Input, Label, Textarea } from '#lib/components/ui/index.js';
+	import { useHeader } from '#lib/stores/header.js';
 
 	// Configure header for this page
 	const header = useHeader();
@@ -152,7 +158,7 @@
 			if (r.ok) {
 				success = true;
 				setTimeout(() => {
-					goto(resolve(`/games/${r.data.id}`));
+					goto(resolve('/games/[id]', { id: String(r.data.id) }));
 				}, 1500);
 			} else {
 				error = r.error;

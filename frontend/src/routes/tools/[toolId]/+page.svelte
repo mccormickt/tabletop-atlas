@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Button } from '$lib/components/ui/button';
-	import ScoreCalculator from '$lib/components/tools/ScoreCalculator.svelte';
-	import type { ToolDetails, ScoreInput, ScoreOutput } from '$lib';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import ScoreCalculator from '#lib/components/tools/ScoreCalculator.svelte';
+	import type { ToolDetails, ScoreInput, ScoreOutput } from '#lib';
 
 	let toolId = $derived(page.params.toolId);
 	let tool = $state<ToolDetails | null>(null);

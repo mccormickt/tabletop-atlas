@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { useAuth, type UserInfo } from '$lib/stores/auth';
-	import { Button } from '$lib/components/ui/button';
+	import { useAuth, type UserInfo } from '#lib/stores/auth.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 
 	let {
 		user,

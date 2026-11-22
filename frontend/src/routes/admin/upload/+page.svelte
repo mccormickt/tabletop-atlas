@@ -8,18 +8,18 @@
 		type GameSummary,
 		type RulesInfoResponse,
 		type UploadResponse
-	} from '$lib';
-	import { Button, GameBox, LoadingSpinner } from '$lib/components/ui';
-	import { ComponentTray, ComponentTraySection } from '$lib/components/ui';
+	} from '#lib';
+	import { Button, GameBox, LoadingSpinner } from '#lib/components/ui/index.js';
+	import { ComponentTray, ComponentTraySection } from '#lib/components/ui/index.js';
 	import {
 		GameBoxIcon,
 		Rulebook,
 		Upload as UploadIcon,
 		ChatBubble,
 		SearchGlass
-	} from '$lib/components/icons';
-	import PDFUpload from '$lib/components/PDFUpload.svelte';
-	import { useHeader } from '$lib/stores/header';
+	} from '#lib/components/icons/index.js';
+	import PDFUpload from '#lib/components/PDFUpload.svelte';
+	import { useHeader } from '#lib/stores/header.js';
 
 	const header = useHeader();
 	header.configure({
@@ -124,7 +124,7 @@
 	}
 
 	function goToGame(gameId: number) {
-		goto(resolve(`/games/${gameId}`));
+		goto(resolve('/games/[id]', { id: String(gameId) }));
 	}
 
 	function goToChat() {
@@ -167,9 +167,9 @@
 				{#if error && games.length === 0 && !searchQuery}
 					<ComponentTraySection>
 						<p class="text-parchment/70 mb-2 text-center text-sm">{error}</p>
-						<Button variant="game-primary" onclick={() => loadGames()} size="sm" class="w-full"
-							>Try Again</Button
-						>
+						<Button variant="game-primary" onclick={() => loadGames()} size="sm" class="w-full">
+							Try Again
+						</Button>
 					</ComponentTraySection>
 				{:else}
 					<!-- Search Input -->
@@ -199,9 +199,9 @@
 								{searchQuery ? `No games match "${searchQuery}"` : 'No games found'}
 							</p>
 							{#if !searchQuery}
-								<Button variant="game-primary" href="/games/add" size="sm" class="w-full"
-									>Add Game</Button
-								>
+								<Button variant="game-primary" href="/games/add" size="sm" class="w-full">
+									Add Game
+								</Button>
 							{/if}
 						</ComponentTraySection>
 					{:else}

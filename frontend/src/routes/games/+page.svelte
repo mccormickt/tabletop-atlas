@@ -1,22 +1,22 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import {
 		api,
 		unwrapResult,
 		type GameSummary,
 		type CollectionEntryWithGame,
 		type CustomGameSummary
-	} from '$lib';
-	import { Button, GameBox, LoadingSpinner } from '$lib/components/ui';
-	import CollectionDashboard from '$lib/components/CollectionDashboard.svelte';
-	import FilterPanel from '$lib/components/FilterPanel.svelte';
-	import BulkActionsBar from '$lib/components/BulkActionsBar.svelte';
-	import { GameBoxIcon, Rulebook } from '$lib/components/icons';
-	import { useHeader } from '$lib/stores/header';
-	import { useAuth } from '$lib/stores/auth';
-	import { createAuthState } from '$lib/stores/auth.svelte';
+	} from '#lib';
+	import { Button, GameBox, LoadingSpinner } from '#lib/components/ui/index.js';
+	import CollectionDashboard from '#lib/components/CollectionDashboard.svelte';
+	import FilterPanel from '#lib/components/FilterPanel.svelte';
+	import BulkActionsBar from '#lib/components/BulkActionsBar.svelte';
+	import { GameBoxIcon, Rulebook } from '#lib/components/icons/index.js';
+	import { useHeader } from '#lib/stores/header.js';
+	import { useAuth } from '#lib/stores/auth.js';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
 
 	type TabType = 'library' | 'collection' | 'custom';
 
@@ -605,8 +605,10 @@
 								if (activeTab === 'library') loadLibrary(libraryPage);
 								else if (activeTab === 'collection') loadCollection(collectionPage);
 								else loadCustomGames(customPage);
-							}}>Try Again</Button
+							}}
 						>
+							Try Again
+						</Button>
 					</div>
 				</GameBox>
 			{/if}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import CategoryInput from './CategoryInput.svelte';
-	import type { ScoringCategory, PlayerScoreInput } from '$lib';
+	import type { ScoringCategory, PlayerScoreInput } from '#lib';
 
 	let {
 		categories,

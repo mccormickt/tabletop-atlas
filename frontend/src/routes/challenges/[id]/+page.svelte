@@ -1,20 +1,20 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { createAuthState } from '$lib/stores/auth.svelte';
-	import { api, getStatusColor } from '$lib';
-	import { Button } from '$lib/components/ui/button';
-	import ChallengeGrid from '$lib/components/challenges/ChallengeGrid.svelte';
-	import Leaderboard from '$lib/components/challenges/Leaderboard.svelte';
-	import CellEditModal from '$lib/components/challenges/CellEditModal.svelte';
-	import GamePicker from '$lib/components/challenges/GamePicker.svelte';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
+	import { api, getStatusColor } from '#lib';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import ChallengeGrid from '#lib/components/challenges/ChallengeGrid.svelte';
+	import Leaderboard from '#lib/components/challenges/Leaderboard.svelte';
+	import CellEditModal from '#lib/components/challenges/CellEditModal.svelte';
+	import GamePicker from '#lib/components/challenges/GamePicker.svelte';
 	import type {
 		ChallengeGridView,
 		ChallengeGame,
 		ChallengePlayWithParticipants,
 		GameType
-	} from '$lib';
+	} from '#lib';
 
 	const auth = createAuthState();
 
@@ -35,7 +35,7 @@
 	$effect(() => {
 		if (!auth.isLoading && !auth.user) {
 			goto(resolve('/auth/login'));
-		} else if (auth.user && $page.params.id) {
+		} else if (auth.user && page.params.id) {
 			loadGrid();
 		}
 	});
@@ -45,7 +45,7 @@
 		error = null;
 		try {
 			const result = await api.methods.getChallengeGrid({
-				path: { id: Number($page.params.id) }
+				path: { id: Number(page.params.id) }
 			});
 			if (result.type === 'success') {
 				gridData = result.data;

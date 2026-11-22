@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { api, unwrapResult, type BulkEnrichPreviewResponse, type BulkEnrichResponse } from '$lib';
+	import { api, unwrapResult, type BulkEnrichPreviewResponse, type BulkEnrichResponse } from '#lib';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Label } from '$lib/components/ui/label';
-	import { Input } from '$lib/components/ui/input';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
 
 	const PAGE_SIZE = 50;
 
@@ -253,7 +253,7 @@
 										<tr class="border-border border-b">
 											<td class="px-2 py-1">
 												<a
-													href={resolve(`/games/${game.gameId}`)}
+													href={resolve('/games/[id]', { id: String(game.gameId) })}
 													class="text-game-blue hover:underline"
 													target="_blank"
 												>
@@ -265,9 +265,9 @@
 												{#each game.changes as change (change.field)}
 													<div class="text-xs">
 														<span class="font-medium">{formatFieldName(change.field)}:</span>
-														<span class="text-red-500 line-through"
-															>{change.oldValue ?? 'null'}</span
-														>
+														<span class="text-red-500 line-through">
+															{change.oldValue ?? 'null'}
+														</span>
 														&rarr;
 														<span class="text-green-500">{change.newValue ?? 'null'}</span>
 													</div>

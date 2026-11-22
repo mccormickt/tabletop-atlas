@@ -1,6 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { writable } from 'svelte/store';
-import type { Game } from '$lib';
+import type { Game } from '#lib';
 
 export interface HeaderConfig {
 	currentGame?: Game | null;

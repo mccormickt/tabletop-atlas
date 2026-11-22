@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { ChallengeGame } from '$lib';
-	import { Button } from '$lib/components/ui/button';
+	import type { ChallengeGame } from '#lib';
+	import { Button } from '#lib/components/ui/button/index.js';
 
 	let {
 		game,

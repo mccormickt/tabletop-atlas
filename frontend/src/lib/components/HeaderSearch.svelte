@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { api, type GameSummary } from '$lib';
+	import { api, type GameSummary } from '#lib';
 	import { SearchGlass } from './icons';
 
 	// State
@@ -107,7 +107,7 @@
 	}
 
 	function selectGame(game: GameSummary) {
-		goto(resolve(`/games/${game.id}`));
+		goto(resolve('/games/[id]', { id: String(game.id) }));
 		query = '';
 		isOpen = false;
 		inputElement?.blur();
@@ -151,9 +151,9 @@
 		>
 			<SearchGlass size={16} class="text-muted-foreground" />
 			<span class="text-foreground">Search Games</span>
-			<span class="bg-foreground/10 text-muted-foreground rounded px-1.5 py-0.5 text-xs"
-				>{getShortcutText()}</span
-			>
+			<span class="bg-foreground/10 text-muted-foreground rounded px-1.5 py-0.5 text-xs">
+				{getShortcutText()}
+			</span>
 		</button>
 	{/if}
 

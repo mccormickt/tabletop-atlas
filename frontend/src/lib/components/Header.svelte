@@ -5,7 +5,7 @@
 	import HeaderSearch from './HeaderSearch.svelte';
 	import UserMenu from './UserMenu.svelte';
 	import { Meeple, Dice } from './icons';
-	import type { UserInfo } from '$lib/stores/auth';
+	import type { UserInfo } from '#lib/stores/auth.js';
 
 	let {
 		user = null,

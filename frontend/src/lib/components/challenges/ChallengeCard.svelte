@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { ChallengeSummary } from '$lib';
+	import type { ChallengeSummary } from '#lib';
 	import { resolve } from '$app/paths';
-	import { formatDate, getStatusColor } from '$lib';
+	import { formatDate, getStatusColor } from '#lib';
 
 	let { challenge }: { challenge: ChallengeSummary } = $props();
 </script>
 
 <a
-	href={resolve(`/challenges/${challenge.id}`)}
+	href={resolve('/challenges/[id]', { id: String(challenge.id) })}
 	class="bg-card border-border hover:border-primary block rounded-lg border p-4 transition-colors"
 >
 	<div class="mb-2 flex items-start justify-between">

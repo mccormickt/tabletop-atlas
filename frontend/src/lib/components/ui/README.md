@@ -10,7 +10,7 @@ A comprehensive search input component with loading states, clear button, and ke
 
 ```svelte
 <script>
-	import { SearchInput } from '$lib/components/ui';
+	import { SearchInput } from '#lib/components/ui/index.js';
 
 	let searchValue = '';
 
@@ -46,7 +46,7 @@ A consistent component for displaying search results with similarity scores and 
 
 ```svelte
 <script>
-	import { SearchResult } from '$lib/components/ui';
+	import { SearchResult } from '#lib/components/ui/index.js';
 
 	const results = [
 		{
@@ -94,7 +94,7 @@ A flexible empty state component for various scenarios.
 
 ```svelte
 <script>
-	import { EmptyState } from '$lib/components/ui';
+	import { EmptyState } from '#lib/components/ui/index.js';
 
 	function handleAction() {
 		console.log('Primary action clicked');
@@ -154,7 +154,7 @@ A consistent loading spinner with optional text.
 
 ```svelte
 <script>
-	import { LoadingSpinner } from '$lib/components/ui';
+	import { LoadingSpinner } from '#lib/components/ui/index.js';
 </script>
 
 <!-- Simple spinner -->
@@ -180,7 +180,12 @@ A consistent loading spinner with optional text.
 
 ```svelte
 <script>
-	import { SearchInput, SearchResult, EmptyState, LoadingSpinner } from '$lib/components/ui';
+	import {
+		SearchInput,
+		SearchResult,
+		EmptyState,
+		LoadingSpinner
+	} from '#lib/components/ui/index.js';
 
 	let searchQuery = '';
 	let searching = false;

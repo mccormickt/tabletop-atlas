@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { ChallengeGame, ChallengePlayWithParticipants, ChallengeParticipant } from '$lib';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { Textarea } from '$lib/components/ui/textarea';
+	import type { ChallengeGame, ChallengePlayWithParticipants, ChallengeParticipant } from '#lib';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Label } from '#lib/components/ui/label/index.js';
+	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import { SvelteMap } from 'svelte/reactivity';
 	import WinnerSelector from './WinnerSelector.svelte';
 

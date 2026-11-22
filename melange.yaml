@@ -23,7 +23,7 @@ environment:
       - build-base
       - rust
       - nodejs-26
-      - pnpm
+      - pnpm-12
   environment:
     CARGO_HOME: /var/cache/melange/cargo
     PNPM_STORE_DIR: /var/cache/melange/pnpm

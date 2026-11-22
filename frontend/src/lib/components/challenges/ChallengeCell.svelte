@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ChallengePlayWithParticipants, ChallengeParticipant } from '$lib';
+	import type { ChallengePlayWithParticipants, ChallengeParticipant } from '#lib';
 
 	let {
 		play,

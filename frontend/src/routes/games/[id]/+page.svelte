@@ -9,15 +9,15 @@
 		type RulesInfoResponse,
 		type HouseRule,
 		formatDate
-	} from '$lib';
-	import { Button } from '$lib/components/ui';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui';
-	import { Badge } from '$lib/components/ui';
-	import HouseRulesList from '$lib/components/HouseRulesList.svelte';
-	import BggEnrichModal from '$lib/components/admin/BggEnrichModal.svelte';
+	} from '#lib';
+	import { Button } from '#lib/components/ui/index.js';
+	import { Card, CardContent, CardHeader, CardTitle } from '#lib/components/ui/index.js';
+	import { Badge } from '#lib/components/ui/index.js';
+	import HouseRulesList from '#lib/components/HouseRulesList.svelte';
+	import BggEnrichModal from '#lib/components/admin/BggEnrichModal.svelte';
 
-	import { useHeader } from '$lib/stores/header';
-	import { createAuthState } from '$lib/stores/auth.svelte';
+	import { useHeader } from '#lib/stores/header.js';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
 
 	// Tab type
 	type TabType = 'details' | 'house-rules';
@@ -261,7 +261,7 @@
 
 	function handleEdit() {
 		if (game) {
-			goto(resolve(`/games/${game.id}/edit`));
+			goto(resolve('/games/[id]/edit', { id: String(game.id) }));
 		}
 	}
 
@@ -578,9 +578,9 @@
 							<CardContent class="space-y-3">
 								<div class="flex items-center justify-between">
 									<span class="text-sm text-gray-600">Last Updated</span>
-									<span class="text-sm font-medium text-gray-900"
-										>{formatDate(new Date(game.updatedAt))}</span
-									>
+									<span class="text-sm font-medium text-gray-900">
+										{formatDate(new Date(game.updatedAt))}
+									</span>
 								</div>
 								<div class="flex items-center justify-between">
 									<span class="text-sm text-gray-600">Has PDF Rules</span>

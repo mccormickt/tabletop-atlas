@@ -30,8 +30,8 @@
 		getSimilarityBadgeVariant,
 		getSimilarityColor,
 		truncateText
-	} from '$lib/utils.js';
-	import { Badge } from '$lib/components/ui/badge';
+	} from '#lib/utils.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
 
 	interface SearchResultData {
 		chunkId: string | number;

@@ -14,11 +14,11 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
   git \
   pkg-config
 
-node_home="$HOME/.local/node-v22"
+node_home="$HOME/.local/node-v26"
 export PATH="$node_home/bin:$PATH"
 node_major="$(node --version 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || true)"
-if [[ "$node_major" != "22" ]]; then
-  echo "==> Installing Node.js 22"
+if [[ "$node_major" != "26" ]]; then
+  echo "==> Installing Node.js 26"
   case "$(uname -m)" in
     x86_64) node_arch="x64" ;;
     aarch64) node_arch="arm64" ;;
@@ -26,9 +26,9 @@ if [[ "$node_major" != "22" ]]; then
   esac
   node_manifest="$(mktemp)"
   node_archive="$(mktemp --suffix=.tar.xz)"
-  curl -fsSL https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt -o "$node_manifest"
+  curl -fsSL https://nodejs.org/dist/latest-v26.x/SHASUMS256.txt -o "$node_manifest"
   node_filename="$(awk -v arch="$node_arch" '$2 ~ "node-v.*-linux-" arch "\\.tar\\.xz$" { print $2 }' "$node_manifest")"
-  curl -fsSL "https://nodejs.org/dist/latest-v22.x/$node_filename" -o "$node_archive"
+  curl -fsSL "https://nodejs.org/dist/latest-v26.x/$node_filename" -o "$node_archive"
   expected_checksum="$(awk -v file="$node_filename" '$2 == file { print $1 }' "$node_manifest")"
   echo "$expected_checksum  $node_archive" | sha256sum --check --status
   rm -rf "$node_home"
@@ -38,9 +38,9 @@ if [[ "$node_major" != "22" ]]; then
 fi
 
 pnpm_major="$(pnpm --version 2>/dev/null | cut -d. -f1 || true)"
-if [[ "$pnpm_major" != "9" ]]; then
-  echo "==> Installing pnpm 9"
-  npm install --global pnpm@9
+if [[ "$pnpm_major" != "12" ]]; then
+  echo "==> Installing pnpm 12"
+  npm install --global pnpm@12
 fi
 
 if [[ ! -x "$HOME/.cargo/bin/rustup" ]]; then
@@ -58,11 +58,13 @@ rustup toolchain install stable --profile minimal --component rustfmt --componen
 rustup default stable
 
 profile_marker="# tabletop-atlas orb toolchains"
-if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+if grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+  sed -i 's|\$HOME/\.local/node-v[0-9]\+/bin|$HOME/.local/node-v26/bin|g' "$HOME/.bash_profile"
+else
   cat >> "$HOME/.bash_profile" <<'EOF'
 
 # tabletop-atlas orb toolchains
-export PATH="$HOME/.local/node-v22/bin:$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.local/node-v26/bin:$HOME/.cargo/bin:$PATH"
 EOF
 fi
 

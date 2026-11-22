@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Expansion } from '$lib';
+	import type { Expansion } from '#lib';
 
 	let {
 		expansions,

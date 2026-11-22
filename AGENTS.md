@@ -20,7 +20,7 @@ The root is a pnpm workspace containing `frontend`. Run the documented commands 
 
 ## Toolchain and local configuration
 
-- CI uses Node.js 22, pnpm 9, and stable Rust with `rustfmt` and `clippy`.
+- CI uses Node.js 26, pnpm 12, and stable Rust with `rustfmt` and `clippy`.
 - `.agents/setup` installs the orb toolchain, JavaScript dependencies, `cargo-watch`, and Playwright Chromium.
 - `.env` is ignored. Start from `.env.example`; real Google OAuth, JWT, BGG, or Ollama credentials must not be committed.
 - SQLite is embedded and migrations run at backend startup. The default database is `atlas.db` in the repository root.
@@ -48,7 +48,7 @@ Useful focused checks:
 cargo fmt --all -- --check
 NO_BUILD_FRONTEND=1 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-features
-pnpm --prefix frontend run test:unit -- --run
+pnpm --prefix frontend run test:unit --run
 pnpm --prefix frontend exec playwright test auth.test.ts --project=desktop-chrome
 ```
 
@@ -76,7 +76,7 @@ Commit the resulting root `openapi.json` and generated files under `frontend/src
 
 - Use Svelte 5 runes and callback props; follow nearby components rather than introducing Svelte 4 `createEventDispatcher` patterns.
 - Keep reusable components primarily presentational. Route pages should generally own API loading and pass data and callbacks down.
-- Reuse utilities such as `formatDate`, `formatDateTime`, `unwrapResult`, and `createDebouncedAction` from `$lib`.
+- Reuse utilities such as `formatDate`, `formatDateTime`, `unwrapResult`, and `createDebouncedAction` from `#lib`.
 - For generated API failures, HTTP status is at `result.response.status`.
 - Use SvelteKit's `resolve()` for typed route paths. Append dynamic query strings after resolving the pathname, for example `resolve('/chat') + '?game_id=1'`.
 - `frontend/src/api/**` and `frontend/static/**` are intentionally excluded from ESLint. Generated API files still need to type-check.

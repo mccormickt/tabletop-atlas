@@ -3,11 +3,11 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import Header from '$lib/components/Header.svelte';
-	import MobileNav from '$lib/components/MobileNav.svelte';
-	import { createHeaderStore, setHeaderContext } from '$lib/stores/header';
-	import { createAuthStore, setAuthContext } from '$lib/stores/auth';
-	import { createAuthState } from '$lib/stores/auth.svelte';
+	import Header from '#lib/components/Header.svelte';
+	import MobileNav from '#lib/components/MobileNav.svelte';
+	import { createHeaderStore, setHeaderContext } from '#lib/stores/header.js';
+	import { createAuthStore, setAuthContext } from '#lib/stores/auth.js';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
 
 	let { children } = $props();
 
@@ -35,7 +35,7 @@
 			(window as unknown as Record<string, unknown>).__MSW_ENABLED__
 		) {
 			const { worker } = await import('../mocks/browser');
-			await worker.start({ onUnhandledRequest: 'bypass', quiet: true });
+			await worker.start({ onUnhandledFrame: 'bypass', quiet: true });
 		}
 	}
 

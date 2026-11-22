@@ -20,8 +20,8 @@
 
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { cn } from '$lib/utils.js';
-	import { Button } from '$lib/components/ui/button';
+	import { cn } from '#lib/utils.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 
 	interface Props {
 		icon?: 'search' | 'document' | 'game' | 'upload' | 'chat' | 'custom';

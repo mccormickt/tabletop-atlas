@@ -1,2 +1,6 @@
 packages:
   - "frontend"
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - bits-ui@2.22.0

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { createAuthState } from '$lib/stores/auth.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { EmptyState } from '$lib/components/ui/empty-state';
+	import { createAuthState } from '#lib/stores/auth.svelte.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { EmptyState } from '#lib/components/ui/empty-state/index.js';
 
 	interface CollectionEntry {
 		id: number;
