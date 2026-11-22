@@ -1,9 +1,10 @@
+use std::collections::HashMap;
+
 use anyhow::{Context, Result};
-use rig::completion::CompletionModel;
-use rig::message::Message;
-use rig::vector_store::VectorStoreIndexDyn;
-use rig_agent::agent::AgentBuilder;
-use rig_agent::completion::{Chat, Prompt};
+use rig_core::DynModel;
+use rig_core::completion::{AssistantContent, CompletionRequest, Document, Message};
+use rig_core::operation::Completion;
+use rig_core::vector_store::{VectorSearchRequest, VectorStoreIndex};
 
 use crate::models::MessageRole;
 
@@ -21,57 +22,78 @@ Instructions:\n\
 - Context documents have a \"source\" field (\"Official Rule\" or \"House Rule\") and a \"text\" field";
 
 /// Agent for answering board-game rules questions with automatic RAG retrieval.
-///
-/// Builds a fresh Rig Agent per request. The `dynamic_context()` builder method
-/// wires in a `GameRulesIndex` so the agent embeds the query, searches for
-/// relevant chunks, and injects them as context automatically.
-///
-/// Generic over `M: CompletionModel` to allow testing with alternate providers.
-pub struct RulesChatAgent<M: CompletionModel> {
-    model: M,
+pub struct RulesChatAgent {
+    model: DynModel<Completion>,
 }
 
-impl<M: CompletionModel + Clone + 'static> RulesChatAgent<M> {
-    pub fn new(model: M) -> Self {
-        Self { model }
+impl RulesChatAgent {
+    pub fn new(model: impl Into<DynModel<Completion>>) -> Self {
+        Self {
+            model: model.into(),
+        }
     }
 
     /// Answer a user question. The `index` performs automatic context retrieval.
     ///
     /// `chat_history` — prior messages, oldest-first, pre-truncated by caller.
-    pub async fn answer(
+    pub async fn answer<I: VectorStoreIndex>(
         &self,
         question: &str,
-        index: impl VectorStoreIndexDyn + Send + Sync + 'static,
+        index: I,
         chat_history: &[(MessageRole, String)],
     ) -> Result<String> {
-        let agent = AgentBuilder::new(self.model.clone())
-            .preamble(RULES_PREAMBLE)
-            .dynamic_context(10, index)
-            .temperature(0.7)
-            .max_tokens(512)
+        let search_req = VectorSearchRequest::<I::Filter>::builder()
+            .query(question)
+            .samples(10)
             .build();
 
-        if chat_history.is_empty() {
-            agent
-                .prompt(question)
-                .await
-                .context("Failed to prompt agent")
-        } else {
-            let mut history: Vec<Message> = chat_history
+        let retrieved = index
+            .top_n::<serde_json::Value>(search_req)
+            .await
+            .context("Failed to retrieve rules context")?;
+
+        let documents = retrieved
+            .into_iter()
+            .map(|r| {
+                let text = serde_json::to_string(&r.document)
+                    .context("Failed to serialize retrieved context document")?;
+                Ok(Document {
+                    id: r.id,
+                    text,
+                    additional_props: HashMap::new(),
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let mut request = CompletionRequest::new(question)
+            .preamble(RULES_PREAMBLE)
+            .documents(documents)
+            .temperature(0.7)
+            .max_tokens(512);
+
+        if !chat_history.is_empty() {
+            let history: Vec<Message> = chat_history
                 .iter()
                 .map(|(role, content)| match role {
                     MessageRole::Assistant => Message::assistant(content),
-                    // Rig only has User/Assistant variants; system-role messages from
-                    // the DB are mapped to user since system content is in the preamble.
+                    // Map system-role messages from the DB to user since system content is in the preamble.
                     MessageRole::User | MessageRole::System => Message::user(content),
                 })
                 .collect();
-
-            agent
-                .chat(question, &mut history)
-                .await
-                .context("Failed to chat with agent")
+            request = request.messages(history);
         }
+
+        let response = self
+            .model
+            .call(request)
+            .await
+            .context("Failed to generate completion response")?;
+
+        Ok(response
+            .choice
+            .iter()
+            .filter_map(AssistantContent::as_text)
+            .collect::<Vec<_>>()
+            .join(""))
     }
 }

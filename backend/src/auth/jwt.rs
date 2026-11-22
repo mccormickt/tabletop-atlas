@@ -33,12 +33,11 @@ pub fn create_access_token(user_id: i64, email: &str, role: &str) -> Result<Stri
         iat: now,
     };
 
-    encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(config.jwt_secret.as_bytes()),
-    )
-    .map_err(|e| format!("Failed to create access token: {}", e))
+    let key = EncodingKey::from_secret(config.jwt_secret.as_bytes())
+        .map_err(|e| format!("Failed to create encoding key: {}", e))?;
+
+    encode(&Header::default(), &claims, &key)
+        .map_err(|e| format!("Failed to create access token: {}", e))
 }
 
 pub fn create_refresh_token(user_id: i64, session_id: &str) -> Result<String, String> {
@@ -53,36 +52,31 @@ pub fn create_refresh_token(user_id: i64, session_id: &str) -> Result<String, St
         iat: now,
     };
 
-    encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(config.jwt_secret.as_bytes()),
-    )
-    .map_err(|e| format!("Failed to create refresh token: {}", e))
+    let key = EncodingKey::from_secret(config.jwt_secret.as_bytes())
+        .map_err(|e| format!("Failed to create encoding key: {}", e))?;
+
+    encode(&Header::default(), &claims, &key)
+        .map_err(|e| format!("Failed to create refresh token: {}", e))
 }
 
 pub fn verify_access_token(token: &str) -> Result<Claims, String> {
     let config = AuthConfig::get();
+    let key = DecodingKey::from_secret(config.jwt_secret.as_bytes())
+        .map_err(|e| format!("Failed to create decoding key: {}", e))?;
 
-    decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(config.jwt_secret.as_bytes()),
-        &Validation::default(),
-    )
-    .map(|data| data.claims)
-    .map_err(|e| format!("Failed to verify access token: {}", e))
+    decode::<Claims>(token, &key, &Validation::default())
+        .map(|data| data.claims)
+        .map_err(|e| format!("Failed to verify access token: {}", e))
 }
 
 pub fn verify_refresh_token(token: &str) -> Result<RefreshClaims, String> {
     let config = AuthConfig::get();
+    let key = DecodingKey::from_secret(config.jwt_secret.as_bytes())
+        .map_err(|e| format!("Failed to create decoding key: {}", e))?;
 
-    decode::<RefreshClaims>(
-        token,
-        &DecodingKey::from_secret(config.jwt_secret.as_bytes()),
-        &Validation::default(),
-    )
-    .map(|data| data.claims)
-    .map_err(|e| format!("Failed to verify refresh token: {}", e))
+    decode::<RefreshClaims>(token, &key, &Validation::default())
+        .map(|data| data.claims)
+        .map_err(|e| format!("Failed to verify refresh token: {}", e))
 }
 
 #[cfg(test)]
@@ -124,5 +118,11 @@ mod tests {
 
         assert_eq!(claims.sub, 42);
         assert_eq!(claims.session_id, "session-abc");
+    }
+
+    #[test]
+    fn test_empty_secret_rejected() {
+        assert!(EncodingKey::from_secret(b"").is_err());
+        assert!(DecodingKey::from_secret(b"").is_err());
     }
 }

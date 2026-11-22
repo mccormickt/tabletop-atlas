@@ -177,7 +177,6 @@ impl Default for BggClient {
 /// Parse BGG XML API response into BggGameData structs
 fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
     let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(true);
 
     let mut games = Vec::new();
     let mut current_game: Option<BggGameDataBuilder> = None;
@@ -187,17 +186,15 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
-                let tag_name = e.name().as_ref().to_string();
+                let tag_name = e.name();
 
-                match tag_name.as_str() {
+                match tag_name.as_ref() {
                     "item" => {
                         // Start a new game
                         let mut builder = BggGameDataBuilder::default();
                         for attr in e.attributes().flatten() {
-                            let key = attr.key.as_ref().to_string();
-                            let value = attr.value.to_string();
-                            if key == "id" {
-                                builder.bgg_id = value.parse().ok();
+                            if attr.key.as_ref() == "id" {
+                                builder.bgg_id = attr.value.parse().ok();
                             }
                         }
                         current_game = Some(builder);
@@ -206,13 +203,15 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
                         let mut is_primary = false;
                         let mut name_value = String::new();
                         for attr in e.attributes().flatten() {
-                            let key = attr.key.as_ref().to_string();
-                            let value = attr.value.to_string();
-                            if key == "type" && value == "primary" {
+                            let key = attr.key.as_ref();
+                            if key == "type" && attr.value.as_ref() == "primary" {
                                 is_primary = true;
                             }
                             if key == "value" {
-                                name_value = value;
+                                name_value = attr
+                                    .normalized_value(quick_xml::XmlVersion::Implicit1_0)
+                                    .map_err(|err| BggApiError::ParseError(err.to_string()))?
+                                    .into_owned();
                             }
                         }
                         if is_primary && let Some(ref mut game) = current_game {
@@ -221,56 +220,44 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
                     }
                     "yearpublished" if current_game.is_some() => {
                         for attr in e.attributes().flatten() {
-                            let key = attr.key.as_ref().to_string();
-                            if key == "value" {
-                                let value = attr.value.to_string();
-                                if let Some(ref mut game) = current_game {
-                                    game.year_published = value.parse().ok();
-                                }
+                            if attr.key.as_ref() == "value"
+                                && let Some(ref mut game) = current_game
+                            {
+                                game.year_published = attr.value.parse().ok();
                             }
                         }
                     }
                     "minplayers" if current_game.is_some() => {
                         for attr in e.attributes().flatten() {
-                            let key = attr.key.as_ref().to_string();
-                            if key == "value" {
-                                let value = attr.value.to_string();
-                                if let Some(ref mut game) = current_game {
-                                    game.min_players = value.parse().ok();
-                                }
+                            if attr.key.as_ref() == "value"
+                                && let Some(ref mut game) = current_game
+                            {
+                                game.min_players = attr.value.parse().ok();
                             }
                         }
                     }
                     "maxplayers" if current_game.is_some() => {
                         for attr in e.attributes().flatten() {
-                            let key = attr.key.as_ref().to_string();
-                            if key == "value" {
-                                let value = attr.value.to_string();
-                                if let Some(ref mut game) = current_game {
-                                    game.max_players = value.parse().ok();
-                                }
+                            if attr.key.as_ref() == "value"
+                                && let Some(ref mut game) = current_game
+                            {
+                                game.max_players = attr.value.parse().ok();
                             }
                         }
                     }
                     "playingtime" if current_game.is_some() => {
                         for attr in e.attributes().flatten() {
-                            let key = attr.key.as_ref().to_string();
-                            if key == "value" {
-                                let value = attr.value.to_string();
-                                if let Some(ref mut game) = current_game {
-                                    game.play_time_minutes = value.parse().ok();
-                                }
+                            if attr.key.as_ref() == "value"
+                                && let Some(ref mut game) = current_game
+                            {
+                                game.play_time_minutes = attr.value.parse().ok();
                             }
                         }
                     }
-                    "thumbnail" if current_game.is_some() => {
-                        // Text content will be read in Text event
-                    }
-                    "image" if current_game.is_some() => {
-                        // Text content will be read in Text event
-                    }
-                    "description" if current_game.is_some() => {
-                        // Text content will be read in Text event
+                    "thumbnail" | "image" | "description" if current_game.is_some() => {
+                        if let Some(ref mut game) = current_game {
+                            game.pending_text.clear();
+                        }
                     }
                     "statistics" => {
                         in_statistics = true;
@@ -280,12 +267,10 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
                     }
                     "averageweight" if in_ratings && current_game.is_some() => {
                         for attr in e.attributes().flatten() {
-                            let key = attr.key.as_ref().to_string();
-                            if key == "value" {
-                                let value = attr.value.to_string();
-                                if let Some(ref mut game) = current_game {
-                                    game.complexity_rating = value.parse().ok();
-                                }
+                            if attr.key.as_ref() == "value"
+                                && let Some(ref mut game) = current_game
+                            {
+                                game.complexity_rating = attr.value.parse().ok();
                             }
                         }
                     }
@@ -294,62 +279,78 @@ fn parse_bgg_xml(xml: &str) -> Result<Vec<BggGameData>, BggApiError> {
             }
             Ok(Event::Text(e)) => {
                 if let Some(ref mut game) = current_game {
-                    let text = e.as_ref().to_string();
-                    // We need to track which element we're in
-                    // This is handled by the element stack approach below
-                    if !text.is_empty() {
-                        // Store text for later processing
-                        game.pending_text = Some(text);
+                    game.pending_text
+                        .push_str(&e.xml_content(quick_xml::XmlVersion::Implicit1_0));
+                }
+            }
+            Ok(Event::CData(e)) => {
+                if let Some(ref mut game) = current_game {
+                    game.pending_text.push_str(e.as_ref());
+                }
+            }
+            Ok(Event::GeneralRef(e)) => {
+                if let Some(ref mut game) = current_game {
+                    if let Ok(Some(ch)) = e.resolve_char_ref() {
+                        game.pending_text.push(ch);
+                    } else if let Some(resolved) = quick_xml::escape::resolve_predefined_entity(&e)
+                    {
+                        game.pending_text.push_str(resolved);
+                    } else {
+                        game.pending_text.push('&');
+                        game.pending_text.push_str(&e);
+                        game.pending_text.push(';');
                     }
                 }
             }
-            Ok(Event::End(e)) => {
-                let tag_name = e.name().as_ref().to_string();
-                match tag_name.as_str() {
-                    "item" => {
-                        if let Some(builder) = current_game.take()
-                            && let Some(game) = builder.build()
-                        {
-                            games.push(game);
+            Ok(Event::End(e)) => match e.name().as_ref() {
+                "item" => {
+                    if let Some(builder) = current_game.take()
+                        && let Some(game) = builder.build()
+                    {
+                        games.push(game);
+                    }
+                }
+                "statistics" => {
+                    in_statistics = false;
+                }
+                "ratings" => {
+                    in_ratings = false;
+                }
+                "thumbnail" => {
+                    if let Some(ref mut game) = current_game {
+                        let text = std::mem::take(&mut game.pending_text);
+                        let trimmed = text.trim();
+                        if !trimmed.is_empty() {
+                            game.thumbnail_url = Some(trimmed.to_string());
                         }
                     }
-                    "statistics" => {
-                        in_statistics = false;
-                    }
-                    "ratings" => {
-                        in_ratings = false;
-                    }
-                    "thumbnail" => {
-                        if let Some(ref mut game) = current_game
-                            && let Some(text) = game.pending_text.take()
-                        {
-                            game.thumbnail_url = Some(text);
+                }
+                "image" => {
+                    if let Some(ref mut game) = current_game {
+                        let text = std::mem::take(&mut game.pending_text);
+                        let trimmed = text.trim();
+                        if !trimmed.is_empty() {
+                            game.image_url = Some(trimmed.to_string());
                         }
                     }
-                    "image" => {
-                        if let Some(ref mut game) = current_game
-                            && let Some(text) = game.pending_text.take()
-                        {
-                            game.image_url = Some(text);
-                        }
-                    }
-                    "description" => {
-                        if let Some(ref mut game) = current_game
-                            && let Some(text) = game.pending_text.take()
-                        {
-                            // Clean up HTML entities and trim
-                            let cleaned = html_entity_decode(&text);
+                }
+                "description" => {
+                    if let Some(ref mut game) = current_game {
+                        let text = std::mem::take(&mut game.pending_text);
+                        let trimmed = text.trim();
+                        if !trimmed.is_empty() {
+                            // Clean up HTML entities (including double-encoded BGG entities)
+                            let cleaned = html_entity_decode(trimmed);
                             game.description = Some(cleaned);
                         }
                     }
-                    _ => {
-                        // Clear pending text for unhandled elements
-                        if let Some(ref mut game) = current_game {
-                            game.pending_text = None;
-                        }
+                }
+                _ => {
+                    if let Some(ref mut game) = current_game {
+                        game.pending_text.clear();
                     }
                 }
-            }
+            },
             Ok(Event::Eof) => break,
             Err(e) => return Err(BggApiError::ParseError(e.to_string())),
             _ => {}
@@ -372,7 +373,7 @@ struct BggGameDataBuilder {
     complexity_rating: Option<f64>,
     thumbnail_url: Option<String>,
     image_url: Option<String>,
-    pending_text: Option<String>,
+    pending_text: String,
 }
 
 impl BggGameDataBuilder {
@@ -470,5 +471,30 @@ mod tests {
         assert_eq!(html_entity_decode("&amp;"), "&");
         assert_eq!(html_entity_decode("&lt;tag&gt;"), "<tag>");
         assert_eq!(html_entity_decode("line1&#10;line2"), "line1\nline2");
+    }
+
+    #[test]
+    fn test_parse_bgg_xml_preserves_and_decodes_entities() {
+        let xml = r#"<?xml version="1.0" encoding="utf-8"?>
+<items>
+    <item type="boardgame" id="1234">
+        <thumbnail>https://example.com/thumb.jpg?a=1&amp;b=2</thumbnail>
+        <name type="primary" value="Dungeons &amp; Dragons: Player&#039;s &quot;Guide&quot;"/>
+        <description>  Economic &amp; strategy game &#10; Second line &amp;mdash; with &quot;quotes&quot; &amp; &apos;apos&apos;.  </description>
+    </item>
+</items>"#;
+
+        let games = parse_bgg_xml(xml).unwrap();
+        assert_eq!(games.len(), 1);
+        let game = &games[0];
+        assert_eq!(game.name, "Dungeons & Dragons: Player's \"Guide\"");
+        assert_eq!(
+            game.thumbnail_url.as_deref(),
+            Some("https://example.com/thumb.jpg?a=1&b=2")
+        );
+        assert_eq!(
+            game.description.as_deref(),
+            Some("Economic & strategy game \n Second line \u{2014} with \"quotes\" & 'apos'.")
+        );
     }
 }

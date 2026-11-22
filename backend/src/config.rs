@@ -1,6 +1,5 @@
-use anyhow::{Context, Result};
-use rig::client::Nothing;
-use rig::providers::ollama;
+use anyhow::Result;
+use rig_core::providers::ollama;
 
 /// Configuration for Ollama LLM and embedding services.
 ///
@@ -25,11 +24,9 @@ impl OllamaConfig {
     }
 
     /// Build a shared Ollama client from this configuration.
-    pub fn build_client(&self) -> Result<ollama::Client> {
-        ollama::Client::builder()
-            .api_key(Nothing)
-            .base_url(&self.api_base)
-            .build()
-            .context("failed to build Ollama client")
+    pub fn build_client(&self) -> Result<ollama::Ollama> {
+        Ok(ollama::OllamaConfig::new()
+            .with_base_url(&self.api_base)
+            .client())
     }
 }

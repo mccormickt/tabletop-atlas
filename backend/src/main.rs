@@ -27,15 +27,13 @@ use db::Database;
 use embeddings::Embedder;
 use handlers::static_files;
 use handlers::*;
-use rig::prelude::{CompletionClient as _, EmbeddingsClient};
-use rig::providers::ollama;
 
 const NOMIC_EMBED_DIMS: usize = 768;
 
 pub struct AppState {
     db: Database,
-    embeddings: Embedder<ollama::EmbeddingModel>,
-    rules_agent: RulesChatAgent<ollama::CompletionModel>,
+    embeddings: Embedder,
+    rules_agent: RulesChatAgent,
 }
 
 impl AppState {
@@ -105,8 +103,8 @@ impl AppState {
 
         // Create models from the client (client is borrowed, not moved)
         let embedding_model =
-            client.embedding_model_with_ndims(&ollama_config.embedding_model, NOMIC_EMBED_DIMS);
-        let completion_model = client.completion_model(&ollama_config.llm_model);
+            client.embedding(&ollama_config.embedding_model, Some(NOMIC_EMBED_DIMS));
+        let completion_model = client.native_completion(&ollama_config.llm_model);
 
         Ok(Self {
             db: Database::new(db),
@@ -119,11 +117,11 @@ impl AppState {
         self.db.clone()
     }
 
-    pub fn embedder(&self) -> &Embedder<ollama::EmbeddingModel> {
+    pub fn embedder(&self) -> &Embedder {
         &self.embeddings
     }
 
-    pub fn rules_agent(&self) -> &RulesChatAgent<ollama::CompletionModel> {
+    pub fn rules_agent(&self) -> &RulesChatAgent {
         &self.rules_agent
     }
 }
@@ -293,7 +291,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         default_request_body_max_bytes: 15 * 1024 * 1024, // 15MB for PDF/CSV uploads
         default_handler_task_mode: dropshot::HandlerTaskMode::Detached,
         log_headers: Default::default(),
-        compression: Default::default(),
+        ..Default::default()
     };
 
     // Create API description

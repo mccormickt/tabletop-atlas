@@ -27,7 +27,7 @@ A board game rules management platform with AI-powered chat. Upload rulebooks, c
 
 ## Prerequisites
 
-- Rust toolchain (stable)
+- Rust toolchain (1.100+)
 - Node.js + pnpm
 - Ollama with models pulled:
   ```bash

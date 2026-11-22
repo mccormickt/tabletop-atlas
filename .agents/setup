@@ -53,9 +53,9 @@ fi
 # shellcheck disable=SC1091
 source "$HOME/.cargo/env"
 
-echo "==> Installing the stable Rust toolchain"
-rustup toolchain install stable --profile minimal --component rustfmt --component clippy
-rustup default stable
+echo "==> Installing Rust 1.100.0 toolchain"
+rustup toolchain install 1.100.0 --profile minimal --component rustfmt --component clippy
+rustup default 1.100.0
 
 profile_marker="# tabletop-atlas orb toolchains"
 if grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then

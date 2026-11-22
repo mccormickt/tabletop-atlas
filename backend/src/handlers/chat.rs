@@ -248,7 +248,7 @@ pub async fn chat_with_rules(
 
     // 3. Build GameRulesIndex for dynamic_context retrieval
     let index = crate::agents::GameRulesIndex::new(
-        app_state.embedder().model_arc(),
+        app_state.embedder().model_handle(),
         db.clone(),
         game_id,
         include_house_rules,

@@ -1,32 +1,23 @@
-use std::sync::Arc;
-
 use anyhow::{Result, anyhow};
-use rig::embeddings::EmbeddingModel;
+use rig_core::DynModel;
+use rig_core::operation::Embedding;
 
 /// Service for generating embeddings via the Rig framework.
-///
-/// Generic over `M` so callers can swap in test doubles. In production,
-/// `M = ollama::EmbeddingModel`.
-pub struct Embedder<M: EmbeddingModel> {
-    model: Arc<M>,
+pub struct Embedder {
+    model: DynModel<Embedding>,
     model_name: String,
 }
 
-impl<M: EmbeddingModel> Embedder<M> {
-    pub fn new(model: M, model_name: String) -> Self {
+impl Embedder {
+    pub fn new(model: impl Into<DynModel<Embedding>>, model_name: String) -> Self {
         Self {
-            model: Arc::new(model),
+            model: model.into(),
             model_name,
         }
     }
 
-    /// Shared reference to the underlying model.
-    pub fn model(&self) -> &M {
-        &self.model
-    }
-
-    /// Arc-wrapped model for sharing with GameRulesIndex and EmbeddingsBuilder.
-    pub fn model_arc(&self) -> Arc<M> {
+    /// Cloned handle to the underlying erased model (cheap Arc clone) for sharing with GameRulesIndex.
+    pub fn model_handle(&self) -> DynModel<Embedding> {
         self.model.clone()
     }
 
@@ -51,21 +42,22 @@ impl<M: EmbeddingModel> Embedder<M> {
             return Ok(vec![]);
         }
 
-        let embeddings = self
+        let response = self
             .model
-            .embed_texts(texts.to_vec())
+            .call(texts.to_vec())
             .await
             .map_err(|e| anyhow!("Failed to create embeddings: {e}"))?;
 
-        if embeddings.len() != texts.len() {
+        if response.embeddings.len() != texts.len() {
             return Err(anyhow!(
                 "Expected {} embeddings, got {}",
                 texts.len(),
-                embeddings.len()
+                response.embeddings.len()
             ));
         }
 
-        Ok(embeddings
+        Ok(response
+            .embeddings
             .into_iter()
             .map(|e| e.vec.into_iter().map(|v| v as f32).collect())
             .collect())
@@ -82,7 +74,6 @@ impl<M: EmbeddingModel> Embedder<M> {
 mod tests {
     use super::*;
     use crate::config::OllamaConfig;
-    use rig::prelude::EmbeddingsClient;
 
     fn test_config() -> OllamaConfig {
         OllamaConfig {
@@ -98,7 +89,7 @@ mod tests {
     async fn test_embedding_service_creation() {
         let config = test_config();
         let client = config.build_client().unwrap();
-        let model = client.embedding_model_with_ndims(&config.embedding_model, NOMIC_EMBED_DIMS);
+        let model = client.embedding(&config.embedding_model, Some(NOMIC_EMBED_DIMS));
         let service = Embedder::new(model, config.embedding_model.clone());
         assert_eq!(service.model_name(), "nomic-embed-text:latest");
     }
@@ -107,7 +98,7 @@ mod tests {
     async fn test_custom_model() {
         let config = test_config();
         let client = config.build_client().unwrap();
-        let model = client.embedding_model_with_ndims("custom-model", NOMIC_EMBED_DIMS);
+        let model = client.embedding("custom-model", Some(NOMIC_EMBED_DIMS));
         let service = Embedder::new(model, "custom-model".to_string());
         assert_eq!(service.model_name(), "custom-model");
     }
@@ -117,7 +108,7 @@ mod tests {
     async fn test_generate_single_embedding() {
         let config = test_config();
         let client = config.build_client().unwrap();
-        let model = client.embedding_model_with_ndims(&config.embedding_model, NOMIC_EMBED_DIMS);
+        let model = client.embedding(&config.embedding_model, Some(NOMIC_EMBED_DIMS));
         let service = Embedder::new(model, config.embedding_model.clone());
 
         if service.test_connection().await.is_err() {
@@ -147,7 +138,7 @@ mod tests {
     async fn test_generate_multiple_embeddings() {
         let config = test_config();
         let client = config.build_client().unwrap();
-        let model = client.embedding_model_with_ndims(&config.embedding_model, NOMIC_EMBED_DIMS);
+        let model = client.embedding(&config.embedding_model, Some(NOMIC_EMBED_DIMS));
         let service = Embedder::new(model, config.embedding_model.clone());
 
         if service.test_connection().await.is_err() {
@@ -199,7 +190,7 @@ mod tests {
     async fn test_empty_input() {
         let config = test_config();
         let client = config.build_client().unwrap();
-        let model = client.embedding_model_with_ndims(&config.embedding_model, NOMIC_EMBED_DIMS);
+        let model = client.embedding(&config.embedding_model, Some(NOMIC_EMBED_DIMS));
         let service = Embedder::new(model, config.embedding_model.clone());
         let empty_texts: Vec<String> = vec![];
 

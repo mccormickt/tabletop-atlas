@@ -2,6 +2,7 @@
 name = "backend"
 version = "0.1.4"
 edition = "2024"
+rust-version.workspace = true
 
 [dependencies]
 dropshot.workspace = true
@@ -23,8 +24,7 @@ mime_guess.workspace = true
 include_dir.workspace = true
 clap.workspace = true
 sqlite-vec.workspace = true
-rig = { package = "rig-core", version = "0.42.0", features = ["derive", "pdf"] }
-rig-agent = "0.42.0"
+rig-core = { version = "0.47", features = ["derive", "pdf", "reqwest"] }
 jsonwebtoken.workspace = true
 sha2.workspace = true
 hex.workspace = true
@@ -34,7 +34,7 @@ urlencoding.workspace = true
 inventory.workspace = true
 csv.workspace = true
 quick-xml.workspace = true
-thiserror = "2"
+thiserror.workspace = true
 
 [build-dependencies]
 # No build dependencies needed for now

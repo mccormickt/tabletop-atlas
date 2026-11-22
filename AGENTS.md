@@ -20,7 +20,7 @@ The root is a pnpm workspace containing `frontend`. Run the documented commands 
 
 ## Toolchain and local configuration
 
-- CI uses Node.js 26, pnpm 12, and stable Rust with `rustfmt` and `clippy`.
+- CI uses Node.js 26, pnpm 12, and Rust 1.100 with `rustfmt` and `clippy`.
 - `.agents/setup` installs the orb toolchain, JavaScript dependencies, `cargo-watch`, and Playwright Chromium.
 - `.env` is ignored. Start from `.env.example`; real Google OAuth, JWT, BGG, or Ollama credentials must not be committed.
 - SQLite is embedded and migrations run at backend startup. The default database is `atlas.db` in the repository root.

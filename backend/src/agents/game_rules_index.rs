@@ -1,21 +1,22 @@
-use std::sync::Arc;
-
-use rig::embeddings::EmbeddingModel;
-use rig::vector_store::VectorStoreError;
-use rig::vector_store::VectorStoreIndex;
+use rig_core::DynModel;
+use rig_core::operation::Embedding;
+use rig_core::vector_store::{
+    VectorSearchIdResult, VectorSearchRequest, VectorSearchResult, VectorStoreError,
+    VectorStoreIndex,
+};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::db::Database;
 use crate::models::SimilaritySearchRequest;
 
-/// No-op filter type to satisfy VectorStoreIndex + VectorStoreIndexDyn bounds.
+/// No-op filter type to satisfy VectorStoreIndex bounds.
 ///
 /// Game-level filtering (game_id, source_type) is baked into GameRulesIndex at
 /// construction time, so external filters are not needed.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct NoFilter;
 
-impl rig::vector_store::request::SearchFilter for NoFilter {
+impl rig_core::vector_store::request::SearchFilter for NoFilter {
     type Value = serde_json::Value;
 
     fn eq(_key: impl AsRef<str>, _value: Self::Value) -> Self {
@@ -37,18 +38,20 @@ impl rig::vector_store::request::SearchFilter for NoFilter {
 
 /// Per-request vector store index that searches the existing embeddings/vec_embeddings
 /// tables for a specific game, optionally including house rules.
-///
-/// Implements `VectorStoreIndex` so it can be passed to `dynamic_context()` on
-/// the rig agent builder.
-pub struct GameRulesIndex<M: EmbeddingModel> {
-    model: Arc<M>,
+pub struct GameRulesIndex {
+    model: DynModel<Embedding>,
     db: Database,
     game_id: i64,
     include_house_rules: bool,
 }
 
-impl<M: EmbeddingModel> GameRulesIndex<M> {
-    pub fn new(model: Arc<M>, db: Database, game_id: i64, include_house_rules: bool) -> Self {
+impl GameRulesIndex {
+    pub fn new(
+        model: DynModel<Embedding>,
+        db: Database,
+        game_id: i64,
+        include_house_rules: bool,
+    ) -> Self {
         Self {
             model,
             db,
@@ -58,19 +61,19 @@ impl<M: EmbeddingModel> GameRulesIndex<M> {
     }
 }
 
-impl<M: EmbeddingModel + Send + Sync + 'static> VectorStoreIndex for GameRulesIndex<M> {
+impl VectorStoreIndex for GameRulesIndex {
     type Filter = NoFilter;
 
     async fn top_n<T: DeserializeOwned + Send>(
         &self,
-        req: rig::vector_store::VectorSearchRequest<Self::Filter>,
-    ) -> Result<Vec<(f64, String, T)>, VectorStoreError> {
+        req: VectorSearchRequest<Self::Filter>,
+    ) -> Result<Vec<VectorSearchResult<T>>, VectorStoreError> {
         // 1. Embed the query text
         let query_embedding = self
             .model
             .embed_text(req.query())
             .await
-            .map_err(|e| VectorStoreError::DatastoreError(Box::new(e)))?;
+            .map_err(VectorStoreError::EmbeddingError)?;
 
         let embedding_vec: Vec<f32> = query_embedding.vec.into_iter().map(|v| v as f32).collect();
 
@@ -89,10 +92,9 @@ impl<M: EmbeddingModel + Send + Sync + 'static> VectorStoreIndex for GameRulesIn
                 .await
         };
 
-        let search_results =
-            search_results.map_err(|e| VectorStoreError::DatastoreError(Box::new(e)))?;
+        let search_results = search_results.map_err(VectorStoreError::datastore)?;
 
-        // 3. Build (score, id, T) tuples
+        // 3. Build VectorSearchResult<T> items
         let mut results = Vec::new();
         for result in search_results {
             let source_label = match result.source_type {
@@ -105,10 +107,13 @@ impl<M: EmbeddingModel + Send + Sync + 'static> VectorStoreIndex for GameRulesIn
                 "text": result.chunk_text,
             });
 
-            let doc: T = serde_json::from_value(doc_json)
-                .map_err(|e| VectorStoreError::DatastoreError(Box::new(e)))?;
+            let document: T = serde_json::from_value(doc_json)?;
 
-            results.push((result.similarity_score as f64, result.id.to_string(), doc));
+            results.push(VectorSearchResult {
+                score: result.similarity_score as f64,
+                id: result.id.to_string(),
+                document,
+            });
         }
 
         Ok(results)
@@ -116,12 +121,15 @@ impl<M: EmbeddingModel + Send + Sync + 'static> VectorStoreIndex for GameRulesIn
 
     async fn top_n_ids(
         &self,
-        req: rig::vector_store::VectorSearchRequest<Self::Filter>,
-    ) -> Result<Vec<(f64, String)>, VectorStoreError> {
-        let results: Vec<(f64, String, serde_json::Value)> = self.top_n(req).await?;
+        req: VectorSearchRequest<Self::Filter>,
+    ) -> Result<Vec<VectorSearchIdResult>, VectorStoreError> {
+        let results: Vec<VectorSearchResult<serde_json::Value>> = self.top_n(req).await?;
         Ok(results
             .into_iter()
-            .map(|(score, id, _)| (score, id))
+            .map(|r| VectorSearchIdResult {
+                score: r.score,
+                id: r.id,
+            })
             .collect())
     }
 }

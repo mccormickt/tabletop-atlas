@@ -49,6 +49,10 @@ impl AuthConfig {
     }
 
     pub fn init_with(config: AuthConfig) -> Result<&'static Self, String> {
+        if config.jwt_secret.is_empty() {
+            return Err("JWT_SECRET must not be empty".to_string());
+        }
+
         if AUTH_CONFIG.get().is_some() {
             return Ok(AUTH_CONFIG.get().unwrap());
         }

@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow};
-use rig::loaders::PdfFileLoader;
+use rig_core::loaders::PdfFileLoader;
 
 /// Configuration for text chunking
 const CHUNK_SIZE: usize = 1000; // characters per chunk
