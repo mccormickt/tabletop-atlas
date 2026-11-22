@@ -24,7 +24,8 @@ mime_guess.workspace = true
 include_dir.workspace = true
 clap.workspace = true
 sqlite-vec.workspace = true
-rig-core = { version = "0.47", features = ["derive", "pdf", "reqwest"] }
+rig-core.workspace = true
+rig-agent.workspace = true
 jsonwebtoken.workspace = true
 sha2.workspace = true
 hex.workspace = true
@@ -35,6 +36,9 @@ inventory.workspace = true
 csv.workspace = true
 quick-xml.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+rig-core = { workspace = true, features = ["test-utils"] }
 
 [build-dependencies]
 # No build dependencies needed for now

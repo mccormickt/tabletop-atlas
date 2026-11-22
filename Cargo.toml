@@ -31,7 +31,9 @@ mime_guess = "2.0"
 include_dir = "0.7"
 # Command line argument parsing
 clap = { version = "4.6", features = ["derive", "env"] }
-# PDF text extraction (via rig-core "pdf" feature)
+# Rig LLM, embeddings, PDF loader, and agent framework
+rig-core = { version = "0.47", features = ["derive", "pdf", "reqwest"] }
+rig-agent = { version = "0.47", default-features = false }
 # Vector embeddings for SQLite
 sqlite-vec = "0.1"
 # Auth dependencies

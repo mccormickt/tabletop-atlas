@@ -323,6 +323,142 @@ pub async fn similarity_search_filtered(
     })
 }
 
+/// Common English filler words excluded from keyword search when more selective terms exist.
+const KEYWORD_STOPWORDS: &[&str] = &[
+    "a", "about", "all", "an", "and", "any", "are", "as", "at", "be", "but", "by", "can", "do",
+    "does", "for", "from", "get", "had", "has", "have", "how", "if", "in", "into", "is", "it",
+    "its", "may", "my", "no", "not", "of", "on", "or", "our", "out", "so", "than", "that", "the",
+    "their", "them", "then", "there", "these", "they", "this", "to", "too", "up", "use", "was",
+    "we", "were", "what", "when", "where", "which", "who", "why", "will", "with", "would", "you",
+    "your",
+];
+
+/// Case-insensitive keyword search over stored rulebook (and optional house rule) chunks.
+///
+/// Splits the query into whitespace-separated terms (deduplicated, up to 8 terms, ignoring
+/// stopwords when selective terms exist) and matches chunks containing any term, ranking
+/// chunks that match more terms higher.
+pub async fn keyword_search_filtered(
+    db: &Database,
+    game_id: i64,
+    keywords: &str,
+    include_house_rules: bool,
+    limit: u32,
+) -> SqliteResult<Vec<EmbeddingSearchResult>> {
+    if limit == 0 {
+        return Ok(Vec::new());
+    }
+
+    let mut all_tokens: Vec<String> = Vec::new();
+    let mut selective_tokens: Vec<String> = Vec::new();
+    for raw in keywords.split_whitespace() {
+        let cleaned = raw
+            .trim_matches(|c: char| !c.is_alphanumeric())
+            .to_lowercase();
+        let is_valid = !cleaned.is_empty()
+            && cleaned.chars().any(char::is_alphanumeric)
+            && (cleaned.chars().count() >= 2 || cleaned.chars().all(|c| c.is_ascii_digit()));
+        if !is_valid {
+            continue;
+        }
+        if !all_tokens.contains(&cleaned) {
+            if !KEYWORD_STOPWORDS.contains(&cleaned.as_str()) && selective_tokens.len() < 8 {
+                selective_tokens.push(cleaned.clone());
+            }
+            all_tokens.push(cleaned);
+        }
+    }
+
+    let terms = if !selective_tokens.is_empty() {
+        selective_tokens
+    } else {
+        all_tokens.truncate(8);
+        all_tokens
+    };
+
+    if terms.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    db.with_connection(|conn| {
+        let source_filter = if include_house_rules {
+            ""
+        } else {
+            " AND source_type = 'rules_pdf'"
+        };
+
+        let score_expr = terms
+            .iter()
+            .map(|_| "CASE WHEN LOWER(chunk_text) LIKE ? ESCAPE '\\' THEN 1 ELSE 0 END")
+            .collect::<Vec<_>>()
+            .join(" + ");
+
+        let query = format!(
+            r#"
+            SELECT id, chunk_text, source_type, source_id, metadata, match_count
+            FROM (
+                SELECT id, chunk_text, source_type, source_id, metadata, chunk_index,
+                       ({score_expr}) AS match_count
+                FROM embeddings
+                WHERE game_id = ?{source_filter}
+            )
+            WHERE match_count > 0
+            ORDER BY match_count DESC, chunk_index ASC
+            LIMIT ?
+            "#
+        );
+
+        let escaped_patterns: Vec<String> = terms
+            .iter()
+            .map(|t| {
+                let escaped = t
+                    .replace('\\', "\\\\")
+                    .replace('%', "\\%")
+                    .replace('_', "\\_");
+                format!("%{escaped}%")
+            })
+            .collect();
+
+        let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> =
+            Vec::with_capacity(escaped_patterns.len() + 2);
+        for pat in escaped_patterns {
+            params_vec.push(Box::new(pat));
+        }
+        params_vec.push(Box::new(game_id));
+        params_vec.push(Box::new(limit));
+
+        let params_refs: Vec<&dyn rusqlite::ToSql> =
+            params_vec.iter().map(|p| p.as_ref()).collect();
+
+        let term_count = terms.len() as f32;
+        let mut stmt = conn.prepare(&query)?;
+        let rows = stmt
+            .query_map(params_refs.as_slice(), |row| {
+                let id: i64 = row.get(0)?;
+                let chunk_text: String = row.get(1)?;
+                let source_type_str: String = row.get(2)?;
+                let source_id: Option<i64> = row.get(3)?;
+                let metadata: Option<String> = row.get(4)?;
+                let match_count: i64 = row.get(5)?;
+                let source_type = EmbeddingSourceType::from_str(&source_type_str)
+                    .unwrap_or(EmbeddingSourceType::RulesPdf);
+                let relevance_score = (match_count as f32 / term_count).min(1.0);
+
+                Ok(EmbeddingSearchResult {
+                    id,
+                    chunk_text,
+                    similarity_score: relevance_score,
+                    source_type,
+                    source_id,
+                    metadata,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(rows)
+    })
+}
+
 pub async fn delete_embeddings_for_game(
     db: &Database,
     game_id: i64,
@@ -402,4 +538,118 @@ pub async fn create_embeddings_batch(
 
         Ok(embedding_ids)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn setup_keyword_db() -> Database {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            r#"
+            CREATE TABLE embeddings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                game_id INTEGER NOT NULL,
+                chunk_text TEXT NOT NULL,
+                chunk_index INTEGER NOT NULL,
+                source_type TEXT NOT NULL DEFAULT 'rules_pdf',
+                source_id INTEGER,
+                metadata TEXT,
+                created_at TEXT NOT NULL
+            );
+            INSERT INTO embeddings (game_id, chunk_text, chunk_index, source_type, created_at) VALUES
+                (1, 'Rolling a 7 activates the Robber and forces players to discard half.', 0, 'rules_pdf', '2026-01-01T00:00:00Z'),
+                (1, 'The Robber blocks resource production on the hex it occupies.', 1, 'rules_pdf', '2026-01-01T00:00:00Z'),
+                (1, 'Special discount 50%off and max_hand_size and path\to\rule.', 2, 'rules_pdf', '2026-01-01T00:00:00Z'),
+                (1, 'Friendly Robber house rule protects players with 2 VP.', 3, 'house_rule', '2026-01-01T00:00:00Z'),
+                (2, 'Other game Robber discard rule should never leak.', 0, 'rules_pdf', '2026-01-01T00:00:00Z');
+            "#,
+        )
+        .unwrap();
+        Database::new(conn)
+    }
+
+    #[tokio::test]
+    async fn test_keyword_search_ranking_and_game_isolation() {
+        let db = setup_keyword_db();
+        let results = keyword_search_filtered(&db, 1, "Robber discard", false, 5)
+            .await
+            .unwrap();
+        // Only game 1 rules_pdf chunks match; chunk 0 matches both terms so ranks first.
+        assert_eq!(results.len(), 2);
+        assert!(results[0].chunk_text.contains("discard half"));
+        assert!((results[0].similarity_score - 1.0).abs() < f32::EPSILON);
+        assert!(results[1].chunk_text.contains("blocks resource production"));
+        assert!((results[1].similarity_score - 0.5).abs() < f32::EPSILON);
+    }
+
+    #[tokio::test]
+    async fn test_keyword_search_house_rules_toggle() {
+        let db = setup_keyword_db();
+        let without_hr = keyword_search_filtered(&db, 1, "Friendly", false, 5)
+            .await
+            .unwrap();
+        assert!(without_hr.is_empty());
+
+        let with_hr = keyword_search_filtered(&db, 1, "Friendly", true, 5)
+            .await
+            .unwrap();
+        assert_eq!(with_hr.len(), 1);
+        assert_eq!(with_hr[0].source_type, EmbeddingSourceType::HouseRule);
+    }
+
+    #[tokio::test]
+    async fn test_keyword_search_single_digit_and_stopwords() {
+        let db = setup_keyword_db();
+        // Single digit "7" must not be dropped; stopwords like "what", "the" must not dilute matches
+        let results = keyword_search_filtered(&db, 1, "what happens on the 7?", false, 5)
+            .await
+            .unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0].chunk_text.contains("Rolling a 7"));
+    }
+
+    #[tokio::test]
+    async fn test_keyword_search_escapes_like_wildcards_and_rejects_punctuation() {
+        let db = setup_keyword_db();
+
+        // Pure punctuation / empty / limit 0 return empty
+        assert!(
+            keyword_search_filtered(&db, 1, "--- ''' !!!", true, 5)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        assert!(
+            keyword_search_filtered(&db, 1, "Robber", true, 0)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+
+        // Escaped `%`, `_`, `\` match literally and do not act as SQL LIKE wildcards
+        let pct = keyword_search_filtered(&db, 1, "50%off", false, 5)
+            .await
+            .unwrap();
+        assert_eq!(pct.len(), 1);
+        assert!(pct[0].chunk_text.contains("50%off"));
+
+        let underscore = keyword_search_filtered(&db, 1, "max_hand_size", false, 5)
+            .await
+            .unwrap();
+        assert_eq!(underscore.len(), 1);
+
+        let backslash = keyword_search_filtered(&db, 1, "path\\to\\rule", false, 5)
+            .await
+            .unwrap();
+        assert_eq!(backslash.len(), 1);
+
+        // An underscore pattern that does NOT literally exist must not wildcard-match "Robber"
+        let non_match = keyword_search_filtered(&db, 1, "r_bber", false, 5)
+            .await
+            .unwrap();
+        assert!(non_match.is_empty());
+    }
 }

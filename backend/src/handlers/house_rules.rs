@@ -6,7 +6,7 @@ use crate::{
     AppState,
     auth::middleware::require_auth,
     db::{embeddings, house_rules},
-    embeddings::Embedder,
+    embeddings::{Embedder, HouseRuleDocument},
     error::{DbResultExt, OptionExt},
     handlers::{
         HttpCreated, HttpDeleted, HttpError, HttpOk, IdPath, bad_request_error, created_response,
@@ -37,32 +37,24 @@ async fn embed_house_rule(
         return Ok(());
     }
 
-    // Create the embedding text from the house rule
-    let embedding_text = format!(
-        "House Rule: {}\n{}\n{}",
-        house_rule.title,
-        house_rule.description,
-        house_rule
-            .category
-            .as_ref()
-            .map(|c| format!("Category: {}", c))
-            .unwrap_or_default()
-    );
-
-    // Generate the embedding
-    let embedding = embedder
-        .generate_embedding(&embedding_text)
+    // Create the structured document and embed via Rig's EmbeddingsBuilder
+    let doc = HouseRuleDocument::from_house_rule(house_rule);
+    let (doc, embedding) = embedder
+        .embed_documents([doc])
         .await
         .map_err(|e| {
             slog::error!(log, "Failed to generate embedding for house rule";
                 "house_rule_id" => house_rule.id, "error" => %e);
             internal_error("Failed to generate embedding for house rule".to_string())
-        })?;
+        })?
+        .into_iter()
+        .next()
+        .ok_or_else(|| internal_error("Embedding provider returned no vector".to_string()))?;
 
     // Store the embedding
     let create_request = CreateEmbeddingRequest {
         game_id: house_rule.game_id,
-        chunk_text: embedding_text,
+        chunk_text: doc.content,
         embedding,
         chunk_index: 0, // House rules are single chunks
         source_type: EmbeddingSourceType::HouseRule,

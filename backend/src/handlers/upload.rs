@@ -10,6 +10,7 @@ use crate::{
     AppState,
     auth::middleware::require_admin,
     db,
+    embeddings::RuleChunkDocument,
     error::{DbResultExt, OptionExt},
     handlers::{HttpError, HttpOk},
     models::{CreateEmbeddingRequest, EmbeddingSourceType, RulesInfoResponse},
@@ -80,10 +81,19 @@ pub async fn upload_rules_pdf(
         internal_error(format!("Failed to extract PDF text: {}", e))
     })?;
 
-    // Generate embeddings for all chunks
-    let embeddings = app_state
+    // Generate embeddings for all chunks in provider-sized batches via Rig's EmbeddingsBuilder
+    let total_chunks = processed_pdf.chunks.len();
+    let text_length = processed_pdf.full_text.len();
+    let chunk_docs: Vec<RuleChunkDocument> = processed_pdf
+        .chunks
+        .into_iter()
+        .enumerate()
+        .map(|(chunk_index, text)| RuleChunkDocument { chunk_index, text })
+        .collect();
+
+    let embedded_chunks = app_state
         .embedder()
-        .generate_embeddings(&processed_pdf.chunks)
+        .embed_documents(chunk_docs)
         .await
         .map_err(|e| {
             let _ = fs::remove_file(&file_path);
@@ -91,25 +101,22 @@ pub async fn upload_rules_pdf(
         })?;
 
     // Create embedding requests for database storage
-    let embedding_requests: Vec<CreateEmbeddingRequest> = processed_pdf
-        .chunks
-        .iter()
-        .zip(embeddings.iter())
-        .enumerate()
-        .map(|(chunk_index, (chunk, embedding))| {
+    let embedding_requests: Vec<CreateEmbeddingRequest> = embedded_chunks
+        .into_iter()
+        .map(|(doc, embedding)| {
             let metadata = serde_json::json!({
                 "file_name": &filename,
-                "chunk_size": chunk.len(),
-                "total_chunks": processed_pdf.chunks.len(),
+                "chunk_size": doc.text.len(),
+                "total_chunks": total_chunks,
                 "processing_timestamp": chrono::Utc::now().to_rfc3339(),
                 "embedding_model": app_state.embedder().model_name()
             });
 
             CreateEmbeddingRequest {
                 game_id: game.id,
-                chunk_text: chunk.clone(),
-                embedding: embedding.clone(),
-                chunk_index: chunk_index as i32,
+                chunk_text: doc.text,
+                embedding,
+                chunk_index: doc.chunk_index as i32,
                 source_type: EmbeddingSourceType::RulesPdf,
                 source_id: None,
                 metadata: Some(metadata.to_string()),
@@ -121,7 +128,7 @@ pub async fn upload_rules_pdf(
     db::games::update_game_rules_text(
         &db,
         game.id,
-        processed_pdf.full_text.clone(),
+        processed_pdf.full_text,
         Some(file_path.to_string_lossy().to_string()),
     )
     .await
@@ -131,7 +138,7 @@ pub async fn upload_rules_pdf(
     })?;
 
     // Store embeddings in batch
-    crate::db::embeddings::create_embeddings_batch(&db, embedding_requests.clone())
+    crate::db::embeddings::create_embeddings_batch(&db, embedding_requests)
         .await
         .map_err(|e| {
             let _ = fs::remove_file(&file_path);
@@ -141,13 +148,11 @@ pub async fn upload_rules_pdf(
     let response = UploadResponse {
         message: format!(
             "Successfully uploaded and processed PDF for game {}. Extracted {} characters and created {} text chunks.",
-            game_id,
-            processed_pdf.full_text.len(),
-            processed_pdf.chunks.len()
+            game_id, text_length, total_chunks
         ),
         file_path: Some(file_path.to_string_lossy().to_string()),
-        chunks_processed: Some(processed_pdf.chunks.len() as u32),
-        text_length: Some(processed_pdf.full_text.len()),
+        chunks_processed: Some(total_chunks as u32),
+        text_length: Some(text_length),
     };
 
     success_response(response)

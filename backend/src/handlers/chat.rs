@@ -232,29 +232,15 @@ pub async fn chat_with_rules(
     let game_id = session_history.session.game_id;
     let include_house_rules = session_history.session.include_house_rules;
 
-    // 2. Save user message to database
-    let user_message = chat::add_message_to_session(
-        &db,
-        chat_request.session_id,
-        crate::models::MessageRole::User,
-        chat_request.message.clone(),
-        None,
-    )
-    .await
-    .map_err(|e| {
-        slog::error!(rqctx.log, "Failed to save user message"; "error" => %e);
-        internal_error("Failed to save message".to_string())
-    })?;
-
-    // 3. Build GameRulesIndex for dynamic_context retrieval
-    let index = crate::agents::GameRulesIndex::new(
+    // 2. Build agentic rules search toolkit (semantic search, keyword search, optional house rules)
+    let toolkit = crate::agents::RulesSearchToolkit::new(
         app_state.embedder().model_handle(),
         db.clone(),
         game_id,
         include_house_rules,
     );
 
-    // 4. Build chat history, truncated to last 6 messages
+    // 3. Build chat history, truncated to last 6 messages
     let messages = &session_history.messages;
     let truncated = if messages.len() > 6 {
         &messages[messages.len() - 6..]
@@ -266,44 +252,18 @@ pub async fn chat_with_rules(
         .map(|msg| (msg.role.clone(), msg.content.clone()))
         .collect();
 
-    // 5. Agent handles retrieval + response via dynamic_context
-    let assistant_response = app_state
+    // 4. Agent runs multi-turn search/think loop and returns final answer + consulted excerpts.
+    // Run before persisting the user message so LLM/agent failures do not leave orphaned messages.
+    let (assistant_response, search_results) = app_state
         .rules_agent()
-        .answer(&chat_request.message, index, &chat_history)
+        .answer(&chat_request.message, toolkit, &chat_history)
         .await
         .map_err(|e| {
             slog::error!(rqctx.log, "Failed to generate LLM response"; "error" => %e);
             internal_error("Failed to generate response".to_string())
         })?;
 
-    // 6. Separate search for context_sources (API response metadata)
-    let query_embedding = app_state
-        .embedder()
-        .generate_embedding(&chat_request.message)
-        .await
-        .map_err(|e| {
-            slog::error!(rqctx.log, "Failed to generate query embedding for context"; "error" => %e);
-            internal_error("Failed to generate context sources".to_string())
-        })?;
-
-    let similarity_request = SimilaritySearchRequest {
-        game_id,
-        query_embedding,
-        similarity_threshold: 0.0,
-        limit: 10,
-    };
-
-    let search_results = crate::db::embeddings::similarity_search_filtered(
-        &db,
-        similarity_request,
-        include_house_rules,
-    )
-    .await
-    .map_err(|e| {
-        slog::error!(rqctx.log, "Failed to search embeddings for context"; "error" => %e);
-        internal_error("Failed to search rules".to_string())
-    })?;
-
+    // 5. Map consulted excerpts into API context_sources attribution
     let context_sources: Vec<ContextSource> = search_results
         .iter()
         .map(|result| ContextSource {
@@ -314,6 +274,20 @@ pub async fn chat_with_rules(
             metadata: result.metadata.clone(),
         })
         .collect();
+
+    // 6. Save user message to database
+    let user_message = chat::add_message_to_session(
+        &db,
+        chat_request.session_id,
+        MessageRole::User,
+        chat_request.message,
+        None,
+    )
+    .await
+    .map_err(|e| {
+        slog::error!(rqctx.log, "Failed to save user message"; "error" => %e);
+        internal_error("Failed to save message".to_string())
+    })?;
 
     // 7. Save assistant response to database
     let context_chunk_ids: Vec<i64> = search_results.iter().map(|r| r.id).collect();
