@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5](https://github.com/mccormickt/tabletop-atlas/compare/v0.1.4...v0.1.5) - 2026-11-25
+
+### Added
+
+- Admin user management ([#55](https://github.com/mccormickt/tabletop-atlas/pull/55))
+
+### Other
+
+- *(agents)* adopt Rig 0.47 agentic search, think tool, and EmbeddingsBuilder
+- *(deps)* upgrade Rust 1.100 and cargo dependencies
+- *(deps)* upgrade Node.js 26 LTS, pnpm 12, and npm dependencies
+- *(deps)* upgrade dropshot and schemars ([#75](https://github.com/mccormickt/tabletop-atlas/pull/75))
+- *(deps)* upgrade rig-core to 0.42 ([#74](https://github.com/mccormickt/tabletop-atlas/pull/74))
+- upgrade runtimes and dependencies
+- codebase consolidation — structured errors, shared helpers, reduced boilerplate ([#56](https://github.com/mccormickt/tabletop-atlas/pull/56))
+
 ## [0.1.4](https://github.com/mccormickt/tabletop-atlas/compare/v0.1.3...v0.1.4) - 2026-03-08
 
 ### Added
