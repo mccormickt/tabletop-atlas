@@ -67,7 +67,7 @@ jobs:
           echo "image_tag=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Setup melange
-        uses: chainguard-dev/actions/setup-melange@v1.5.14
+        uses: chainguard-dev/actions/setup-melange@v1.8.3
 
       - name: Generate signing key
         run: melange keygen
@@ -102,7 +102,7 @@ jobs:
           name: signing-key
 
       - name: Setup melange
-        uses: chainguard-dev/actions/setup-melange@v1.5.14
+        uses: chainguard-dev/actions/setup-melange@v1.8.3
 
       - name: Ensure cache directories exist
         run: |
