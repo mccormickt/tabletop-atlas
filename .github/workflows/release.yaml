@@ -130,6 +130,8 @@ jobs:
       - name: Build APK
         run: |
           set -euo pipefail
+          # Ensure restored cache directories are writable by Melange's build user (uid 1000)
+          sudo chmod -R a+rwX "$HOME/.melange-cache"
           sudo melange build melange.yaml \
             --arch ${{ matrix.arch }} \
             --signing-key melange.rsa \
